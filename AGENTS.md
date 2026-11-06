@@ -2,9 +2,10 @@
 
 ## State of the repo
 
-- Greenfield and not yet a git repo: the only files are `#SQL NaijaDrugwatch.txt` (the v1.0 spec and the scope contract) and this file. No package manifest, tests, CI, or code. Read the spec before scaffolding; do not describe the pipeline as working because files were written.
+- Repo is live at `github.com/batestguy/NaijaDrugWatch` (public, branch `main`). The M1 scaffold is committed: `schema/001-004.sql`, `scripts/load_seed.py`, `seed/medprices.csv`, `docs/`, `README.md`, `PLAN.md`, `research/`. `PROGRESS.md` is the single state file — read it before starting anything.
+- Nothing runs yet: **the SQL has never been executed** (no Neon project exists), no scraper has run, and there is no test suite or CI. Do not describe the pipeline as working because files exist.
 - The spec's filename starts with `#`, so it must be quoted in shell: `Get-Content '#SQL NaijaDrugwatch.txt'`, `git add '#SQL NaijaDrugwatch.txt'`. Unquoted it is a PowerShell comment or a glob.
-- Details the spec leaves open are genuinely undecided: which three pharmacies, whether a Neon project exists, and the env var names. Do not invent them in code, comments, or docs — ask or leave a `TODO`.
+- Open decisions live in `PLAN.md` §10 and `PROGRESS.md`, not here. The pharmacy set is chosen (HealthPlus, Drugstore.ng, MedPlus; nettpharmacy available as a fourth). Still genuinely undecided: the embedding model — `vector(384)` is a placeholder — and whether the Neon Data API works on the free plan. Do not invent answers.
 - Measurements behind the constraints below: `research/2026-11-06-feasibility-probes.md` (live probes, 6 Nov 2026). Re-probe before trusting a source figure; NAFDAC and the pharmacies change.
 - Deliverable names are fixed by the spec: `scrapers/` (Python), `flows/` (Prefect), `dashboard/` (Streamlit), plus schema / views / seed-data docs and a `README.md` carrying the data-sourcing disclosure.
 - SQL-first on Neon Postgres: schema and views are plain `.sql` committed to the repo, run in numbered order, and idempotent (`CREATE TABLE IF NOT EXISTS`, `CREATE OR REPLACE VIEW`) so a rebuild is re-running the files. No dbt, no warehouse layer, no ORM migration framework, even though the global AGENTS.md repo shape shows `dbt/`.
