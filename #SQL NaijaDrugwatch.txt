@@ -1,0 +1,372 @@
+NaijaDrugWatch — Standalone Project README
+Version: 1.0
+Project type: End-to-end SQL-first data pipeline, open API, and dashboard
+Domain: Nigerian pharmaceutical market transparency
+Budget: $0/month (free-tier only)
+Repo visibility: Public (required for free GitHub Actions cron)
+Independence: Fully standalone; does not depend on any other project
+
+1. One-Line Pitch
+Build the first open, daily-refreshed, SQL-queryable database that joins NAFDAC drug registration status to live Nigerian pharmacy prices and stock levels — so patients, pharmacists, NGOs, and researchers can answer: "Is this drug genuine, is it in stock, and where is it cheapest?"
+
+2. The Problem (Why This Exists)
+Most Nigerians pay out-of-pocket for medicines.
+
+Prices for the same drug vary wildly between pharmacies and states.
+
+Counterfeit, expired, and unregistered drugs remain a serious public health threat.
+
+NAFDAC publishes registration data, but it is never joined to live market prices.
+
+No existing tool exposes this join as open, queryable data.
+
+A 2025 study found 36 of 46 asthma medicines had less than 25% availability in Nigeria.
+
+The 9jaCheckr case (March 2026): a developer built a NAFDAC lookup API, reached 1,500 users, and was silently blocked by NAFDAC within four days. Fragility is the norm.
+
+Our wedge: We are not another price comparison app. We are the regulatory × market data layer that no one else has built.
+
+3. Goals
+Primary Goals
+Build a live, daily-refreshed SQL database of Nigerian drug prices, stock status, and NAFDAC registration status.
+
+Expose it as open, SQL-queryable views and a free REST API.
+
+Flag suspicious listings — drugs sold with expired or inactive NAFDAC registrations.
+
+Track state-level price and stockout indices over time.
+
+Do all of the above on a $0/month free-tier stack.
+
+Secondary Goals
+Provide a reusable data layer for Nigerian health researchers and NGOs.
+
+Power future SMS/USSD/WhatsApp alerts: "Cheapest genuine Coartem in Kano today."
+
+Become the reference dataset for causal-inference studies on Nigerian drug pricing.
+
+Non-Goals (Out of Scope for v1)
+No personal data collection.
+
+No prescription handling.
+
+No delivery or logistics.
+
+No mobile app (dashboard and API only in v1).
+
+4. Unique Achievements (What No One Else Has Done)
+#	Achievement	Why It Matters
+1	NAFDAC status × live market price join	No existing tool exposes this.
+2	Open SQL-queryable views	Existing datasets are static CSVs from 2023.
+3	Multi-source fallback for NAFDAC data	Survives the 9jaCheckr-style block.
+4	State-level price and stockout index	No open tool currently tracks this.
+5	pgvector plus deterministic drug matching	Solves messy listing names at the database layer.
+6	Regulatory expiry as a queryable feature	Operationalises NAFDAC status into safety alerts.
+7	$0/month production pipeline	Neon, Prefect, Streamlit, GitHub Actions.
+8	Daily-refreshed, publicly documented	Becomes infrastructure, not just an app.
+5. Desires (What Success Looks Like)
+By end of week 3: Dashboard live, repo public, daily cron running, at least one useful alert firing (expired NAFDAC listing OR greater than 20% price spike).
+
+By end of month 1: 5,000-plus NAFDAC products indexed, 3-plus pharmacies scraped, 1,000-plus price points, documented SQL views.
+
+By end of month 3: Cited by at least one Nigerian health researcher or NGO.
+
+Stretch: Adopted by a state health ministry or a pharmacy association as a public good.
+
+6. Tech Stack (Free Tier Only)
+Layer	Tool	Free Tier Limit	Why Chosen
+Database	Neon Postgres	100 CU-hours per month, 0.5 GB storage, scale-to-zero	Does NOT pause like Supabase; reactivates in roughly 300 ms.
+Extensions	pg_trgm, pgvector, unaccent	Included	Fuzzy and semantic drug matching.
+Scrapers	Python, httpx, Playwright	Local / GitHub Actions	API-first, HTML-fallback.
+Orchestration	Prefect Cloud Hobby	5 deployments, 500 serverless minutes	Retries, logging, observability.
+Cron (fallback)	GitHub Actions	2,000 minutes per month (public repo only)	Free only on public repos.
+API	Neon Data API	Included	Auto REST from SQL views.
+Dashboard	Streamlit Community Cloud	Unlimited public apps, 1 GB RAM	Auto-wakes on access.
+Alerts	Prefect notifications plus Resend	3,000 emails per month	Email on pipeline failure or price spike.
+Object storage	Neon Object Storage (beta)	5 GB	Archive old price history.
+Auth (later)	Neon Managed Better Auth	60,000 MAU	If dashboard needs login.
+Explicit Anti-Choices
+Supabase Free — pauses after 7 days idle; no backups; 500 MB cap.
+
+GitHub Actions cron on private repo — disabled on free personal accounts.
+
+Pure HTML scraping — brittle; use APIs first.
+
+Pure pg_trgm matching — over-matches or under-matches; needs deterministic rules.
+
+7. Data Sources
+A. NAFDAC Layer (Multi-Source Fallback)
+Primary: NAFDAC Greenbook — structured database of approximately 7,000 registered products. Check for JSON endpoint first.
+
+Secondary: Code for Nigeria #FixMedPrices dataset (CC-BY-4.0) — seed list of medicines and prices.
+
+Tertiary: Third-party proxies such as the 9ja Checkr SDK — understand these are independent and rate-limited.
+
+Extract fields: registration number, product name, brand name, generic name, active ingredients, dosage form, strength, applicant, manufacturer, status, approval date, expiry date, source URL.
+
+B. Pharmacy Layer (API-First, HTML-Fallback)
+WooCommerce sites: Use the Store API endpoint that returns products, prices, stock status, categories, and variations in structured JSON.
+
+Shopify sites: Use the products JSON endpoint that returns title, variant prices, inventory quantity, and SKU.
+
+Targets for MVP: Three pharmacies in Lagos and Abuja. Do not attempt national coverage in week one.
+
+HTML fallback: Playwright only for JavaScript-heavy sites with no API.
+
+C. Optional Enrichment
+CBN exchange rate API — contextualise imported drug prices.
+
+Google Maps or Places — pharmacy geocoding (later).
+
+Twitter or X API — public stockout complaints (later).
+
+Legal and Ethical Guardrails
+Respect robots.txt on every domain.
+
+Rate-limit to one request every two seconds per domain.
+
+Custom User-Agent identifying the project.
+
+Never scrape customer reviews or personal data.
+
+Publish a data sourcing disclosure in the repo.
+
+NDP Act 2023 applies to personal data; we scrape product data only.
+
+8. Architecture Overview
+The pipeline has four layers:
+
+Ingestion layer — Python scrapers fetch raw data from NAFDAC sources and pharmacy APIs. Raw rows are loaded into staging tables with timestamps and source hashes.
+
+Normalisation layer — SQL transformations canonicalise drug names, match listings to NAFDAC registrations using a two-stage approach (pgvector similarity for candidate generation, then deterministic rules on strength, form, and active ingredient).
+
+Intelligence layer — SQL views and materialised views compute:
+
+Latest deduplicated listings per pharmacy
+
+Cheapest pharmacy per drug per state
+
+Suspicious listings with expired or inactive NAFDAC registrations
+
+Seven-day price change trends
+
+Daily materialised drug price index
+
+Pipeline health status
+
+Surface layer — Neon Data API exposes views as REST endpoints. Streamlit dashboard visualises price indices, suspicious listings, and pipeline health. Prefect notifications alert on failures or price spikes.
+
+9. Core Database Schema (Descriptive)
+The schema contains the following tables:
+
+pharmacies — name, website, state, city, address, latitude, longitude, creation timestamp.
+
+nafdac_registrations — registration number (primary key), product name, brand name, generic name, active ingredients, dosage form, strength, applicant, manufacturer, status, approval date, expiry date, source URL, scrape timestamp.
+
+nafdac_status_snapshots — registration number, status, snapshot date. Unique constraint on registration number and snapshot date. This captures status changes over time and is the unique value driver.
+
+products — canonical name, generic name, brand name, form, strength, NAFDAC registration number, embedding vector, creation timestamp.
+
+drug_match_rules — canonical name, match pattern, required strength, required form, active ingredient. This table makes fuzzy matching deterministic.
+
+pharmacy_listings — pharmacy ID, product ID, raw title, raw URL, price in NGN, in-stock boolean, pack size, scrape timestamp, source hash. Unique constraint on pharmacy, URL, and timestamp.
+
+price_history — listing ID, price in NGN, in-stock boolean, scrape timestamp.
+
+scrape_runs — source, start time, finish time, status, record count, error message.
+
+10. SQL Views (The Deliverables)
+The following views are created and exposed:
+
+v_latest_listings
+Deduplicated current state of every pharmacy listing. Uses a window function to pick the most recent row per pharmacy and URL combination. Joins to pharmacies and products for names and state.
+
+v_cheapest_per_product_state
+For each canonical product and state, finds the pharmacy with the lowest in-stock price. Uses row numbering partitioned by product and state, ordered by price ascending.
+
+v_suspicious_listings
+Joins latest listings to products and NAFDAC registrations. Returns any listing where the NAFDAC status is not "Active" or the expiry date is in the past. This is the killer feature.
+
+v_price_change_7d
+Uses the lag window function over price history to compute the percentage change in price over seven days for each listing.
+
+mv_drug_price_index
+A materialised view that aggregates daily price data by day, canonical name, and state. Computes average, minimum, and maximum prices, distinct pharmacy count, and stock rate (proportion of listings in stock). Has a unique index on day, canonical name, and state.
+
+v_pipeline_health
+Checks the most recent successful run per source. Flags any source whose last success is older than 48 hours as "STALE". Returns source, last success timestamp, and status.
+
+Drug Matching (Two-Stage)
+Stage one uses pgvector to find the ten most similar product names by cosine similarity. Stage two joins those candidates to drug_match_rules and filters by similarity threshold plus required strength, form, and active ingredient. This prevents over-matching and under-matching.
+
+11. Workflow (Step by Step)
+Phase 0 — Setup (Day 1)
+Create Neon project on free tier. Save connection string.
+
+Enable extensions: pg_trgm, pgvector, unaccent.
+
+Create public GitHub repo with README, MIT license, and data-sourcing disclosure.
+
+Create Prefect Cloud account on Hobby tier. Save API key.
+
+Create Streamlit Community Cloud account.
+
+Phase 1 — Data Foundation (Week 1)
+Download Code for Nigeria #FixMedPrices seed dataset. Load into nafdac_registrations table.
+
+Probe NAFDAC Greenbook for JSON endpoints. If found, build scraper. If blocked, keep seed as primary.
+
+Identify three target pharmacies using WooCommerce or Shopify. Confirm API endpoints respond.
+
+Build WooCommerce Store API scraper using httpx, respecting rate limits.
+
+Build Shopify products JSON scraper.
+
+Load raw rows into pharmacy_listings with source hash for deduplication.
+
+Log every run into scrape_runs table.
+
+Phase 2 — SQL Intelligence Layer (Week 2)
+Load drug_match_rules for the 50 most common Nigerian drugs across malaria, hypertension, diabetes, and antibiotics.
+
+Generate embeddings for canonical drug names. Store in products embedding column.
+
+Build two-stage matcher: pgvector candidate generation then deterministic rule filtering.
+
+Create all views: v_latest_listings, v_cheapest_per_product_state, v_suspicious_listings, v_price_change_7d, v_pipeline_health.
+
+Create mv_drug_price_index materialised view. Set refresh schedule.
+
+Set up Prefect Hobby deployment for daily scrape and refresh.
+
+Phase 3 — Surface Layer (Week 3)
+Build Streamlit dashboard with:
+
+State-by-drug price heatmap
+
+Cheapest pharmacy per drug per state
+
+Suspicious listings feed
+
+Pipeline health panel
+
+Expose Neon Data API for read-only SQL views.
+
+Configure Prefect notification to email on pipeline failure or price spike greater than 30%.
+
+Publish repo with:
+
+Data sourcing disclosure
+
+SQL view documentation
+
+Example queries for NGOs and researchers
+
+Roadmap
+
+Write a launch thread or post explaining the regulatory-by-price join.
+
+Phase 4 — Hardening (Week 4, Optional)
+Add HTML fallback scraper using Playwright for one non-API site.
+
+Add archive job: move price history older than 90 days to Neon Object Storage.
+
+Add pipeline health alerting to a Slack or Discord webhook.
+
+Add a public health endpoint.
+
+12. Success Metrics
+Metric	Target	How Measured
+NAFDAC products indexed	5,000-plus	Count from nafdac_registrations
+Pharmacies scraped	3-plus	Count from pharmacies
+Price points	1,000-plus	Count from pharmacy_listings
+Daily refresh uptime	Greater than 95%	v_pipeline_health view
+Suspicious listings flagged	Greater than 0	Count from v_suspicious_listings
+Public API endpoints live	5-plus	Neon Data API
+Monthly cost	$0	Billing dashboards
+13. Risks and Mitigations
+Risk	Likelihood	Impact	Mitigation
+NAFDAC blocks scraper	High	High	Multi-source fallback; seed dataset as base.
+Pharmacy changes API	Medium	Medium	HTML fallback; alert on scrape failure.
+Neon 0.5 GB cap hit	Medium	High	Archive history older than 90 days to Object Storage.
+Drug matching errors	High	Medium	Two-stage matcher; manual spot checks.
+Free tier changes	Medium	Medium	Document alternatives (Supabase, Fly.io).
+Legal challenge	Low	High	robots.txt, rate limits, public disclosure.
+14. Future Roadmap (Post-v1)
+SMS, USSD, and WhatsApp alerts: "Cheapest genuine Coartem in Kano today."
+
+State health ministry partnerships for stockout early warning.
+
+Mobile PWA on top of the Data API.
+
+Expansion: Ghana (FDA), Kenya (PPB), South Africa (SAHPRA) — same schema, new scrapers.
+
+Citation by researchers as the reference Nigerian drug price index.
+
+15. Agent Instructions (Copy-Paste Block)
+You are an expert data engineer and SQL architect. Build NaijaDrugWatch per this README.
+
+Priorities in order:
+
+Neon Postgres schema and extensions first.
+
+Seed NAFDAC data from #FixMedPrices dataset.
+
+API-first scrapers (WooCommerce, then Shopify, then HTML).
+
+All SQL views, then materialised views.
+
+Two-stage drug matching (pgvector then rules).
+
+Prefect deployment for daily cron.
+
+Streamlit dashboard and Neon Data API.
+
+Constraints:
+
+$0 per month. No paid services.
+
+Public GitHub repo (required for free cron).
+
+Rate-limit scrapers to one request every two seconds per domain.
+
+Respect robots.txt.
+
+No personal data.
+
+Deliverables:
+
+Schema definition document
+
+Views definition document
+
+Seed data document
+
+Scrapers directory (Python)
+
+Prefect flows directory
+
+Dashboard directory (Streamlit)
+
+README with data-sourcing disclosure
+
+Documentation with example NGO queries
+
+Definition of Done:
+
+Daily scrape runs successfully for seven consecutive days.
+
+v_suspicious_listings returns at least one row.
+
+Dashboard renders state-by-drug price index.
+
+API responds to requests for cheapest product per state.
+
+16. License and Disclosure
+Code: MIT
+
+Data: CC-BY-4.0 (respecting source licenses)
+
+Scraping disclosure: This project scrapes publicly listed product and price data from Nigerian pharmacy websites and NAFDAC public Greenbook. It does not collect personal data. Rate limits and robots.txt are respected.
+
+End of README.

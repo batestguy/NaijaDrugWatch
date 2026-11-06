@@ -1,0 +1,23 @@
+# --- secrets ---
+.env
+.env.*
+!.env.example
+
+# --- python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# --- data (large binaries never live in git; >5 MB goes to Hugging Face Datasets) ---
+*.parquet
+*.duckdb
+data/
+
+# --- os / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

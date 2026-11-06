@@ -1,0 +1,10 @@
+# Normalise line endings so SQL and Python behave identically on Windows and Linux.
+* text=auto eol=lf
+
+*.csv  text eol=lf
+*.sql  text eol=lf
+*.py   text eol=lf
+
+*.png  binary
+*.jpg  binary
+*.pdf  binary
