@@ -16,15 +16,23 @@ SCOPE IS A FLAG, NOT AN ARCHITECTURE
     --all                   every registration with a detail URL (the full sweep)
 
 The restricted pass is deliberate: no view can consume an NRN that no product can match, so
-scraping status for all 10,906 costs hours to change nothing on screen. The default covers ~1,474
-registrations in ~50 min at the mandatory 2 s/request. Raise or drop the flag for a full sweep --
-this is the same file, not a second scraper.
+scraping status for all 10,906 costs hours to change nothing on screen. Raise or drop the flag for
+a full sweep -- this is the same file, not a second scraper.
+
+Measured 2026-11-07: the server takes ~2.5 s per page on top of the mandatory 2 s floor, so the real
+rate is ~0.22 pages/s, NOT 0.5. Budget accordingly: ~2,800 NRNs at 0.30 is ~3.5 h, 1,474 at 0.40 is
+~110 min, 576 at 0.50 is ~45 min, and the full 10,906 is ~14 h -- which is why the full sweep must
+be sharded across days, not run in one job.
 
 RESUMABILITY
 ------------
 An NRN that already has a snapshot for today is skipped, so an interrupted run resumes by simply
 being run again, and a retry never restarts a range. A 500 is retried with backoff and, if it still
 fails, is left unsnapshotted so the next run picks it up.
+
+Commits are batched (`--commit-every`, default 50) and the connection is re-established once if the
+database drops the socket. Without that, a single Neon disconnect mid-run rolled back every page
+fetched in that transaction -- which happened on 2026-11-07 at 50/1,464 and lost the lot.
 
 A partial sweep is a partial vintage. Never describe its output as national regulatory coverage.
 
@@ -202,6 +210,26 @@ def store(connection, record: dict[str, Any]) -> None:
         cursor.execute(SNAPSHOT_SQL, record)
 
 
+def store_with_reconnect(connection, record: dict[str, Any]):
+    """Store one record, reconnecting once if the database dropped the socket.
+
+    Neon closes an idle or long-lived connection without warning; a single uncommitted
+    transaction spanning an hour would lose every page fetched so far. Batched commits make the
+    loss window `--commit-every` records, and resume then refetches only what has no snapshot.
+    """
+    try:
+        store(connection, record)
+        return connection
+    except Exception:
+        try:
+            connection.close()
+        except Exception:
+            pass
+        fresh = db_connect()
+        store(fresh, record)
+        return fresh
+
+
 # ------------------------------------------------------------------------------------------ main
 
 
@@ -222,6 +250,12 @@ def main(argv: list[str] | None = None) -> int:
         default=DEFAULT_MAX_SECONDS,
         help="stop gracefully after this many seconds (default 5.5 h)",
     )
+    parser.add_argument(
+        "--commit-every",
+        type=int,
+        default=50,
+        help="commit every N registrations so a dropped connection costs at most N pages (default 50)",
+    )
     args = parser.parse_args(argv)
 
     min_similarity = None if args.all else args.min_similarity
@@ -240,7 +274,7 @@ def main(argv: list[str] | None = None) -> int:
             run_id = start_run(connection, SOURCE)
 
         targets = select_scope(connection, min_similarity=min_similarity, limit=args.limit)
-        print(f"scope: {scope_label} | targets: {len(targets)}")
+        print(f"scope: {scope_label} | targets: {len(targets)}", flush=True)
         if not targets:
             print("nothing to do: every target already has a snapshot for today")
             if not args.dry_run and run_id is not None:
@@ -256,7 +290,7 @@ def main(argv: list[str] | None = None) -> int:
         for index, (nrn, url) in enumerate(targets, start=1):
             if time.monotonic() - started > args.max_seconds:
                 budget_hit = True
-                print(f"time budget reached after {index - 1} registrations; stopping cleanly")
+                print(f"time budget reached after {index - 1} registrations; stopping cleanly", flush=True)
                 break
             try:
                 body = fetch_detail(client, url)
@@ -273,13 +307,19 @@ def main(argv: list[str] | None = None) -> int:
             if not parsed.get("status"):
                 unparsed += 1
             if not args.dry_run:
-                store(connection, parsed)
+                connection = store_with_reconnect(connection, parsed)
+                if index % args.commit_every == 0:
+                    connection.commit()
 
             if index % 50 == 0:
                 elapsed = time.monotonic() - started
                 rate = index / elapsed if elapsed else 0
                 remaining = (len(targets) - index) / rate if rate else 0
-                print(f"  {index}/{len(targets)}  {rate:.2f}/s  eta {remaining / 60:.0f} min  failed {len(failed)}")
+                print(
+                    f"  {index}/{len(targets)}  {rate:.2f}/s  eta {remaining / 60:.0f} min"
+                    f"  failed {len(failed)}",
+                    flush=True,
+                )
 
         if not args.dry_run:
             connection.commit()
@@ -312,12 +352,19 @@ def main(argv: list[str] | None = None) -> int:
     except Exception as exc:  # noqa: BLE001 - the ledger row is the point of this except
         message = f"{type(exc).__name__}: {exc}"
         print(f"\nFAILED: {message}", file=sys.stderr)
-        if connection is not None and run_id is not None:
+        if run_id is not None:
             try:
                 finish_run(connection, run_id, status="failed", error=message)
                 print(f"scrape_runs id={run_id} status=failed", file=sys.stderr)
             except Exception as ledger_exc:  # noqa: BLE001
-                print(f"could not write scrape_runs failure: {ledger_exc}", file=sys.stderr)
+                # The socket may be the thing that died, so try a fresh connection before
+                # giving up: a run left at 'running' is the state the ledger must never keep.
+                try:
+                    fresh = db_connect()
+                    finish_run(fresh, run_id, status="failed", error=message)
+                    print(f"scrape_runs id={run_id} status=failed (reconnected)", file=sys.stderr)
+                except Exception:  # noqa: BLE001
+                    print(f"could not write scrape_runs failure: {ledger_exc}", file=sys.stderr)
         return 1
 
 
