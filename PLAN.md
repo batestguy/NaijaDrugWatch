@@ -4,6 +4,9 @@ Updated 2026-11-06, after three recon rounds. Every number traces to
 `research/2026-11-06-feasibility-probes.md`; anything without a probe behind it is marked
 *unverified*.
 
+**Sequenced execution plan and per-phase gates: `docs/PHASES.md`.** Current state: `PROGRESS.md`.
+This file stays the research map.
+
 ## 1. What this is
 
 One join nobody has built: **NAFDAC registration status × live Nigerian pharmacy price**.

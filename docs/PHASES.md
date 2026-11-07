@@ -1,0 +1,233 @@
+# Phases — execution plan and gates
+
+Updated **2026-11-07**. This is the *sequenced* plan: what runs in what order, what proves each
+phase done, and who does it. It does not restate research — every source figure traces to
+`research/2026-11-06-feasibility-probes.md` and the source inventory in `PLAN.md` §2.
+
+**State lives in `PROGRESS.md`, not here.** When a phase closes, the gate output goes into
+`PROGRESS.md`; this file only records the plan and what is still blocked.
+
+Gate rule from the global invariants: *no number without an artifact*. A phase is closed only when
+the command under **Gate** has been run and its real output recorded.
+
+---
+
+## Status at a glance
+
+| Phase | Scope | Status |
+|---|---|---|
+| **P0** | Environment, Neon database, schema | **closed** |
+| **P1** | Seed catalogue (products + match rules) | **closed** |
+| **P2** | NAFDAC Greenbook index (10,895 NRNs) | next |
+| **P3** | NAFDAC Greenbook detail pages (status + expiry) | blocked on P2 |
+| **P4** | Pharmacy scrapers (HealthPlus, Drugstore.ng, MedPlus) | blocked on P1 only |
+| **P5** | Two-stage matcher (pgvector → rules) | blocked on P3 + P4 |
+| **P6** | Views proven on real rows | blocked on P5 |
+| **P7** | Prefect daily flow, 7 green runs | blocked on P6 |
+| **P8** | Streamlit dashboard + read-only API | blocked on P7 |
+| **P9** | Publish: disclosure, attribution, v1 tag | blocked on P8 |
+
+P4 has no dependency on P2/P3 and can run **in parallel** with them. That is the first genuine
+split, and the point at which work fans out to subagents.
+
+---
+
+## P0 — Environment and schema · closed
+
+**Delivered.** Neon project `orange-pond-32200905` (PG 17.11, `aws-eu-central-1`); `schema/001`–`004`
+executed in order; 8 tables, 5 views, 1 materialised view; pinned venv at
+`.venv\Scripts\python.exe` (CPython 3.12.13, `psycopg 3.2.13` from `requirements.txt`).
+
+**Two defects found only by executing:** `count(distinct …) over (…)` in
+`v_cheapest_per_product_state`, and `l.state` on a table that has no state column in
+`mv_drug_price_index`. Both fixed in `298cc5b`.
+
+**Gate.** `psql … -c "refresh materialized view concurrently mv_drug_price_index;"` → exit 0.
+Recorded in `PROGRESS.md`.
+
+---
+
+## P1 — Seed catalogue · closed
+
+**Delivered.** `python scripts/load_seed.py` → `products=1074 match_rules=1074 skipped=0
+statements=6`. 597 distinct canonical names, 0 rows with an NRN, 0 embeddings. Re-running leaves
+both tables at 1,074, so the loader is idempotent.
+
+**Deliberately not loaded:** `nafdac_registrations` (the CSV has no NRN, status or expiry) and
+`price_history` (the CSV `price` is a unit reference, 0.0007–1877 across mixed units — loading it
+would poison every "cheapest" claim).
+
+**Gate.** `select count(*) from products` = 1074 **and** from `drug_match_rules` = 1074, after two
+consecutive runs. Recorded in `PROGRESS.md`.
+
+---
+
+## P2 — Greenbook index scraper · next
+
+**Why it matters.** This is the regulatory half of the join. Without it every listing is
+"unverified", and `v_suspicious_listings` can never return a row.
+
+**Scope.** `scrapers/nafdac_index.py`: 6 category pages → ~10,895 registration numbers, plus name,
+form, strength. HTML only — the Greenbook has **no JSON API and no mirror**.
+
+**Constraints.** robots.txt per domain; ≤1 request / 2 s; custom User-Agent naming the project;
+write a `scrape_runs` row on success *and* failure; archive a dated full dump to disk each run so a
+block costs freshness, not history.
+
+**Gate.** A `scrape_runs` row with `status='success'` and `record_count >= 10500`, plus
+`select count(*) from nafdac_registrations` matching the archive row count.
+
+**Owner.** `builder`. **Review.** `ship-reviewer` on the diff, because robots/rate-limit compliance
+is a claim that must be verified against the code, not asserted.
+
+---
+
+## P3 — Greenbook detail pages · blocked on P2
+
+**Scope.** ~11,754 detail pages → status, approval date, expiry. **~10% returned HTTP 500** during
+sampling, so this needs exponential backoff and a resumable ID cursor; never restart the range.
+
+**Budget.** Full sweep ≈ 6.5 h at 2 s/page, over the 6 h Actions job cap. Either shard 3 × ~2 h, or
+restrict to NRNs that match the 50-drug MVP scope (~500–1,500 pages, 17–50 min). **Decision
+needed** — sharding is the default because it also bounds the cost of a block.
+
+**Gate.** ≥95% of targeted pages have non-null `status` and `expiry_date`; the shortfall is
+explained by retried 500s, not by silent skips.
+
+**Owner.** `builder`. **QA.** `data-explorer` on the populated status distribution before P5 —
+77% non-Active is expected, but not from a parsing bug.
+
+---
+
+## P4 — Pharmacy scrapers · blocked on P1 only, runs parallel to P2/P3
+
+**Order by expected yield, not by preference.**
+
+| Source | Access | Volume | Pricing signal |
+|---|---|---|---|
+| HealthPlus | Shopify `/products.json` | 1,197 SKUs, NGN | per-pharmacy |
+| Drugstore.ng | Nuxt SSR `__NUXT__` | 13,202 URLs, 37 states | **one national price** — not a marketplace |
+| MedPlus | custom PHP HTML | ~1,400–2,800, unverified | per-pharmacy |
+| nettpharmacy | Shopify `/products.json` | unknown, NGN | optional fourth |
+
+`medecify.com` answered WooCommerce but prices in **EUR** — excluded until a currency check passes.
+
+**Constraints.** API-first, Playwright only where neither API exists. Store `raw_title` verbatim and
+never overwrite it; `unit_price` requires parsing pack size from the title (90.4% parse rate
+measured). `source_hash` is the cross-run dedupe handle — the `(pharmacy, url, scraped_at)` key
+cannot dedupe because the timestamp moves.
+
+**Gate.** Each source has a `scrape_runs` row with success and a non-zero count; prices are NGN and
+`price_ngn >= 0`; `unit_price` populated on ≥85% of HealthPlus listings.
+
+**Owner.** `builder` per source. These three are genuinely independent — one subagent per source is
+justified, capped at three concurrent.
+
+---
+
+## P5 — Two-stage matcher · blocked on P3 + P4
+
+**Non-negotiable shape.** pgvector top-10 cosine candidates, then deterministic filtering through
+`drug_match_rules` on strength, form and active ingredient. Similarity-only or pg_trgm-only matching
+is the explicitly rejected failure mode.
+
+**Blocker, genuinely open.** `products.embedding` is `vector(384)` — a **placeholder**. The embedding
+model is undecided, and the dimension must match whatever is chosen. Do not build stage one against
+384 until that decision is made.
+
+**Gate.** A hand-checked sample of ≥50 matches: precision ≥0.9, zero matches that contradict a rule
+on strength or form. `v_suspicious_listings` returns ≥1 row.
+
+**Owner.** `builder` for the pipeline, `data-explorer` for the precision sample. **Review.**
+`ship-reviewer` — a matcher that over-matches manufactures the headline claim.
+
+---
+
+## P6 — Views proven on real rows · blocked on P5
+
+All six objects already execute; none has seen real data. This phase is about *numbers*, not
+compilation: `v_cheapest_per_product_state` must show `is_comparison = true` somewhere (Lagos/FCT
+are the only plausible cells), and `v_price_change_7d` needs ≥8 days of price history before it can
+return anything at all.
+
+**Gate.** `v_cheapest_per_product_state` returns rows with `pharmacy_count >= 2`, `v_latest_listings`
+count matches the sum of per-source success counts, and `mv_drug_price_index` refreshes
+`CONCURRENTLY` without error after a real load.
+
+**Owner.** `data-explorer`. **Review.** `ship-reviewer` on reporting policy B: a single-pharmacy cell
+must never be labelled "cheapest".
+
+---
+
+## P7 — Prefect daily flow · blocked on P6
+
+**One deployment**, not one per source or view — Prefect Hobby allows 5 and the budget assumes 1.
+Writes `scrape_runs` on every path including failure, then refreshes the matview.
+
+**Open defect to resolve first.** `v_pipeline_health` groups `scrape_runs`, so a source with zero
+runs produces zero rows — dark, not `STALE`. Either list known sources inside the view or seed one
+placeholder run per source. Decision needed before this gate can be trusted.
+
+**Gate.** 7 consecutive days of green runs, and `v_pipeline_health` reports `OK` for every source.
+
+**Owner.** `builder`.
+
+---
+
+## P8 — Dashboard and API · blocked on P7
+
+Streamlit Community Cloud (2.7 GB per app), reading the pooled connection string. Neon Data API
+**only if it exists on the Free plan** — unverified, and the fallback is a thin read-only service.
+
+**Gate.** Dashboard renders the state-by-drug index; API answers cheapest-product-per-state;
+zero axe violations on audited views (WCAG 2.2 AA is a release gate, not a nice-to-have).
+
+**Owner.** `builder`. **Review.** `ship-reviewer` for the accessibility gate.
+
+---
+
+## P9 — Publish · blocked on P8
+
+Data-sourcing disclosure, per-source attribution, #FixMedPrices credited (CC-BY-4.0), limitations
+stated. Code MIT, data CC-BY-4.0.
+
+**Gate.** Definition of Done in `AGENTS.md` §"Definition of done" all true, with an artifact behind
+each.
+
+**Owner.** `writer` for the disclosure prose, `ship-reviewer` last.
+
+---
+
+## How work is delegated
+
+The user talks to one agent; subagents are an implementation detail. Routing:
+
+| Work | Agent | Why |
+|---|---|---|
+| Scrapers, flow, dashboard, repo code | `builder` | owns ingestion and app code |
+| Data quality, coverage, leakage, parse rates | `data-explorer` | read-only profiling before a number is trusted |
+| Unknown terrain, library/API recon, "where is X" | `scout` | read-only, cites sources |
+| Break an ambiguous phase into acceptance criteria | `planner` | no edits, decides only |
+| Anything about to be published or committed | `ship-reviewer` | read-only audit on **glm-5.3-flash**, a different model family from the deepseek builders — same-family review is a plausibility check, not an audit |
+| Disclosure, README, limitations prose | `writer` | grounded in artifacts, not memory |
+
+Rules that keep this safe: at most **three** subagents at once, **five** per task; two agents never
+write the same path (separate directories or a worktree); no fan-out over ingestion runs, model
+fitting, or anything touching the shared database; launch long work in the background so the
+conversation stays open.
+
+**What this session has actually done so far:** everything single-threaded, because every step was
+one command or one file — P0 and P1 were not parallelisable by construction. Fan-out begins at
+**P2 + P4**, the first pair with no dependency between them, and not before.
+
+---
+
+## Open decisions that block a phase
+
+| Decision | Blocks | Default if nobody decides |
+|---|---|---|
+| Embedding model and dimension | P5 | stay on `vector(384)`, stage one unusable |
+| Shard vs 50-drug scope for detail pages | P3 | shard 3 × ~2 h |
+| `v_pipeline_health` handling of never-run sources | P7 | view stays blind to dark sources |
+| Neon Data API on Free | P8 | thin read-only service |
+| Whether to add nettpharmacy as a fourth source | P4 | three sources |

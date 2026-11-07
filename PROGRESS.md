@@ -4,9 +4,10 @@ Single state file for NaijaDrugWatch. Last updated **2026-11-07**.
 
 ## Where we are
 
-**M2 — schema executed against a real Neon database.** The 8 tables, 5 views and 1 materialised
-view all exist on project `orange-pond-32200905` (PG 17.11, `aws-eu-central-1`), and a rolled-back
-smoke test proves the view logic returns the right rows. No scrapers, no CI, no seed data loaded.
+**M2 — schema executed and catalogue seeded against a real Neon database.** The 8 tables, 5 views
+and 1 materialised view all exist on project `orange-pond-32200905` (PG 17.11, `aws-eu-central-1`),
+`products` and `drug_match_rules` hold 1,074 rows each, and a rolled-back smoke test proves the view
+logic returns the right rows. No scrapers, no CI, no regulatory data, no listings, no embeddings.
 
 ## Done and verified
 
@@ -24,6 +25,10 @@ smoke test proves the view logic returns the right rows. No scrapers, no CI, no 
 | **`004` executed after fix** | `SELECT 0` + `CREATE INDEX`, exit 0 — see defect 2 |
 | **`REFRESH … CONCURRENTLY` works** | `REFRESH MATERIALIZED VIEW` on `mv_drug_price_index`, exit 0 |
 | **View logic proven** | rolled-back smoke test, 2 pharmacies / 2 products / 3 listings: cheapest = ₦450 across 2 pharmacies with `is_comparison = true`; single-pharmacy ₦300 with `is_comparison = false`; `pct_change_7d = -16.67`; all-failed source shows `STALE`; matview grouped 2 days correctly; `ROLLBACK` left 0 rows |
+| **Seed loaded** | `.venv\Scripts\python.exe scripts/load_seed.py` → `loaded products=1074 match_rules=1074 skipped=0 statements=6`, exit 0; DB confirms `products=1074 match_rules=1074 distinct_names=597 with_nrn=0 with_embedding=0` |
+| **Seed loader is idempotent** | second consecutive run → same counts, DB still `products=1074 rules=1074` |
+| **Pinned environment** | `.venv\Scripts\python.exe`, CPython 3.12.13 via `uv venv --python 3.12`; `psycopg 3.2.13`. System Python 3.14 has no `psycopg[binary]` wheel — the first load attempt failed with `ModuleNotFoundError` |
+| **Execution plan written** | `docs/PHASES.md` — P0–P9 with a gate command per phase and the delegation map |
 
 ## Defects found by executing the SQL (both fixed 2026-11-07)
 
@@ -41,16 +46,15 @@ smoke test proves the view logic returns the right rows. No scrapers, no CI, no 
 Both defects were syntactically invisible: the files were well-formed SQL that had simply never
 been sent to a server.
 
-## Not done — in order
+## Not done — in order (phase ids match `docs/PHASES.md`)
 
-1. **Load the seed** — `python scripts/load_seed.py` against `DATABASE_URL`: 1,074 products + 1,074
-   match rules. `products.nafdac_registration_number` stays NULL (the CSV has no NRN), so
-   `v_suspicious_listings` stays empty until the Greenbook and a matcher exist.
-2. **Greenbook index scraper** (`scrapers/nafdac_index.py`) — 6 category pages → 10,895 NRNs.
-3. **Greenbook detail scraper** — 11,754 pages, shard across runs, retry the ~10% that 500.
-4. **Drugstore.ng scraper** — national spine, 13,202 products.
-5. **HealthPlus + MedPlus scrapers** — the only sources offering state-level price variation.
-6. Views verified against real rows, then `flows/daily.py`, then dashboard.
+1. **P2 — Greenbook index scraper** (`scrapers/nafdac_index.py`) — 6 category pages → ~10,895 NRNs.
+   Gate: a `scrape_runs` row with `status='success'` and `record_count >= 10500`.
+2. **P3 — Greenbook detail scraper** — ~11,754 pages, sharded, retry the ~10% that 500.
+3. **P4 — pharmacy scrapers** (independent of P2/P3, so it can run in parallel): HealthPlus
+   (Shopify API, 1,197 SKUs), Drugstore.ng (13,202 URLs, one national price), MedPlus.
+4. **P5 — two-stage matcher**, blocked on the embedding-model decision (`vector(384)` is a placeholder).
+5. **P6 — views proven on real rows**; **P7 — `flows/daily.py`**; **P8 — dashboard + API**.
 
 ## Decisions, dated
 
@@ -58,6 +62,8 @@ been sent to a server.
 |---|---|
 | 2026-11-07 | Neon project `orange-pond-32200905`, PG **17**, `aws-eu-central-1`. Free plan. The account's region list offers no af-south option; Frankfurt is the closest available to Lagos. |
 | 2026-11-07 | Direct (non-pooled) connection string for DDL and seed loads; the `-pooler` host is reserved for Streamlit and the Data API, because PgBouncer transaction pooling does not run DDL reliably. |
+| 2026-11-07 | **Seed loaded** via the pinned `.venv` (CPython 3.12.13). System Python 3.14 is rejected for this repo: no `psycopg[binary]` wheel exists, and the first attempt failed on it. |
+| 2026-11-07 | Phase ids P0–P9 with per-phase gate commands live in `docs/PHASES.md`; `PROGRESS.md` remains the only state file. |
 | 2026-11-06 | **Reporting policy B**: `v_cheapest_per_product_state` only claims "cheapest" when `pharmacy_count >= 2`. A single-pharmacy cell is a national price, not a comparison. |
 | 2026-11-06 | Add `pack_size`, `pack_unit`, `unit_price` to `pharmacy_listings` — additive, not a rename. |
 | 2026-11-06 | Seed CSV loads `products` + `drug_match_rules` only. It has no NRN/status/expiry, and its `price` is not NGN. |
@@ -87,7 +93,9 @@ been sent to a server.
 
 ```bash
 python scripts/load_seed.py --dry-run                                  # must exit 0
+uv venv --python 3.12 .venv                                            # then install -r requirements.txt
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f schema/001_extensions.sql    # then 002, 003, 004 in order
+.venv\Scripts\python.exe scripts/load_seed.py                          # products=1074 match_rules=1074
 psql "$DATABASE_URL" -c "refresh materialized view concurrently mv_drug_price_index;"
 git log --oneline -1                                                   # must match origin/main
 ```
