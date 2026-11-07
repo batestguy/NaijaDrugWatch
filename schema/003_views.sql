@@ -61,16 +61,24 @@ with base as (
       and l.price_ngn is not null
       and l.product_id is not null
 ),
+-- count(distinct ...) is NOT supported as a window function in Postgres
+-- ("DISTINCT is not implemented for window functions"), so the per-cell pharmacy count is
+-- aggregated in its own CTE and joined back on the same partition key.
+pharmacy_counts as (
+    select
+        b.product_id,
+        b.state,
+        count(distinct b.pharmacy_id) as pharmacy_count
+    from base b
+    group by b.product_id, b.state
+),
 ranked as (
     select
         b.*,
         row_number() over (
             partition by b.product_id, b.state
             order by b.price_ngn asc, b.pharmacy_id asc
-        ) as rn,
-        count(distinct b.pharmacy_id) over (
-            partition by b.product_id, b.state
-        ) as pharmacy_count
+        ) as rn
     from base b
 )
 select
@@ -82,9 +90,12 @@ select
     r.price_ngn,
     r.unit_price,
     r.url,
-    r.pharmacy_count,
-    (r.pharmacy_count >= 2) as is_comparison
+    pc.pharmacy_count,
+    (pc.pharmacy_count >= 2) as is_comparison
 from ranked r
+join pharmacy_counts pc
+    on pc.product_id = r.product_id
+   and pc.state      = r.state
 where r.rn = 1;
 
 -- --------------------------------------------------- v_suspicious_listings
