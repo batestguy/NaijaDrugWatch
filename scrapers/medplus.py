@@ -21,11 +21,12 @@ STRUCTURE
               data-currency="NGN">
     That is the seam we read: no price regex, no currency guessing.
 
-STOCK IS INFERRED, NOT ASSERTED
-    The site does not expose a stock flag on category cards, and its product pages always contain
-    an "Out of stock" modal and related-item badges. The rule here is narrow: an out-of-stock
-    marker in the block BEFORE the add-to-cart form means out of stock, otherwise in stock. The
-    evidence is recorded per record so the inference can be audited rather than trusted.
+STOCK IS READ, NOT INFERRED
+    The visible quantity input carries `max="<units available>"`, so stock is a number the page
+    states: `in_stock = max > 0`. When no quantity input and no marker exist, stock is NULL
+    (unknown) rather than assumed true -- claiming stock we did not read is how an unavailable
+    item ends up winning a "cheapest" comparison. `stock_quantity` and `stock_evidence` are
+    archived per product so the reading can be audited.
 
 Usage
 -----
@@ -74,6 +75,10 @@ NON_PRODUCT_PATHS = ("/product/availability/",)
 CART_FORM_RE = re.compile(r'<form id="add-to-cart-form"[^>]*>', re.S)
 ATTR_RE = re.compile(r'data-(?:product-)?([a-z]+)="([^"]*)"')
 OOS_RE = re.compile(r"(?i)out of stock")
+# The real stock signal: the visible quantity input carries max="<units available>". The first
+# such input belongs to the product; later ones are the hidden inputs of related items.
+STOCK_INPUT_RE = re.compile(r'<input[^>]*class="[^"]*input-number[^"]*"[^>]*>', re.S)
+MAX_ATTR_RE = re.compile(r'max="(\d+)"')
 
 INSERT_LISTING_SQL = """
 insert into pharmacy_listings
@@ -100,7 +105,26 @@ def parse_product(body: str, url: str) -> dict[str, Any] | None:
         return None
 
     lead_in = body[: form.start()]
-    out_of_stock = OOS_RE.search(lead_in) is not None
+    out_of_stock_marker = OOS_RE.search(lead_in) is not None
+
+    stock_quantity: int | None = None
+    stock_input = STOCK_INPUT_RE.search(body)
+    if stock_input is not None:
+        maximum = MAX_ATTR_RE.search(stock_input.group(0))
+        if maximum is not None:
+            stock_quantity = int(maximum.group(1))
+
+    if stock_quantity is not None:
+        in_stock: bool | None = stock_quantity > 0
+        evidence = f"quantity max={stock_quantity}"
+    elif out_of_stock_marker:
+        in_stock = False
+        evidence = "out-of-stock marker before add-to-cart"
+    else:
+        # No quantity cap and no marker: UNKNOWN, not in stock. Claiming stock we did not read
+        # is how an unavailable item ends up winning a "cheapest" comparison.
+        in_stock = None
+        evidence = "no stock signal on page"
 
     try:
         price_value = f"{float(price):.2f}"
@@ -112,8 +136,9 @@ def parse_product(body: str, url: str) -> dict[str, Any] | None:
         "url": url,
         "raw_title": name.strip(),
         "price_ngn": price_value,
-        "in_stock": not out_of_stock,
-        "stock_evidence": "out-of-stock marker before add-to-cart" if out_of_stock else "no marker before add-to-cart",
+        "in_stock": in_stock,
+        "stock_quantity": stock_quantity,
+        "stock_evidence": evidence,
         "currency": currency,
         # MedPlus has one price per product, no variant model; kept explicit so the shared
         # source_hash() contract stays identical across sources.
