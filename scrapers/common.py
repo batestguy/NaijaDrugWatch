@@ -194,6 +194,21 @@ def start_run(connection, source: str) -> int:
     return int(run_id)
 
 
+def clear_failed_transaction(connection) -> None:
+    """Roll back an aborted transaction so the ledger write itself can still succeed.
+
+    psycopg3 is not in autocommit mode. When the statement that failed ran inside
+    `store_records`, the transaction is already aborted and the next UPDATE raises
+    InFailedSqlTransaction -- leaving the run stuck at 'running' forever, which is the one
+    state the ledger must never keep. Callers must commit their real work first: this
+    discards anything still uncommitted.
+    """
+    try:
+        connection.rollback()
+    except Exception:  # a dead connection must not mask the original error
+        pass
+
+
 def finish_run(
     connection,
     run_id: int,
@@ -204,6 +219,7 @@ def finish_run(
 ) -> None:
     if status not in {"success", "failed"}:
         raise ValueError("status must be 'success' or 'failed'")
+    clear_failed_transaction(connection)
     with connection.cursor() as cursor:
         cursor.execute(
             "update scrape_runs set status = %s, record_count = %s, error_message = %s,"
@@ -211,14 +227,3 @@ def finish_run(
             (status, record_count, (error or "")[:2000] or None, run_id),
         )
     connection.commit()
-
-
-def existing_urls(connection, source: str) -> set[str]:
-    """URLs already stored for a pharmacy source, so a rerun can skip refetching pages it has."""
-    with connection.cursor() as cursor:
-        cursor.execute(
-            "select distinct url from pharmacy_listings l"
-            " join pharmacies p on p.id = l.pharmacy_id where p.name = %s",
-            (source,),
-        )
-        return {row[0] for row in cursor.fetchall()}

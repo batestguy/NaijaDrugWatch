@@ -18,9 +18,9 @@ the command under **Gate** has been run and its real output recorded.
 |---|---|---|
 | **P0** | Environment, Neon database, schema | **closed** |
 | **P1** | Seed catalogue (products + match rules) | **closed** |
-| **P2** | NAFDAC Greenbook index (10,895 NRNs) | next |
-| **P3** | NAFDAC Greenbook detail pages (status + expiry) | blocked on P2 |
-| **P4** | Pharmacy scrapers (HealthPlus, Drugstore.ng, MedPlus) | blocked on P1 only |
+| **P2** | NAFDAC Greenbook index (10,906 NRNs) | **closed** 2026-11-07 |
+| **P3** | NAFDAC Greenbook detail pages (status + expiry) | blocked on P2 — now unblocked |
+| **P4** | Pharmacy scrapers (HealthPlus, Drugstore.ng, MedPlus) | **partial** — HealthPlus in, 2 sources left |
 | **P5** | Two-stage matcher (pgvector → rules) | blocked on P3 + P4 |
 | **P6** | Views proven on real rows | blocked on P5 |
 | **P7** | Prefect daily flow, 7 green runs | blocked on P6 |
@@ -77,6 +77,13 @@ block costs freshness, not history.
 **Gate.** A `scrape_runs` row with `status='success'` and `record_count >= 10500`, plus
 `select count(*) from nafdac_registrations` matching the archive row count.
 
+**Result (2026-11-07).** Runs 4, 5 and 10: `success`, `record_count=10906`. Table holds 10,906 rows,
+10,906 distinct NRNs, 0 with `status`/`expiry`/`approval` (P3 owns those), 0 written to
+`nafdac_status_snapshots`. Idempotent: a rerun reports `inserted=0 updated=10906`. Live per-category
+counts were within drift of the 6 Nov probe (11,762 cards vs 11,759 labels). Parse rate 99.91% of
+cards carry a usable NRN; **89.34%** carry name+form+strength — the rest genuinely publish `NA`,
+which is stored as NULL, not as the string. Archive: three dated dumps, each sha256-checked.
+
 **Owner.** `builder`. **Review.** `ship-reviewer` on the diff, because robots/rate-limit compliance
 is a claim that must be verified against the code, not asserted.
 
@@ -119,6 +126,23 @@ cannot dedupe because the timestamp moves.
 
 **Gate.** Each source has a `scrape_runs` row with success and a non-zero count; prices are NGN and
 `price_ngn >= 0`; `unit_price` populated on ≥85% of HealthPlus listings.
+
+**Result — HealthPlus only (2026-11-07).** Runs 2, 3, 6 and 9: `success`. 1,197 distinct product
+URLs, 0 null or negative prices, NGN proven from the storefront's own
+`Shopify.currency = {"active":"NGN"}` rather than assumed. `v_latest_listings` returns 1,197 rows
+after two overlapping runs inserted 2,396 — the append-only ledger plus `source_hash` dedupe is why
+the views are unaffected.
+
+**Gate NOT met on `unit_price`: 52.7%** (631 of 1,197), against an ≥85% target. Cause is the
+source, not the parser: 428 titles state a count with no form word (`Adalat LA 30 mg X 30`), and
+`product_type` is a therapeutic category (`Hypertension`), not a dosage form. Assigning a unit by
+guess would corrupt the exact comparison `unit_price` exists to make. Drugstore.ng and MedPlus
+remain unbuilt, so P4 is open on two counts.
+
+**Two parsing defects found and fixed** while measuring: `7-18kg x46` on a nappy title was read as
+18,000 g (the baby's weight range became the pack), and a zero-price variant would have been
+accepted and become the "cheapest" row in every min()-based view. Both now rejected; see
+`PROGRESS.md`.
 
 **Owner.** `builder` per source. These three are genuinely independent — one subagent per source is
 justified, capped at three concurrent.
@@ -227,6 +251,8 @@ one command or one file — P0 and P1 were not parallelisable by construction. F
 | Decision | Blocks | Default if nobody decides |
 |---|---|---|
 | Embedding model and dimension | P5 | stay on `vector(384)`, stage one unusable |
+| **Who writes `price_history`** | **P6, and every "change over time" claim** | nobody does, so `v_price_change_7d` and `mv_drug_price_index` stay empty forever |
+| `unit_price` target: accept ~53% or add form-word detection | P4 | P4 stays open |
 | Shard vs 50-drug scope for detail pages | P3 | shard 3 × ~2 h |
 | `v_pipeline_health` handling of never-run sources | P7 | view stays blind to dark sources |
 | Neon Data API on Free | P8 | thin read-only service |
