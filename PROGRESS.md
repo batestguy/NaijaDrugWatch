@@ -1,6 +1,112 @@
 # Progress
 
-Single state file for NaijaDrugWatch. Last updated **2026-11-07**.
+Single state file for NaijaDrugWatch. Last updated **2026-11-07 (close of day)**.
+
+## Handoff — start here tomorrow
+
+Everything below is reproducible from the repo plus `.env`. Nothing depends on a running process;
+all background jobs finished before close.
+
+### Snapshot at close (2026-11-07)
+
+| Object | Rows |
+|---|---|
+| `products` (all embedded, 384-d) | 1,074 |
+| `nafdac_registrations` / with status | 10,906 / **572** |
+| `nafdac_status_snapshots` | 572 |
+| `products.nafdac_registration_number` set | 376 |
+| `pharmacy_listings` (all) / latest per URL | 2,709 / **1,510** |
+| Listings matched to a product | **251** |
+| `price_history` | 2,709 |
+| Pharmacies | **2** (HealthPlus, MedPlus — both Lagos) |
+| `v_cheapest_per_product_state` / comparisons | 85 / **6** |
+| `v_suspicious_listings` | **96** |
+| `mv_drug_price_index` | 83 |
+| `v_price_change_7d` | 0 (arithmetic — see below) |
+| `scrape_runs` | 18 |
+
+These numbers move on every scrape. Treat them as "as of 2026-11-07", never as constants.
+
+### Resume commands, in dependency order
+
+```powershell
+# environment (one per machine)
+uv venv --python 3.12 .venv
+uv pip install --python .venv\Scripts\python.exe -r requirements.txt
+# DATABASE_URL comes from .env (direct host). Never read .env inside a script.
+$env:DATABASE_URL = ((Select-String -Path .env -Pattern '^DATABASE_URL=').Line).Substring(13).Trim()
+$env:PYTHONIOENCODING = 'utf-8'   # the console is cp1252 and cannot print ₦
+```
+
+```powershell
+# 1. regulatory index (~8 requests, 20 s)
+.venv\Scripts\python.exe -X utf8 scrapers\nafdac_index.py
+# 2. regulatory status, restricted scope (~45 min at the measured 0.22 pages/s)
+.venv\Scripts\python.exe -X utf8 scrapers\nafdac_details.py --min-similarity 0.50
+# 3. prices (~1 min and ~25 min respectively)
+.venv\Scripts\python.exe -X utf8 scrapers\healthplus.py
+.venv\Scripts\python.exe -X utf8 scrapers\medplus.py --categories 12,31,32,50,57,58 --limit 250
+# 4. link products to registrations (seconds; needs the trigram index)
+.venv\Scripts\python.exe -X utf8 scripts\link_product_nrn.py --refresh --min-similarity 0.35
+# 5. match listings to products (seconds; loads products+rules once, cosine in numpy)
+.venv\Scripts\python.exe -X utf8 scripts\match_listings.py
+# 6. the materialised index is NOT refreshed by anything yet — call it explicitly
+psql $env:DATABASE_URL -c "refresh materialized view concurrently mv_drug_price_index;"
+# 7. dashboard
+.venv\Scripts\streamlit.exe run dashboard\app.py
+```
+
+Order matters: index → details → link → match → refresh. Matching before linking gives the
+suspicious view nothing to join against, and the matview shows yesterday's prices until refreshed.
+
+### What is knowingly broken or unfinished
+
+| Item | State | Consequence |
+|---|---|---|
+| `v_price_change_7d` | empty | Cannot return a row before **2026-11-14**: it needs a second scrape ≥7 days after the first. Arithmetic, not a bug |
+| `unit_price` coverage | 52.7% of HealthPlus listings | Below the 85% gate. Titles like `Adalat LA 30 mg X 30` state no form; guessing one would corrupt the comparison |
+| `v_pipeline_health` | blind to never-run sources | A source with zero `scrape_runs` rows produces no row, so it is invisible rather than STALE |
+| `products.nafdac_registration_number` | one NRN per product | A drug has many registrations; the view flags a product only when **no** Active candidate exists |
+| MedPlus stock on existing rows | written under the old heuristic | The parser now reads `max="<units>"`; the next MedPlus run corrects them |
+| Scheduled refresh | none | P7 is unbuilt; `scrape_runs` and the matview only move when a human runs the commands above |
+| Dashboard | local only | Not deployed; no API |
+
+### Environment gotchas that cost time today
+
+- **DNS drops out.** `getaddrinfo failed` for the Neon host three times in one session. `common.db_connect()` now retries 3× / 5 s; anything new should call it rather than `psycopg.connect`.
+- **Neon kills idle sockets.** A ten-minute fetch ended with `AdminShutdown` and discarded a completed run. Call `common.ensure_connection()` before writing after a long fetch.
+- **`greenbook.nafdac.gov.ng` has an expired TLS certificate.** `common.RateLimitedClient` falls back to HTTP per host and records the downgrade.
+- **This shell mangles embedded newlines** in a single `shell` call — multi-line commands silently produce nothing. Use one-liners or a script file.
+- **The console is cp1252.** `₦` raises `UnicodeEncodeError`; always pass `-X utf8`.
+
+### Open decisions, with the default I would take
+
+| Decision | Default |
+|---|---|
+| `unit_price` target: accept ~53% or add form-word detection | Try detection, re-measure, then accept |
+| Full Greenbook sweep (10,906 pages, ~14 h, must shard) | Keep restricted; the views cannot consume the rest yet |
+| `v_pipeline_health` handling of never-run sources | List known sources inside the view |
+| Neon Data API on the free plan | Thin read-only service if unavailable |
+| Add nettpharmacy as a fourth source | Only after Drugstore.ng |
+
+### Claims that still need a human eye before publication
+
+1. **The 6 comparisons.** Nobody has opened both shop pages to confirm the same pack is being
+   priced. Do this before quoting "cheapest".
+2. **Paracetamol appears twice** in the comparison set. Confirm they are genuinely different
+   strength/pack products, not a duplicate in the seed catalogue.
+3. **The 96 suspicious rows.** They survive the rules and the falsification test, but no page has
+   been compared against the rendered NAFDAC record by hand.
+4. **The dashboard's empty states.** Every render so far had data.
+5. **Accessibility.** No axe run. WCAG 2.2 AA is a release gate in `AGENTS.md`.
+
+### Next three actions
+
+1. Human-verify two comparison rows (20 minutes, no code).
+2. Expand MedPlus across the remaining ~1,350 category-12 products — the cheapest way to move
+   6 comparisons toward a number worth showing.
+3. Add Drugstore.ng for catalogue density and 37 states, then deploy the dashboard.
+
 
 ## Where we are
 
@@ -93,15 +199,38 @@ a sentinel as a value is worse than storing NULL, because the matcher filters on
 (`... 2019's` can yield `pack_size` 2019), and `strips` is not a known unit. Both would change many
 parses at once and need their own measurement.
 
+## Delegation log — what each agent produced, and what survived review
+
+Recorded because "an agent built it" is not evidence. Every row was re-verified after handoff.
+
+| Agent (model) | Session | Delivered | Re-verified | Changed after handoff |
+|---|---|---|---|---|
+| `builder` · deepseek | `ses_e4acea944ffeua1kWsbnh5GfRU` | `scrapers/healthplus.py` — 1,197 listings, 6 requests | yes, live DB | Audit fixes: ledger rollback, DB setup moved inside `try`, zero-price rejection, `7-18kg` pack bug, docstrings |
+| `builder` · deepseek | `ses_e4acea946ffevFyvpzTw1kuM46` | **failed** — `prefill_cap_refused`, no output | — | Relaunched after confirming the tree was clean |
+| `builder` · deepseek | `ses_e4ac95d29ffeY1GS6ObiAao6nh` | `scrapers/nafdac_index.py` — 10,906 registrations, 99.91% parse | yes, idempotency re-run | `NA` sentinel stored as a value → `text_or_none()`; coverage claim corrected from 100% to 89.34% |
+| `ship-reviewer` · glm-5.3-flash | `ses_e4ab48c1affeEeL8deFqF6PEeZ` | Read-only audit: 6 defects + 3 overstated claims | each reproduced by hand | Its shell permission was revoked after two calls, so **none** of its DB claims were self-verified; two suspicions held, one was worse than it could see (`18000 g`) |
+
+Everything after the audit — the detail scraper, the linker, the matcher, the dashboard, MedPlus —
+was built and verified directly, because the agent channel kept failing on provider capacity and a
+relaunch cost 15 minutes for no work.
+
 ## Not done — in order (phase ids match `docs/PHASES.md`)
 
-1. **P3 — Greenbook detail scraper**, now unblocked: ~11,754 pages, sequential by ID range (never
-   fanned out — one `nafdac_status_snapshots` table), resumable cursor, backoff on the ~10% that 500.
-2. **P4 remainder — Drugstore.ng** (13,202 URLs, one national price) and **MedPlus** (~1,400–2,800,
-   unverified). HealthPlus is in but P4 stays open on `unit_price` (52.7% vs ≥85%).
-3. **P5 — two-stage matcher**, blocked on the embedding-model decision (`vector(384)` is a placeholder).
-4. **P6 — views on real rows**, blocked on P5 *and* on someone owning `price_history`.
-5. **P7 — `flows/daily.py`** (Prefect is not even installed here); **P8 — dashboard + API**.
+1. **P3 remainder — full Greenbook sweep.** 10,906 pages at the measured 0.22 pages/s is ~14 h,
+   over the 6 h job cap, so it must be sharded across days and run sequentially by ID range (never
+   fanned out: one `nafdac_status_snapshots` table). The restricted 572 is already usable.
+2. **P4 remainder — more MedPlus, then Drugstore.ng.** Category 12 alone holds ~1,600 products and
+   only 250 were sampled; ~1,350 remain (~2 h) and are the cheapest source of new comparisons.
+   Drugstore.ng adds 13,202 product URLs and 37 states but a single national price, so it adds rows,
+   not comparisons. `unit_price` is still 52.7% against an ≥85% gate.
+3. **P6 remainder — human verification before publication.** The 6 comparisons have not been
+   checked against two live shop pages, and the 96 suspicious rows have never been compared to a
+   rendered NAFDAC record by hand.
+4. **P7 — `flows/daily.py`.** Prefect is not installed here; one deployment must cover every source
+   (Hobby allows 5). `v_pipeline_health` still cannot see a source that never ran.
+5. **P8 remainder — deploy the dashboard**, then the read-only API (Neon Data API availability on
+   the free plan is still unverified).
+6. **P9 — publish**: disclosure, per-source attribution, #FixMedPrices credit, limitations.
 
 ## Decisions, dated
 
@@ -111,10 +240,13 @@ parses at once and need their own measurement.
 | 2026-11-07 | Direct (non-pooled) connection string for DDL and seed loads; the `-pooler` host is reserved for Streamlit and the Data API, because PgBouncer transaction pooling does not run DDL reliably. |
 | 2026-11-07 | **Seed loaded** via the pinned `.venv` (CPython 3.12.13). System Python 3.14 is rejected for this repo: no `psycopg[binary]` wheel exists, and the first attempt failed on it. |
 | 2026-11-07 | Phase ids P0–P9 with per-phase gate commands live in `docs/PHASES.md`; `PROGRESS.md` remains the only state file. |
+| 2026-11-07 | **Embedding model**: `BAAI/bge-small-en-v1.5`, 384 dims. Stage one is candidate generation only; `drug_match_rules` decides. |
+| 2026-11-07 | `v_suspicious_listings` treats `status is null` as **unknown, not suspicious**. Counting NULL as inactive flagged every product whose registration was outside the scraped scope. |
+| 2026-11-07 | `v_price_change_7d` compares across listings for the same `(pharmacy_id, url)`; it cannot compare within a `listing_id` because a listing is an immutable observation. |
 | 2026-11-06 | **Reporting policy B**: `v_cheapest_per_product_state` only claims "cheapest" when `pharmacy_count >= 2`. A single-pharmacy cell is a national price, not a comparison. |
 | 2026-11-06 | Add `pack_size`, `pack_unit`, `unit_price` to `pharmacy_listings` — additive, not a rename. |
 | 2026-11-06 | Seed CSV loads `products` + `drug_match_rules` only. It has no NRN/status/expiry, and its `price` is not NGN. |
-| 2026-11-06 | `vector(384)` is a placeholder pending the embedding model. |
+| 2026-11-06 | `vector(384)` is a placeholder pending the embedding model. **Resolved 2026-11-07: `BAAI/bge-small-en-v1.5` via fastembed (ONNX, CPU, no torch), 384 dims — no migration needed.** |
 | 2026-11-06 | Pharmacy set: HealthPlus, Drugstore.ng, MedPlus; nettpharmacy.com (Shopify, NGN confirmed) available as a fourth. |
 
 ## Known risks
@@ -145,15 +277,18 @@ parses at once and need their own measurement.
 - **Low-risk, watched:** `v_pipeline_health` uses `round(extract(epoch …) / 3600.0, 1)`, which needs
   `extract` to return `numeric` (PG14+). It compiles on 17.11; it would break on PG13 or older.
 
-## Reproducing the verified state
+## Rebuilding from an empty database
+
+Full order, once, from nothing:
 
 ```bash
-python scripts/load_seed.py --dry-run                                  # must exit 0
-uv venv --python 3.12 .venv                                            # then install -r requirements.txt
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f schema/001_extensions.sql    # then 002, 003, 004 in order
+uv venv --python 3.12 .venv && uv pip install --python .venv\Scripts\python.exe -r requirements.txt
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f schema/001_extensions.sql   # then 002, 003, 004 in order
 .venv\Scripts\python.exe scripts/load_seed.py                          # products=1074 match_rules=1074
-psql "$DATABASE_URL" -c "refresh materialized view concurrently mv_drug_price_index;"
-git log --oneline -1                                                   # must match origin/main
+# then follow "Resume commands, in dependency order" at the top of this file:
+#   index -> details -> link -> match -> refresh the matview
 ```
 
-Every schema file is idempotent, so a full rebuild is re-running `001`→`004` in order.
+Every schema file is idempotent, so a full rebuild is re-running `001`→`004` in order. The
+dependency-ordered scraper commands live in the handoff section rather than here, so there is one
+copy that cannot drift.
