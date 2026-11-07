@@ -72,6 +72,12 @@ been sent to a server.
 
 ## Known risks
 
+- **The Greenbook's TLS certificate is expired** (probed 2026-11-07): `https://greenbook.nafdac.gov.ng`
+  fails with `SEC_E_CERT_EXPIRED` / `SEC_E_CERT_EXPIRED (0x80090328)` while `http://` answers `200`
+  and robots.txt still allows everything. `scrapers/common.py` therefore falls back per host and
+  records the downgrade rather than disabling verification globally. Consequence: NAFDAC data
+  currently crosses the wire unencrypted, so archive integrity rests on our own sha256 sidecars,
+  not on transport. Re-probe before publishing; if it is still expired, say so in the limitations.
 - **`v_pipeline_health` cannot see a source that never ran.** It groups `scrape_runs`, so zero rows
   for a source means zero output rows, not `STALE`. The smoke test only produced `STALE` because a
   *failed* run existed. At launch, with no runs at all, the health view is empty while three sources
