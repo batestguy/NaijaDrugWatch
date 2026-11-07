@@ -24,3 +24,5 @@ Thumbs.db
 .idea/
 .vscode/
 .neon
+# Playwright MCP writes screenshots and accessibility snapshots here during UI checks.
+.playwright-mcp/

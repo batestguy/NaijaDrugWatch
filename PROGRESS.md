@@ -48,6 +48,7 @@ returns **92 rows**; `mv_drug_price_index` 79; `v_price_change_7d` still 0 until
 | **`v_price_change_7d` rewritten** | It grouped by `listing_id`, which can never work: listings are immutable, so a price change creates a new id and no id ever holds two prices. Now compares per `(pharmacy_id, url)` across listings. Returns 0 rows because nothing is 7 days old — correct, not broken |
 | **MedPlus scraper live** | `scrapers/medplus.py`, categories 31+32: 98 listings, 0 failed parses, ₦250–106,550, 0 absurd, `price_history+=98`, run 19 success. Pharmacy #2 in Lagos |
 | **First genuine comparisons** | `v_cheapest_per_product_state`: 81 rows, **3 with `is_comparison = true`** — Ibuprofen (MedPlus ₦350) and Paracetamol (HealthPlus ₦1,000), both Lagos, both two-pharmacy |
+| **Dashboard renders** | `dashboard/app.py`, verified in a real browser at 1440px: metrics 1,295 listings / 2 pharmacies / 10,906 registrations / 572 status / 92 suspicious; price index table populated. Comparison and single-pharmacy rows are in separate columns, never merged |
 | **`db_connect` hardened** | This machine's DNS intermittently fails (`getaddrinfo failed`); connect now retries 3× / 5 s. `ensure_connection()` reconnects when Neon kills a socket during a long fetch (`AdminShutdown`), which had discarded a completed 98-product fetch |
 
 ## Defects found by executing the SQL (both fixed 2026-11-07)

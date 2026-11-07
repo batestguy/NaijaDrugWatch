@@ -2,3 +2,6 @@ psycopg[binary]>=3.2,<3.3
 # Stage one of the matcher: BAAI/bge-small-en-v1.5 ONNX, 384 dims, CPU only.
 # Pinned to the vector(384) column in schema/002_tables.sql -- changing the model means a migration.
 fastembed>=0.4,<0.8
+# Dashboard (dashboard/app.py). Streamlit Community Cloud runs this directly.
+streamlit>=1.40,<2
+pandas>=2.0,<3

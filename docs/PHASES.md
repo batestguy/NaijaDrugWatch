@@ -24,7 +24,7 @@ the command under **Gate** has been run and its real output recorded.
 | **P5** | Two-stage matcher (pgvector → rules) | **partial** — product→NRN link done; listing matcher blocked on the embedding model |
 | **P6** | Views proven on real rows | blocked on P5 |
 | **P7** | Prefect daily flow, 7 green runs | blocked on P6 |
-| **P8** | Streamlit dashboard + read-only API | blocked on P7 |
+| **P8** | Streamlit dashboard + read-only API | **partial** — dashboard renders on live data; API not built |
 | **P9** | Publish: disclosure, attribution, v1 tag | blocked on P8 |
 
 P4 has no dependency on P2/P3 and can run **in parallel** with them. That is the first genuine
