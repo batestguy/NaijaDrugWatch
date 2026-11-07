@@ -4,14 +4,14 @@ Single state file for NaijaDrugWatch. Last updated **2026-11-07**.
 
 ## Where we are
 
-**M3 — the chain is joined, the views return rows, and the price series exists.** Neon project
-`orange-pond-32200905` (PG 17.11) holds 8 tables, 5 views, 1 materialised view, 1,074 seeded
-products (all embedded with bge-small-en-v1.5), 10,906 NAFDAC registrations, 572 status snapshots,
-1,197 HealthPlus listings, 376 product→registration links, 228 listing→product links, and
-**2,396 `price_history` rows**. `v_suspicious_listings` returns **90 rows**,
-`v_cheapest_per_product_state` returns **72** (0 comparisons — one pharmacy cannot compare with
-itself), and `mv_drug_price_index` returns **79** rows. `v_price_change_7d` is correctly empty:
-nothing is seven days old yet.
+**M3 — two pharmacies, and the first real "cheapest" claim.** Neon project `orange-pond-32200905`
+(PG 17.11) holds 8 tables, 5 views, 1 materialised view, 1,074 embedded products, 10,906 NAFDAC
+registrations, 572 status snapshots, **1,295 latest listings from 2 pharmacies** (HealthPlus and
+MedPlus, both Lagos), 376 product→registration links, ~330 listing→product links and **2,494
+`price_history` rows**. `v_cheapest_per_product_state` returns **81 rows, 3 of them
+`is_comparison = true`** — Ibuprofen (MedPlus ₦350) and Paracetamol (HealthPlus ₦1,000) are now
+genuine Lagos comparisons rather than single-pharmacy national prices. `v_suspicious_listings`
+returns **92 rows**; `mv_drug_price_index` 79; `v_price_change_7d` still 0 until 2026-11-14.
 
 ## Done and verified
 
@@ -46,6 +46,9 @@ nothing is seven days old yet.
 | **Missing index added** | `nafdac_registrations_name_trgm_idx`; without it every similarity lookup seq-scanned 10,906 rows and the linker timed out at 10 min |
 | **`price_history` now populated** | `common.record_price_history()` writes one row per new listing (idempotent); backfill inserted **2,396** rows from existing listings. `mv_drug_price_index` refreshed concurrently → **79 rows** (e.g. Bicalutamide, Lagos, ₦144,780) |
 | **`v_price_change_7d` rewritten** | It grouped by `listing_id`, which can never work: listings are immutable, so a price change creates a new id and no id ever holds two prices. Now compares per `(pharmacy_id, url)` across listings. Returns 0 rows because nothing is 7 days old — correct, not broken |
+| **MedPlus scraper live** | `scrapers/medplus.py`, categories 31+32: 98 listings, 0 failed parses, ₦250–106,550, 0 absurd, `price_history+=98`, run 19 success. Pharmacy #2 in Lagos |
+| **First genuine comparisons** | `v_cheapest_per_product_state`: 81 rows, **3 with `is_comparison = true`** — Ibuprofen (MedPlus ₦350) and Paracetamol (HealthPlus ₦1,000), both Lagos, both two-pharmacy |
+| **`db_connect` hardened** | This machine's DNS intermittently fails (`getaddrinfo failed`); connect now retries 3× / 5 s. `ensure_connection()` reconnects when Neon kills a socket during a long fetch (`AdminShutdown`), which had discarded a completed 98-product fetch |
 
 ## Defects found by executing the SQL (both fixed 2026-11-07)
 

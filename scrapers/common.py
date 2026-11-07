@@ -177,10 +177,25 @@ def archive_jsonl(
 # reads that table and cannot see a source that never wrote one.
 
 
-def db_connect(url: str | None = None):
+def db_connect(url: str | None = None, *, attempts: int = 3, delay: float = 5.0):
+    """Connect to Neon, retrying transient resolver/connection failures.
+
+    This machine's DNS intermittently returns `getaddrinfo failed` for the Neon host (observed
+    three times on 2026-11-07). A scrape that has already spent twenty minutes fetching should not
+    die because a lookup blipped, and neither should a scheduled run.
+    """
     import psycopg  # lazy: dry runs do not need the driver
 
-    return psycopg.connect(url or os.environ["DATABASE_URL"])
+    target = url or os.environ["DATABASE_URL"]
+    last: Exception | None = None
+    for attempt in range(attempts):
+        try:
+            return psycopg.connect(target)
+        except Exception as exc:  # noqa: BLE001 - retried, then raised
+            last = exc
+            if attempt < attempts - 1:
+                time.sleep(delay)
+    raise last  # type: ignore[misc]
 
 
 def start_run(connection, source: str) -> int:
@@ -207,6 +222,26 @@ def clear_failed_transaction(connection) -> None:
         connection.rollback()
     except Exception:  # a dead connection must not mask the original error
         pass
+
+
+def ensure_connection(connection):
+    """Return a live connection, reconnecting if Neon closed the socket while we were fetching.
+
+    Neon terminated an idle connection with `AdminShutdown: terminating connection due to
+    administrator command` after a ten-minute fetch on 2026-11-07, discarding the whole write.
+    Callers that fetch for minutes between database touches must pass through here first.
+    """
+    if connection is not None:
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("select 1")
+            return connection
+        except Exception:  # noqa: BLE001 - any failure means reconnect
+            try:
+                connection.close()
+            except Exception:
+                pass
+    return db_connect()
 
 
 def record_price_history(connection, listing_ids: list[int]) -> int:
