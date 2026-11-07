@@ -209,6 +209,32 @@ def clear_failed_transaction(connection) -> None:
         pass
 
 
+def record_price_history(connection, listing_ids: list[int]) -> int:
+    """Append one price_history row per listing that has none, from the listing's own values.
+
+    Listings are immutable observations: a changed price produces a NEW listing row, never an
+    update, so a listing_id only ever gains this single price row. That is enough for
+    `mv_drug_price_index`, which aggregates by day/product/state, but it is NOT enough for a
+    per-listing time series -- which is why `v_price_change_7d` compares across listings for the
+    same (pharmacy_id, url) rather than within a listing_id.
+
+    Idempotent: a listing that already has a price row is skipped.
+    """
+    if not listing_ids:
+        return 0
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "insert into price_history (listing_id, price_ngn, in_stock, unit_price, recorded_at)"
+            " select l.id, l.price_ngn, l.in_stock, l.unit_price, l.scraped_at"
+            " from pharmacy_listings l"
+            " where l.id = any(%s)"
+            "   and l.price_ngn is not null"
+            "   and not exists (select 1 from price_history h where h.listing_id = l.id)",
+            (listing_ids,),
+        )
+        return cursor.rowcount
+
+
 def finish_run(
     connection,
     run_id: int,

@@ -136,32 +136,48 @@ where r.status is not null
   and (r.status <> 'Active' or r.expiry_date < current_date);
 
 -- ------------------------------------------------------ v_price_change_7d
--- Current price versus the most recent price at least seven days older.
+-- Current price versus the most recent price at least seven days older, FOR THE SAME URL.
+--
+-- The original version grouped by listing_id and joined price_history to itself. That can never
+-- return a row: a listing is an immutable observation, so a price change creates a new listing_id
+-- and no listing_id ever has two prices. The comparison has to be across listings for the same
+-- (pharmacy_id, url), which is what this now does (fixed 2026-11-07). Column names are unchanged.
 
 create or replace view v_price_change_7d as
-with current_price as (
-    select distinct on (ph.listing_id)
-        ph.listing_id,
-        ph.price_ngn,
-        ph.recorded_at
-    from price_history ph
-    order by ph.listing_id, ph.recorded_at desc
+with latest as (
+    select distinct on (l.pharmacy_id, l.url)
+        l.pharmacy_id,
+        l.url,
+        l.id        as listing_id,
+        l.price_ngn,
+        l.scraped_at
+    from pharmacy_listings l
+    where l.price_ngn is not null
+    order by l.pharmacy_id, l.url, l.scraped_at desc, l.id desc
+),
+prior as (
+    select distinct on (o.pharmacy_id, o.url)
+        o.pharmacy_id,
+        o.url,
+        o.price_ngn as price_7d_ago
+    from pharmacy_listings o
+    join latest c
+      on c.pharmacy_id = o.pharmacy_id
+     and c.url = o.url
+    where o.price_ngn is not null
+      and o.scraped_at <= c.scraped_at - interval '7 days'
+    order by o.pharmacy_id, o.url, o.scraped_at desc, o.id desc
 )
 select
     c.listing_id,
     c.price_ngn   as current_price,
-    w.price_ngn   as price_7d_ago,
-    c.recorded_at,
-    round(100 * (c.price_ngn - w.price_ngn) / nullif(w.price_ngn, 0), 2) as pct_change_7d
-from current_price c
-join lateral (
-    select h.price_ngn
-    from price_history h
-    where h.listing_id = c.listing_id
-      and h.recorded_at <= c.recorded_at - interval '7 days'
-    order by h.recorded_at desc
-    limit 1
-) w on true;
+    p.price_7d_ago,
+    c.scraped_at  as recorded_at,
+    round(100 * (c.price_ngn - p.price_7d_ago) / nullif(p.price_7d_ago, 0), 2) as pct_change_7d
+from latest c
+join prior p
+  on p.pharmacy_id = c.pharmacy_id
+ and p.url = c.url;
 
 -- ------------------------------------------------------- v_pipeline_health
 -- Per source: last success, hours since, and STALE after 48 h. Reads scrape_runs only.

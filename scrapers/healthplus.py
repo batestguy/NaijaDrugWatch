@@ -82,6 +82,7 @@ from common import (  # noqa: E402
     archive_jsonl,
     db_connect,
     finish_run,
+    record_price_history,
     start_run,
 )
 
@@ -398,6 +399,7 @@ insert into pharmacy_listings
     (pharmacy_id, product_id, raw_title, url, price_ngn, in_stock,
      pack_size, pack_unit, unit_price, scraped_at, source_hash)
 values (%s, null, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+returning id
 """
 
 
@@ -452,6 +454,7 @@ def store_records(
 
     inserted = unchanged = duplicate_url = 0
     batch_urls: set[str] = set()
+    inserted_ids: list[int] = []
     with connection.cursor() as cursor:
         for record in records:
             url = record["url"]
@@ -477,10 +480,15 @@ def store_records(
                     record["source_hash"],
                 ),
             )
+            inserted_ids.append(int(cursor.fetchone()[0]))
             inserted += 1
+    # The price series the materialised index reads. Listings are immutable observations, so
+    # each new listing contributes exactly one price_history row; see common.record_price_history.
+    price_rows = record_price_history(connection, inserted_ids)
     connection.commit()
     log(
         f"listings: inserted={inserted} unchanged={unchanged} duplicate_url={duplicate_url}"
+        f" price_history+={price_rows}"
     )
     return {
         "pharmacy_id": pharmacy_id,

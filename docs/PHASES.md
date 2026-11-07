@@ -274,7 +274,7 @@ one command or one file — P0 and P1 were not parallelisable by construction. F
 | Decision | Blocks | Default if nobody decides |
 |---|---|---|
 | Embedding model and dimension | P5 | stay on `vector(384)`, stage one unusable |
-| **Who writes `price_history`** | **P6, and every "change over time" claim** | nobody does, so `v_price_change_7d` and `mv_drug_price_index` stay empty forever |
+| **Who writes `price_history`** | **resolved 2026-11-07** | `common.record_price_history()` — one row per new listing, idempotent |
 | `unit_price` target: accept ~53% or add form-word detection | P4 | P4 stays open |
 | Shard vs 50-drug scope for detail pages | P3 | shard 3 × ~2 h |
 | `v_pipeline_health` handling of never-run sources | P7 | view stays blind to dark sources |

@@ -4,13 +4,14 @@ Single state file for NaijaDrugWatch. Last updated **2026-11-07**.
 
 ## Where we are
 
-**M3 — the chain is joined and the views return rows.** Neon project `orange-pond-32200905`
-(PG 17.11) holds 8 tables, 5 views, 1 materialised view, 1,074 seeded products (all embedded
-with bge-small-en-v1.5), 10,906 NAFDAC registrations, 572 status snapshots, 1,197 HealthPlus
-listings. 376 products link to a registration; 228 of 1,197 listings link to a product.
-**`v_suspicious_listings` returns 90 rows** and `v_cheapest_per_product_state` returns 72 — but
-`is_comparison` is false on all 72 because one pharmacy cannot form a comparison, and
-`price_history` is empty so `v_price_change_7d` and the materialised index remain empty.
+**M3 — the chain is joined, the views return rows, and the price series exists.** Neon project
+`orange-pond-32200905` (PG 17.11) holds 8 tables, 5 views, 1 materialised view, 1,074 seeded
+products (all embedded with bge-small-en-v1.5), 10,906 NAFDAC registrations, 572 status snapshots,
+1,197 HealthPlus listings, 376 product→registration links, 228 listing→product links, and
+**2,396 `price_history` rows**. `v_suspicious_listings` returns **90 rows**,
+`v_cheapest_per_product_state` returns **72** (0 comparisons — one pharmacy cannot compare with
+itself), and `mv_drug_price_index` returns **79** rows. `v_price_change_7d` is correctly empty:
+nothing is seven days old yet.
 
 ## Done and verified
 
@@ -43,6 +44,8 @@ listings. 376 products link to a registration; 228 of 1,197 listings link to a p
 | **P5 matcher built — views finally return rows** | `scripts/match_listings.py`: bge-small-en-v1.5 (384), top-10 cosine + `drug_match_rules`. 456 of 2,396 rows matched; **`v_suspicious_listings` = 90 rows**, `v_cheapest_per_product_state` = 72 rows (0 comparisons) |
 | **Suspicious rows falsification-tested** | all 40 flagged products re-run through selection logic: **0 have an Active candidate** passing strength and form (a name-only test had wrongly suggested 14) |
 | **Missing index added** | `nafdac_registrations_name_trgm_idx`; without it every similarity lookup seq-scanned 10,906 rows and the linker timed out at 10 min |
+| **`price_history` now populated** | `common.record_price_history()` writes one row per new listing (idempotent); backfill inserted **2,396** rows from existing listings. `mv_drug_price_index` refreshed concurrently → **79 rows** (e.g. Bicalutamide, Lagos, ₦144,780) |
+| **`v_price_change_7d` rewritten** | It grouped by `listing_id`, which can never work: listings are immutable, so a price change creates a new id and no id ever holds two prices. Now compares per `(pharmacy_id, url)` across listings. Returns 0 rows because nothing is 7 days old — correct, not broken |
 
 ## Defects found by executing the SQL (both fixed 2026-11-07)
 
@@ -109,10 +112,9 @@ parses at once and need their own measurement.
 
 ## Known risks
 
-- **`price_history` is written by nobody.** Both scrapers defer it deliberately (it is keyed by
-  `listing_id`, which the append-only listing ledger owns). Consequence: `v_price_change_7d` and
-  `mv_drug_price_index` cannot populate however good the data gets, so P6 is unreachable until a
-  component is assigned. This is a schedule hole, not a cosmetic gap.
+- **`v_price_change_7d` depends on time, not just data.** It now compares across listings per URL,
+  which is correct under append-only semantics, but it cannot return a row until a second scrape
+  happens at least seven days after the first. The first possible non-empty date is 2026-11-14.
 - **The Greenbook's TLS certificate is expired** (probed 2026-11-07): `https://greenbook.nafdac.gov.ng`
   fails with `SEC_E_CERT_EXPIRED` / `SEC_E_CERT_EXPIRED (0x80090328)` while `http://` answers `200`
   and robots.txt still allows everything. `scrapers/common.py` therefore falls back per host and
