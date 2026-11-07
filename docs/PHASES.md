@@ -19,9 +19,9 @@ the command under **Gate** has been run and its real output recorded.
 | **P0** | Environment, Neon database, schema | **closed** |
 | **P1** | Seed catalogue (products + match rules) | **closed** |
 | **P2** | NAFDAC Greenbook index (10,906 NRNs) | **closed** 2026-11-07 |
-| **P3** | NAFDAC Greenbook detail pages (status + expiry) | blocked on P2 — now unblocked |
+| **P3** | NAFDAC Greenbook detail pages | **partial** — 572 registrations at the 0.50 scope |
 | **P4** | Pharmacy scrapers (HealthPlus, Drugstore.ng, MedPlus) | **partial** — HealthPlus in, 2 sources left |
-| **P5** | Two-stage matcher (pgvector → rules) | blocked on P3 + P4 |
+| **P5** | Two-stage matcher (pgvector → rules) | **partial** — product→NRN link done; listing matcher blocked on the embedding model |
 | **P6** | Views proven on real rows | blocked on P5 |
 | **P7** | Prefect daily flow, 7 green runs | blocked on P6 |
 | **P8** | Streamlit dashboard + read-only API | blocked on P7 |
@@ -100,6 +100,19 @@ needed** — sharding is the default because it also bounds the cost of a block.
 
 **Gate.** ≥95% of targeted pages have non-null `status` and `expiry_date`; the shortfall is
 explained by retried 500s, not by silent skips.
+
+**Result — restricted sweep (2026-11-07).** 572 registrations snapshotted at `--min-similarity
+0.50`: **100% carry a status, 99.8% an expiry, 0 pages failed** after retries. Of the 572,
+**204 Active (35.7%)**, 215 Expired, 153 Inactive — **64.3% not Active**, with 363 expiry dates
+already in the past. That is a publishable finding on its own, and it is *partial coverage*: the
+scope is the catalogue we price, not the register.
+
+The full sweep is **not** done and is not cheap: the measured rate is ~0.22 pages/s (the server
+takes ~2.5 s on top of the 2 s floor), so 10,906 pages is ~14 h across several days.
+
+Three failures happened on the way, all fixed and recorded in `PROGRESS.md`: a dropped connection
+rollback (batch commits), a 22-minute socket hang (`urllib` timeouts are per-read, so a wall-clock
+deadline was added), and a wrong time estimate in this very document.
 
 **Owner.** `builder`. **QA.** `data-explorer` on the populated status distribution before P5 —
 77% non-Active is expected, but not from a parsing bug.

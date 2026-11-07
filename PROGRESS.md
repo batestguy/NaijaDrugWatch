@@ -4,12 +4,13 @@ Single state file for NaijaDrugWatch. Last updated **2026-11-07**.
 
 ## Where we are
 
-**M3 — the regulatory index and one pharmacy source are live.** Neon project
-`orange-pond-32200905` (PG 17.11) holds 8 tables, 5 views, 1 materialised view, 1,074 seeded
-products, **10,906 NAFDAC registrations** and **1,197 HealthPlus listings**. Nothing is matched:
-`product_id` is NULL everywhere, `nafdac_status_snapshots` is empty, `price_history` is empty, so
-`v_cheapest_per_product_state` and `v_suspicious_listings` still return zero rows. The schema and
-two scrapers work; the product does not yet answer its question.
+**M3 — regulatory lifecycle and one pharmacy source are live, but nothing is joined yet.**
+Neon project `orange-pond-32200905` (PG 17.11) holds 8 tables, 5 views, 1 materialised view,
+1,074 seeded products, **10,906 NAFDAC registrations**, **572 status/expiry snapshots** and
+**1,197 HealthPlus listings**. 278 products are linked to a registration. But `listing → product`
+is still unbuilt (`product_id` is NULL on every line) and `price_history` is empty, so
+`v_cheapest_per_product_state` and `v_suspicious_listings` both still return zero rows. Two of the
+three joins exist; the one that makes a claim is missing.
 
 ## Done and verified
 
@@ -36,6 +37,9 @@ two scrapers work; the product does not yet answer its question.
 | **P4 partial — HealthPlus scraped** | `scrapers/healthplus.py`; runs 9 `success record_count=1197`; 1,197 distinct URLs; 0 null/negative prices; NGN proven from `Shopify.currency` |
 | **Duplicate listings proven harmless** | 2,396 raw rows after overlapping runs, `v_latest_listings` returns **1,197** |
 | **Ledger failure path proven** | induced `NotNullViolation` mid-transaction → `finish_run` wrote `('failed', …, 'selftest: induced failure')`; without the rollback fix it left the row `running` |
+| **P3 partial — 572 registrations with status** | `scrapers/nafdac_details.py --min-similarity 0.50`: 100% status, 99.8% expiry, 0 failed pages. **204 Active / 215 Expired / 153 Inactive = 64.3% not Active** |
+| **Product → NRN linked** | `scripts/link_product_nrn.py`: 278 of 1,074 products linked (99 Active, 131 known non-Active, 48 to an unverified registration); 796 unmatched, 566 for lack of any candidate |
+| **`v_suspicious_listings` NULL bug fixed** | `r.status is distinct from 'Active'` counted NULL as suspicious; now `status is not null and (status <> 'Active' or expiry < today)`. Proven in a rolled-back transaction: linking to `Expired` yields 1 row, adding an unverified link keeps it at 1 |
 
 ## Defects found by executing the SQL (both fixed 2026-11-07)
 

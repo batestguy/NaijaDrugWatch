@@ -103,6 +103,11 @@ where r.rn = 1;
 --
 -- Two conditions, unioned, because the two fields disagree in the source data: at least one
 -- registration is published as Expired with a 2030 expiry. Reading one field alone under-reports.
+--
+-- `status is null` means we have not scraped that registration's detail page yet, which is
+-- UNKNOWN, not suspicious. The earlier `is distinct from 'Active'` silently counted NULL as
+-- "inactive" and would have flagged every product whose registration fell outside the scraped
+-- scope (fixed 2026-11-07).
 
 create or replace view v_suspicious_listings as
 select
@@ -119,7 +124,7 @@ select
     r.status     as nafdac_status,
     r.expiry_date,
     case
-        when r.status is distinct from 'Active' then 'inactive_registration'
+        when r.status <> 'Active' then 'inactive_registration'
         else 'expired_registration'
     end as suspicion_reason
 from v_latest_listings l
@@ -127,8 +132,8 @@ join products p
     on p.id = l.product_id
 join nafdac_registrations r
     on r.registration_number = p.nafdac_registration_number
-where r.status is distinct from 'Active'
-   or r.expiry_date < current_date;
+where r.status is not null
+  and (r.status <> 'Active' or r.expiry_date < current_date);
 
 -- ------------------------------------------------------ v_price_change_7d
 -- Current price versus the most recent price at least seven days older.
