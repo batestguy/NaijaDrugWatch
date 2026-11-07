@@ -49,6 +49,7 @@ import argparse
 import html
 import re
 import sys
+import threading
 import time
 import urllib.error
 from datetime import date, datetime, timezone
@@ -70,6 +71,11 @@ SOURCE = "nafdac_details"
 DEFAULT_MIN_SIMILARITY = 0.40
 DEFAULT_MAX_SECONDS = 5.5 * 3600  # stay under the 6 h job cap with room to write the ledger
 BACKOFF_SECONDS = (5, 15, 45)
+# urllib's timeout bounds each socket read, not the whole request, so a server that trickles
+# bytes can hold a fetch open indefinitely -- which is exactly how the 2026-11-07 run hung for
+# 22 minutes at 150/571 with no database writes. A wall-clock deadline in a worker thread bounds
+# the request itself; the abandoned thread is a daemon and dies with the process.
+HARD_TIMEOUT_S = 30
 
 # Each field is an <h1 class="... bg-gray-200 ...">label</h1> followed by a <p ... text-justify>value</p>.
 PAIR_RE = re.compile(
@@ -156,12 +162,40 @@ class DetailUnavailable(RuntimeError):
     """The page could not be read after retries. Left unsnapshotted so a later run retries it."""
 
 
-def fetch_detail(client: RateLimitedClient, url: str, *, retries: int = 3) -> str:
-    """GET a detail page, retrying 5xx and transport errors with backoff."""
+def _with_deadline(callable_, seconds: float):
+    """Run `callable_` in a daemon thread and abandon it if it exceeds a wall-clock deadline.
+
+    Needed because `urllib`'s timeout is per socket operation: a server sending one byte at a
+    time never trips it. On timeout the thread is left to die with the process.
+    """
+    outcome: dict[str, Any] = {}
+
+    def run() -> None:
+        try:
+            outcome["value"] = callable_()
+        except BaseException as exc:  # noqa: BLE001 - re-raised in the caller's thread
+            outcome["error"] = exc
+
+    worker = threading.Thread(target=run, daemon=True)
+    worker.start()
+    worker.join(seconds)
+    if worker.is_alive():
+        raise TimeoutError(f"no response within {seconds:.0f}s")
+    if "error" in outcome:
+        raise outcome["error"]
+    return outcome.get("value")
+
+
+def fetch_detail(client: RateLimitedClient, url: str, *, retries: int = 2) -> str:
+    """GET a detail page, retrying 5xx and transport errors with backoff.
+
+    Two retries, not three: with a 30 s hard deadline each, a permanently broken page must not
+    cost six minutes of a sweep that has an hour of budget.
+    """
     last_error: Exception | None = None
     for attempt in range(retries + 1):
         try:
-            body, _final = client.get(url)
+            body, _final = _with_deadline(lambda: client.get(url), HARD_TIMEOUT_S)
             return body
         except urllib.error.HTTPError as exc:
             last_error = exc
