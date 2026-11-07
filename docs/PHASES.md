@@ -172,8 +172,18 @@ is the explicitly rejected failure mode.
 model is undecided, and the dimension must match whatever is chosen. Do not build stage one against
 384 until that decision is made.
 
-**Gate.** A hand-checked sample of ≥50 matches: precision ≥0.9, zero matches that contradict a rule
-on strength or form. `v_suspicious_listings` returns ≥1 row.
+**Result (2026-11-07).** Stage one and two both built in `scripts/match_listings.py`:
+BAAI/bge-small-en-v1.5 (ONNX, 384 dims, matching `vector(384)` exactly, so no migration), top-10
+cosine candidates, then `drug_match_rules` on name tokens, strength tokens and dosage-form family.
+Similarity alone assigns nothing. On 2,396 listing rows: **456 matched (19.0%)**, 228 of 1,197 latest
+listings, and `v_suspicious_listings` returns **90 rows** for the first time.
+
+Precision check (the check that could have falsified it): all 40 flagged products were re-run
+through the selection logic and **0 have an Active candidate** that satisfies strength and form.
+A name-only test had suggested 14, which is why the gates matter.
+
+The 81% unmatched is not a failure: HealthPlus's catalogue is largely supplements and devices that
+are not in the 597-name seed at all.
 
 **Owner.** `builder` for the pipeline, `data-explorer` for the precision sample. **Review.**
 `ship-reviewer` — a matcher that over-matches manufactures the headline claim.

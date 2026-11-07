@@ -53,6 +53,11 @@ create table if not exists nafdac_registrations (
 comment on column nafdac_registrations.pack_description is
     'Free-text as published. Blank on ~70% of pages, so pack size must come from listing titles.';
 
+-- Candidate generation for product -> registration linking. Without this, every similarity()
+-- lookup scans all 10,906 rows and the linker takes over ten minutes (measured 2026-11-07).
+create index if not exists nafdac_registrations_name_trgm_idx
+    on nafdac_registrations using gin (product_name gin_trgm_ops);
+
 -- ---------------------------------------------------- nafdac_status_snapshots
 
 create table if not exists nafdac_status_snapshots (

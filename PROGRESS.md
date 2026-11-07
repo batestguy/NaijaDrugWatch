@@ -4,13 +4,13 @@ Single state file for NaijaDrugWatch. Last updated **2026-11-07**.
 
 ## Where we are
 
-**M3 — regulatory lifecycle and one pharmacy source are live, but nothing is joined yet.**
-Neon project `orange-pond-32200905` (PG 17.11) holds 8 tables, 5 views, 1 materialised view,
-1,074 seeded products, **10,906 NAFDAC registrations**, **572 status/expiry snapshots** and
-**1,197 HealthPlus listings**. 278 products are linked to a registration. But `listing → product`
-is still unbuilt (`product_id` is NULL on every line) and `price_history` is empty, so
-`v_cheapest_per_product_state` and `v_suspicious_listings` both still return zero rows. Two of the
-three joins exist; the one that makes a claim is missing.
+**M3 — the chain is joined and the views return rows.** Neon project `orange-pond-32200905`
+(PG 17.11) holds 8 tables, 5 views, 1 materialised view, 1,074 seeded products (all embedded
+with bge-small-en-v1.5), 10,906 NAFDAC registrations, 572 status snapshots, 1,197 HealthPlus
+listings. 376 products link to a registration; 228 of 1,197 listings link to a product.
+**`v_suspicious_listings` returns 90 rows** and `v_cheapest_per_product_state` returns 72 — but
+`is_comparison` is false on all 72 because one pharmacy cannot form a comparison, and
+`price_history` is empty so `v_price_change_7d` and the materialised index remain empty.
 
 ## Done and verified
 
@@ -40,6 +40,9 @@ three joins exist; the one that makes a claim is missing.
 | **P3 partial — 572 registrations with status** | `scrapers/nafdac_details.py --min-similarity 0.50`: 100% status, 99.8% expiry, 0 failed pages. **204 Active / 215 Expired / 153 Inactive = 64.3% not Active** |
 | **Product → NRN linked** | `scripts/link_product_nrn.py`: 278 of 1,074 products linked (99 Active, 131 known non-Active, 48 to an unverified registration); 796 unmatched, 566 for lack of any candidate |
 | **`v_suspicious_listings` NULL bug fixed** | `r.status is distinct from 'Active'` counted NULL as suspicious; now `status is not null and (status <> 'Active' or expiry < today)`. Proven in a rolled-back transaction: linking to `Expired` yields 1 row, adding an unverified link keeps it at 1 |
+| **P5 matcher built — views finally return rows** | `scripts/match_listings.py`: bge-small-en-v1.5 (384), top-10 cosine + `drug_match_rules`. 456 of 2,396 rows matched; **`v_suspicious_listings` = 90 rows**, `v_cheapest_per_product_state` = 72 rows (0 comparisons) |
+| **Suspicious rows falsification-tested** | all 40 flagged products re-run through selection logic: **0 have an Active candidate** passing strength and form (a name-only test had wrongly suggested 14) |
+| **Missing index added** | `nafdac_registrations_name_trgm_idx`; without it every similarity lookup seq-scanned 10,906 rows and the linker timed out at 10 min |
 
 ## Defects found by executing the SQL (both fixed 2026-11-07)
 
