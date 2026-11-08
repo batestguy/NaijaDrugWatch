@@ -1,6 +1,96 @@
 # Progress
 
-Single state file for NaijaDrugWatch. Last updated **2026-11-08 (mid-session, after the VPN fix)**.
+Single state file for NaijaDrugWatch. Last updated **2026-11-08 (session end)**.
+
+## Handoff — read this first
+
+### Where it stood at session end
+
+The pipeline works end to end. Three pharmacies are loaded, the matcher runs, the views return
+**115 cells of which 24 are real comparisons**, and the dashboard shows both a cheapest-pack and a
+lowest-known-unit-price answer per row.
+
+`.github/workflows/daily.yml` is the scheduler. Run `42464123751` was dispatched at **08:43 UTC** and
+was still inside `Pipeline` when the session ended — **its outcome is not recorded here; check it
+first.** `gh run view 42464123751 --json status,conclusion`.
+
+| Object | Value |
+|---|---|
+| `pharmacy_listings` (latest) | 2,599 (14 suspect rows flagged and excluded) |
+| `nafdac_registrations` / with status | 10,906 / **572 (5%)** |
+| `v_cheapest_per_product_state` | 115 cells, **24 comparisons** |
+| `v_suspicious_listings` | 124 |
+| `mv_drug_price_index` | 135 |
+| Pharmacies | 3 — HealthPlus, MedPlus (both Lagos), Drugstore.ng (**National**) |
+
+### What this session produced, and what to trust
+
+| Item | Evidence |
+|---|---|
+| `scrapers/drugstore.py` | run 21 success, 20 records, gate verified against the DB |
+| MedPlus category 12 | run 23 success, 1,391 records, 1,092 inserted, 64 → 24 comparisons after matching |
+| View carries two answers | `schema/003_views.sql`, verified: 20 columns, 0 NULL-rule leaks, 0 recompute diffs |
+| Dashboard shows both | axe 0 violations on all five tabs, both answers rendered |
+| Suspect prices flagged | `schema/005_suspect_prices.sql`, 14 rows, `v_latest_listings` 2,613 → 2,599 |
+| Prices refused at the door | `price_bounds_error()`, 24/24 boundary cases across three scrapers |
+| Daily workflow | `.github/workflows/daily.yml`, first run dispatched |
+
+**Do not trust a subagent's summary without re-running its check.** Four of the six tickets this
+session hit their step cap mid-gate and the secretary finished the verification. Where a number
+matters, the artifact is in `.agent/T<n>-report.md`.
+
+### The failure that cost the most time
+
+Four dispatches failed before the workflow got past preflight. The cause was **not** the database: the
+`DATABASE_URL` secret held a 28-character string starting with `t` and containing no `://`, against the
+real value's 120 characters. Two of the four runs were avoidable — one was a *re-run*, which replays
+the old commit and cannot pick up a newer workflow file, and one added a normalisation step before
+anyone looked at what the value actually was. **If a connection string misbehaves, fingerprint it
+first** (length, `://` present, sha256 prefix) before adding tolerance for how it might be mangled.
+
+### Resume commands, in dependency order
+
+```powershell
+$env:DATABASE_URL = ((Select-String -Path .env -Pattern '^DATABASE_URL=').Line).Substring(13).Trim()
+$env:PYTHONIOENCODING = 'utf-8'
+```
+
+```powershell
+.venv\Scripts\python.exe -X utf8 scrapers\nafdac_index.py
+.venv\Scripts\python.exe -X utf8 scrapers\nafdac_details.py --min-similarity 0.50
+.venv\Scripts\python.exe -X utf8 scripts\link_product_nrn.py --refresh --min-similarity 0.35
+.venv\Scripts\python.exe -X utf8 scrapers\healthplus.py
+.venv\Scripts\python.exe -X utf8 scrapers\medplus.py --categories 12,31,32,50,57,58 --limit 250
+.venv\Scripts\python.exe -X utf8 scrapers\drugstore.py --limit 200
+.venv\Scripts\python.exe -X utf8 scripts\match_listings.py
+.venv\Scripts\python.exe -X utf8 -c "import os,psycopg; psycopg.connect(os.environ['DATABASE_URL'],autocommit=True).execute('refresh materialized view concurrently mv_drug_price_index')"
+```
+
+Order is not optional. **A scrape un-matches what it re-inserts** — new rows have `product_id` NULL
+and `v_latest_listings` takes the newest per URL — so skipping the matcher makes the views shrink.
+
+### Open, in priority order
+
+1. **`mv_drug_price_index` is unprotected** from suspect prices. It reads `price_history`; a filter
+   needs drop + create + rebuild the unique index + refresh, in one transaction.
+2. **`v_pipeline_health` cannot see a source that never ran** — zero rows means zero output, not
+   `STALE`. P7's gate cannot be trusted until this is fixed.
+3. **The dashboard is not deployed and there is no API.** Two of the four definition-of-done items.
+4. **The daily run is ~3 h 15** because `medplus.py` has no `--limit`; the rate limit sets the floor
+   every night. Freshness-versus-cost decision, not a bug.
+5. **`unit_price` coverage is 52.7%** on HealthPlus against an 85% gate; P4 is open on that alone.
+
+### Human-only, before anything is published
+
+- Open two pharmacy pages and confirm the same pack is being priced. 24 comparison cells, none checked.
+- Compare one suspicious listing against a rendered NAFDAC record. 124 rows, none checked.
+- Look at the cheapest-per-state table at 430 px — measured for overflow, never seen.
+
+### Next three actions
+
+1. Read run `42464123751`'s outcome and fix or confirm it.
+2. Add a `if: failure()` step that opens an issue, so a 03:00 failure is not silent.
+3. Deploy the dashboard, then build the read-only API.
 
 ## 2026-11-08 — VPN outage, Drugstore.ng added, accessibility gate closed
 
@@ -254,7 +344,7 @@ devices — `Fine Test Auto Coding Blood Glucose Machine`, two `First Aid Box`, 
 test-strip refill. `--limit N` therefore samples the head of the catalogue, not a representative
 slice, and `pack parsed 0/5` on that sample says nothing about medicine coverage.
 
-## Handoff — start here tomorrow
+## Handoff — 2026-11-07 (superseded by the block at the top)
 
 Everything below is reproducible from the repo plus `.env`. Nothing depends on a running process;
 all background jobs finished before close.
