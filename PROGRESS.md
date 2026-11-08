@@ -4,6 +4,74 @@ Single state file for NaijaDrugWatch. Last updated **2026-11-08 (mid-session, af
 
 ## 2026-11-08 — VPN outage, Drugstore.ng added, accessibility gate closed
 
+### Afternoon: MedPlus expanded, the matcher restored, and the view answers two questions
+
+Run against a working database, in this order: MedPlus expansion → matcher → matview refresh → T3.
+
+| Object | Before | After |
+|---|---|---|
+| `pharmacy_listings` (latest) | 1,530 | **2,613** |
+| HealthPlus matched / latest | — | **228 / 1,197** |
+| MedPlus matched / latest | 20 / 313 | **110 / 1,396** |
+| `v_cheapest_per_product_state` | 83 rows, 6 comparisons | **115 rows, 24 comparisons** |
+| `mv_drug_price_index` | 83 | **135** |
+
+**MedPlus category 12: 1,395 fetched, 1,391 records, 4 parse failures.** `scrape_runs id=23
+success record_count=1391`, `inserted=1092 unchanged=299 price_history+=1092`, archive
+`medplus-2026-11-08.jsonl.gz` sha256 `635cd866eacdace1`. Pack parsed 1,070 (77%), `unit_price` 1,007
+(72%) — better coverage than HealthPlus's 53%.
+
+**Comparisons went 6 → 24 after `scripts/match_listings.py`.** Matching is therefore the gate on the
+headline metric, not the catalogue size: the 1,092 new listings were worthless until matched.
+
+**A scrape silently un-matches what it re-inserts.** A changed URL gets a new `pharmacy_listings` row
+with `product_id` NULL, and `v_latest_listings` takes the newest row — so the previously matched row
+stops counting until the matcher runs again. This is the most likely explanation for
+`v_cheapest_per_product_state` falling 85 → 83 across the MedPlus run while the view was provably
+complete (independent expected cells 83, view rows 83, 0 missing). It means **scrape → match is one
+step, and skipping the match step degrades the views.** P7 is what would make that automatic.
+
+**Defect: ₦1.00 prices pass the guard.** Three MedPlus listings are priced ₦1.00, marked in stock, and
+are ordinary products (`SUPRALIP 160MG *30TAB`, `STILBESTROL 5MG` ×2). The scraper rejects `price <= 0`
+and `> 500000`, so ₦1.00 is accepted. A ₦1 row wins every `min()`-based view. They do **not** reach
+`v_cheapest_per_product_state` only because they are unmatched — luck, not design. A second cluster at
+₦10.97–10.99 (tourniquet, eyewash, emergency blanket) is `in_stock = false`, so the view's `in_stock
+is true` filter excludes it. **Open.**
+
+### T3 — the view now answers both questions (additive, verified)
+
+`schema/003_views.sql:41-156`. The original 10 columns are unchanged in name, type and position; two
+groups are appended: `cheapest_pack_*` (lowest `price_ngn`, the old answer now named) and `best_unit_*`
+(lowest `unit_price`, every column NULL together where the unit price is unknown).
+
+Verified by the secretary, not taken from the agent's report: 20 columns in the expected order, **0**
+legacy-vs-`cheapest_pack_*` mismatches, **0** NULL-rule leaks in either direction, **0** differing rows
+against an independent `distinct on` recompute.
+
+The agent reported the row count as 85. **It is 83**, and the view is complete — see the un-matching
+note above. Recorded because a passing gate reported against a stale baseline is how a wrong number
+gets adopted.
+
+**Open design defect the view exposes: `best_unit` can be worse value than the cheapest pack.** It
+ranks only rows whose pack size parsed, so where the cheapest pack has an unknown unit the "best value"
+column surfaces a pricier row instead of saying it does not know. Ibuprofen (suspension), Lagos:
+cheapest pack ₦1,130 for a bottle of unknown volume, "best value" ₦25.00/ml for a 60 ml bottle at
+₦1,500 — if the ₦1,130 bottle is also 60 ml it is ₦18.83/ml, better and invisible. **23 of 115 cells**
+mix known and unknown pack units, so this is not a corner case. The label must not claim "best value"
+on that basis.
+
+Checked and **not** a problem: the matcher does not merge dosage forms. **0 cells mix `ml` with `tab`**;
+`product_id` separates suspensions from tablets correctly.
+
+### T2 — the `unit_price` slash-strength defect does not affect stored data
+
+31 latest HealthPlus rows contain a slash pair; **0** have a stored pack differing from the guarded
+parse; 30 of 31 have a non-null pack. HealthPlus writes strengths with the unit attached (`80/480Mg`),
+so `parse_pack` takes the explicit `x28` instead. The bug fires on `80/480 Tablets` — space, then a
+form word — which HealthPlus does not use. Not a publication blocker today; the guard is still worth
+adding to `healthplus.py`. Full evidence: `.agent/T2-report.md`.
+
+
 **RESOLVED — cause was the local Proton VPN, not Neon.** Both connection strings failed identically
 (`ConnectionTimeout`, preceded by "server closed the connection unexpectedly") while DNS resolved and
 the console showed the project healthy. The finding that settled it was a **control experiment**: a

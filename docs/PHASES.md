@@ -22,7 +22,7 @@ the command under **Gate** has been run and its real output recorded.
 | **P3** | NAFDAC Greenbook detail pages | **partial** — 572 registrations at the 0.50 scope |
 | **P4** | Pharmacy scrapers (HealthPlus, Drugstore.ng, MedPlus) | **all three built** — open only on `unit_price` (52.7% vs the 85% gate) |
 | **P5** | Two-stage matcher (pgvector → rules) | **closed** 2026-11-07 |
-| **P6** | Views proven on real rows | **partial** — 6 `is_comparison` cells; `v_price_change_7d` needs 2026-11-14 |
+| **P6** | Views proven on real rows | **substantially met** — **24** `is_comparison` cells; `v_price_change_7d` still needs 2026-11-14 |
 | **P7** | Prefect daily flow, 7 green runs | **not started** — needs a scheduler credential before the gate is reachable |
 | **P8** | Streamlit dashboard + read-only API | **partial** — dashboard renders on live data, **axe gate passes 0 violations**; API and deployment not built |
 | **P9** | Publish: disclosure, attribution, v1 tag | blocked on P8 |

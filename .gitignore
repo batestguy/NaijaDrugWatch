@@ -22,6 +22,11 @@ archives/
 # Local scraper/flow stdout capture. Evidence worth keeping goes into PROGRESS.md, not here.
 *.log
 
+# --- agent tickets (see ~/.config/opencode/runtime/README.md) ---
+# Briefs and progress are working notes. Reports are kept: they are what was actually verified.
+.agent/*-brief.md
+.agent/*-progress.md
+
 # --- os / editor ---
 .DS_Store
 Thumbs.db
