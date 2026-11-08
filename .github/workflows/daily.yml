@@ -82,6 +82,16 @@ jobs:
                     "Settings > Secrets and variables > Actions > New repository secret.")
               sys.exit(1)
 
+          # Fingerprint that cannot leak the secret: enough to tell a URL apart from a pasted line,
+          # a masked placeholder, or something with an invisible leading character.
+          import hashlib
+
+          print("raw length", len(raw),
+                "| contains ://", "://" in raw,
+                "| starts postgres", raw[:10].lower().startswith("postgres"),
+                "| first char code", ord(raw[0]),
+                "| sha256", hashlib.sha256(raw.encode()).hexdigest()[:12])
+
           # Tolerate a pasted key name or wrapping quotes, but say so rather than silently fixing it.
           cleaned = raw
           for prefix in ("DATABASE_URL=", "database_url="):
