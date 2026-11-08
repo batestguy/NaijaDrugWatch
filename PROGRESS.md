@@ -93,6 +93,22 @@ are still in the table.
 is computed at `:509` **for the report only** and never enforced, so a ₦900,000 typo would be stored.
 The earlier audit fixed the zero-price case; the upper bound has never been enforced.
 
+### P7 — the daily workflow exists, and has never run
+
+Scheduler is **GitHub Actions cron**, not Prefect (decision 2026-11-08). `.github/workflows/daily.yml`
+runs the whole pipeline in one job in dependency order: index → details → link → healthplus → medplus →
+drugstore → match → refresh. Steps fail individually so one source cannot stop the rest; the job still
+exits non-zero if anything failed. The embedding model is cached across runs, and archives go up as a
+14-day artifact because they are gitignored.
+
+Recorded as a **spec deviation** in `AGENTS.md`: the spec names `flows/` as a Prefect deliverable and
+that file does not exist. Cost of the swap — no retry engine, no run history beyond the Actions UI, no
+backfill button — is to be stated in the published limitations.
+
+**Unproven: it has never executed.** It parses (7 steps; `schedule` and `workflow_dispatch`), and every
+flag it calls was checked against the scripts' argparse, but it needs `DATABASE_URL` in the repo's
+Actions secrets and one manual dispatch before the cron can be trusted.
+
 ### T2 — the `unit_price` slash-strength defect does not affect stored data
 
 31 latest HealthPlus rows contain a slash pair; **0** have a stored pack differing from the guarded
