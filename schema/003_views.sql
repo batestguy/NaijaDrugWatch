@@ -39,11 +39,27 @@ left join products  p on p.id = r.product_id
 where r.rn = 1;
 
 -- --------------------------------------------- v_cheapest_per_product_state
--- Cheapest in-stock pharmacy per canonical product per state.
+-- Cheapest in-stock pharmacy per canonical product per state, answered TWO ways in one row.
 --
 -- IMPORTANT (product decision, 2026-11-06): a single pharmacy quoting a product in a state is
 -- not a comparison. `is_comparison` is only true when two or more independent pharmacies quote
 -- it there. Consumers must not label a single-pharmacy cell "cheapest".
+--
+-- 2026-11-08, additive: the original view ranked on `price_ngn` alone, i.e. lowest STICKER price,
+-- which is not lowest cost per tablet when a product is sold in several pack sizes. Measured on
+-- 85 cells: 15 have more than one pack size in stock and 9 of those picked a row that is not the
+-- cheapest per unit (Ciprofloxacin Lagos: ₦5,180/10-pack = ₦518/unit chosen over ₦7,060/14-pack =
+-- ₦504/unit). Both answers now ride in the same row:
+--
+--   cheapest_pack_*  lowest `price_ngn`   — the pre-change answer, unchanged, now named
+--   best_unit_*      lowest `unit_price`  — NULL when that row's `unit_price` is NULL
+--
+-- THE NULL RULE IS THE POINT: `unit_price` is populated on only ~53% of HealthPlus listings.
+-- When the best-value row has no `unit_price`, every `best_unit_*` column is NULL. Falling back
+-- to the sticker price there would relabel "cheapest pack" as "best value" — the defect this
+-- column group exists to fix. A NULL answer means "not known"; a substituted one is a lie.
+--
+-- Existing columns are unchanged in name and value; this is an append-only change.
 
 create or replace view v_cheapest_per_product_state as
 with base as (
@@ -54,6 +70,7 @@ with base as (
         l.pharmacy_id,
         l.pharmacy_name,
         l.price_ngn,
+        l.pack_size,
         l.unit_price,
         l.url
     from v_latest_listings l
@@ -72,7 +89,9 @@ pharmacy_counts as (
     from base b
     group by b.product_id, b.state
 ),
-ranked as (
+-- Answer 1: cheapest pack. Identical ordering to the pre-2026-11-08 view, so `price_ngn`,
+-- `url` and `cheapest_pharmacy` keep exactly the values they had.
+ranked_pack as (
     select
         b.*,
         row_number() over (
@@ -80,23 +99,55 @@ ranked as (
             order by b.price_ngn asc, b.pharmacy_id asc
         ) as rn
     from base b
+),
+-- Answer 2: best value per unit. `nulls last` keeps rows with an unknown unit_price from
+-- winning; the price/pharmacy tiebreak keeps the pick deterministic and identical to
+-- ranked_pack when no row in the cell has a unit_price at all.
+ranked_unit as (
+    select
+        b.*,
+        row_number() over (
+            partition by b.product_id, b.state
+            order by b.unit_price asc nulls last, b.price_ngn asc, b.pharmacy_id asc
+        ) as rn
+    from base b
 )
 select
-    r.product_id,
-    r.canonical_name,
-    r.state,
-    r.pharmacy_id   as cheapest_pharmacy_id,
-    r.pharmacy_name as cheapest_pharmacy,
-    r.price_ngn,
-    r.unit_price,
-    r.url,
+    -- ---- unchanged columns, unchanged values --------------------------------
+    c.product_id,
+    c.canonical_name,
+    c.state,
+    c.pharmacy_id   as cheapest_pharmacy_id,
+    c.pharmacy_name as cheapest_pharmacy,
+    c.price_ngn,
+    c.unit_price,
+    c.url,
     pc.pharmacy_count,
-    (pc.pharmacy_count >= 2) as is_comparison
-from ranked r
+    (pc.pharmacy_count >= 2) as is_comparison,
+    -- ---- cheapest pack, now named (same row as above) ----------------------
+    c.price_ngn     as cheapest_pack_price,
+    c.pack_size     as cheapest_pack_pack_size,
+    c.pharmacy_id   as cheapest_pack_pharmacy_id,
+    c.pharmacy_name as cheapest_pack_pharmacy,
+    c.url           as cheapest_pack_url,
+    -- ---- best value per unit; every column NULL when unit_price is NULL ----
+    -- The guard is written per column rather than relying on `u.unit_price is not null`
+    -- inside a single case, so no consumer can read a pharmacy name beside a NULL price
+    -- and treat it as a measured answer.
+    case when u.unit_price is not null then u.unit_price end          as best_unit_unit_price,
+    case when u.unit_price is not null then u.pack_size end           as best_unit_pack_size,
+    case when u.unit_price is not null then u.pharmacy_id end         as best_unit_pharmacy_id,
+    case when u.unit_price is not null then u.pharmacy_name end       as best_unit_pharmacy,
+    case when u.unit_price is not null then u.url end                 as best_unit_url
+from ranked_pack c
 join pharmacy_counts pc
-    on pc.product_id = r.product_id
-   and pc.state      = r.state
-where r.rn = 1;
+    on pc.product_id = c.product_id
+   and pc.state      = c.state
+join ranked_unit u
+    on u.product_id = c.product_id
+   and u.state      = c.state
+   and u.rn         = 1
+where c.rn = 1;
 
 -- --------------------------------------------------- v_suspicious_listings
 -- Listings whose registration is not Active, or whose registration has expired.
