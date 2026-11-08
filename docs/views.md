@@ -9,7 +9,7 @@ Five views plus one materialised view, defined in
 | `v_latest_listings` | listings, pharmacies, products | live | one row per (pharmacy, url), newest scraped_at; **excludes `price_suspect` rows** |
 | `v_cheapest_per_product_state` | `v_latest_listings` | live | **claims "cheapest" only when `is_comparison`**; carries both a cheapest-pack and a best-value-per-unit answer |
 | `v_suspicious_listings` | latest + products + registrations | live | status ≠ Active **OR** expiry < today |
-| `v_price_change_7d` | price_history | live | current vs ≥7 days older |
+| `v_price_change_7d` | pharmacy_listings | live | current vs ≥7 days older, same url; **excludes `price_suspect`** |
 | `v_pipeline_health` | scrape_runs | live | STALE after 48 h without success |
 | `mv_drug_price_index` | price_history + listings + products | daily, `CONCURRENTLY` | unique on (day, canonical_name, state) |
 
@@ -24,16 +24,19 @@ previous one.
 The threshold is ₦20 because the measured data has a wide empty band: 14 rows sit below ₦11 (three at
 ₦1.00, eleven at ₦10.97–11.00), and the next real price is **₦50**. They are placeholders, not prices.
 
-**Three limits, deliberate and known:**
+**Two limits remain, and one has been closed.**
 
-1. **The flag decays.** New rows default to `false`, so a future ₦1 listing is stored *unflagged* and
-   stays visible until `005` is re-run. Rejecting at scrape time is the durable fix and is not yet
-   built.
-2. **`v_price_change_7d` is not protected** — it reads `pharmacy_listings` directly, not
-   `v_latest_listings`, so a suspect row could pair with a real one once that view returns rows.
+1. ~~The flag decays.~~ **Closed 2026-11-08.** All three scrapers now call `common.price_bounds_error()`
+   and refuse anything below ₦20 or above ₦500,000 before insert, printing an `AUDIT_REJECT` line so a
+   refusal is distinguishable from a parse failure. The flag itself remains, for rows stored before
+   that guard existed.
+2. ~~`v_price_change_7d` is not protected.~~ **Closed 2026-11-08.** It reads `pharmacy_listings`
+   directly, so it applies `not price_suspect` in both of its CTEs. Proven in a rolled-back test: a
+   real-to-real pair eight days apart returns one row; a suspect *newest* row returns none; a suspect
+   *prior* row returns none.
 3. **`mv_drug_price_index` is not protected** — it reads `price_history`, and changing a materialised
    view means drop + create + rebuild the unique index + refresh. It is clean today only because no
-   `price_history` row under ₦20 has a matched product.
+   `price_history` row under ₦20 has a matched product. **Still open.**
 
 ## `v_cheapest_per_product_state` — read this before using it
 

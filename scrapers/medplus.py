@@ -54,6 +54,7 @@ from common import (  # noqa: E402
     db_connect,
     ensure_connection,
     finish_run,
+    price_bounds_error,
     record_price_history,
     start_run,
 )
@@ -129,6 +130,13 @@ def parse_product(body: str, url: str) -> dict[str, Any] | None:
     try:
         price_value = f"{float(price):.2f}"
     except ValueError:
+        return None
+    reason = price_bounds_error(Decimal(price_value))
+    if reason is not None:
+        # NGN 1.00 is a placeholder, not a price, and it wins every min()-based view. Reject at
+        # build time; the AUDIT_REJECT line keeps a refused price distinguishable from a parse
+        # failure, which still lands in the caller's generic `failed` counter.
+        print(f"AUDIT_REJECT {reason} url={url} price={price_value}")
         return None
 
     return {

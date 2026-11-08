@@ -6,6 +6,12 @@
 
 -- ------------------------------------------------------- v_latest_listings
 -- Current state of every pharmacy listing: one row per (pharmacy, url), newest scrape wins.
+--
+-- WARNING: this definition is SUPERSEDED by schema/005_suspect_prices.sql, which adds
+-- `and not price_suspect`. Running 003 on its own after 005 silently reverts the exclusion and
+-- brings the flagged sub-NGN-20 rows back (2,599 -> 2,613). A full rebuild is safe because 005
+-- sorts after 003; a partial re-run of this file is not. Kept here rather than deleted so 003
+-- remains a complete, runnable record of the schema at its time.
 
 create or replace view v_latest_listings as
 with ranked as (
@@ -203,7 +209,11 @@ with latest as (
         l.price_ngn,
         l.scraped_at
     from pharmacy_listings l
+    -- Suspect rows are excluded on BOTH sides: an NGN 1.00 placeholder paired against a real price
+    -- reports a 99% "drop" that never happened. schema/005_suspect_prices.sql flags them; this
+    -- view reads the base table, so it has to apply the flag itself (fixed 2026-11-08).
     where l.price_ngn is not null
+      and not l.price_suspect
     order by l.pharmacy_id, l.url, l.scraped_at desc, l.id desc
 ),
 prior as (
@@ -216,6 +226,7 @@ prior as (
       on c.pharmacy_id = o.pharmacy_id
      and c.url = o.url
     where o.price_ngn is not null
+      and not o.price_suspect
       and o.scraped_at <= c.scraped_at - interval '7 days'
     order by o.pharmacy_id, o.url, o.scraped_at desc, o.id desc
 )

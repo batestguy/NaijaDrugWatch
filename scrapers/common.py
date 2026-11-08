@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Shared fetch, archive and ledger helpers for every NaijaDrugWatch scraper.
 
-Only three things live here, because only three are genuinely common:
+Only four things live here, because only four are genuinely common:
 
     RateLimitedClient  one request per domain every 2 s, robots.txt aware, HTTP fallback
     archive_jsonl      dated full dump + sha256, so a block costs freshness and not history
     start_run/finish_run  a scrape_runs row on success AND failure
+    price_bounds_error one plausible-band test every source shares, so no source drifts
 
 Anything source-specific (selectors, pagination, pack-size parsing) belongs in that source's
 module. Do not grow this file into a framework.
@@ -26,6 +27,7 @@ import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Iterable
 from urllib.parse import urlsplit
@@ -41,6 +43,50 @@ USER_AGENT = (
 
 MIN_INTERVAL_S = 2.0
 TIMEOUT_S = 45
+
+# ------------------------------------------------------------------ price plausibility
+#
+# ONE band for every source, because a source whose own bound drifted is how a NGN 1.00 "price"
+# reached three views (measured 2026-11-08; see schema/005_suspect_prices.sql).
+#
+# MIN_PRICE_NGN is measured, not aesthetic: over 3,821 listings the distribution has a cluster at
+# NGN 1.00-11.00 (placeholders: tourniquet, eyewash, first-aid box) and then NOTHING AT ALL until
+# NGN 50.00. NGN 20 sits inside that empty band, so it separates a sentinel from anything real.
+#
+# BOUNDARIES, exact: reject price < 20 and price > 500000; ACCEPT exactly 20.00 and exactly
+# 500000.00. The comparisons are strict, so both edges are inside the band.
+MIN_PRICE_NGN = Decimal("20")
+ABSURD_PRICE_NGN = Decimal("500000")
+
+
+def price_bounds_error(price: Any) -> str | None:
+    """None when the price is plausible, else a short reason naming the bound that failed.
+
+    Reasons: "non-positive", "below-min", "above-max".
+
+    Callers reject the record when this returns a reason and print an `AUDIT_REJECT` line, so a
+    refused price stays distinguishable from a parse failure in the run log.
+
+    A missing or unparseable price is reported as "non-positive": it is not a bound failure, but it
+    is certainly not a price, and it must never reach a min()-based view. Non-finite values (NaN,
+    Infinity) land in the same bucket rather than raising, because Decimal comparisons on NaN raise
+    InvalidOperation and a scraper should not crash on a malformed payload.
+    """
+    if price is None:
+        return "non-positive"
+    try:
+        value = Decimal(str(price))
+    except (InvalidOperation, ValueError, TypeError):
+        return "non-positive"
+    if not value.is_finite():
+        return "non-positive"
+    if value <= 0:
+        return "non-positive"
+    if value < MIN_PRICE_NGN:
+        return "below-min"
+    if value > ABSURD_PRICE_NGN:
+        return "above-max"
+    return None
 
 
 class RateLimitedClient:

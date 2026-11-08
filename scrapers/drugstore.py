@@ -73,10 +73,11 @@ from common import (  # noqa: E402
     db_connect,
     ensure_connection,
     finish_run,
+    price_bounds_error,
     record_price_history,
     start_run,
 )
-from healthplus import ABSURD_PRICE_NGN, parse_pack, source_hash, unit_price_of  # noqa: E402
+from healthplus import parse_pack, source_hash, unit_price_of  # noqa: E402
 
 SOURCE = "drugstore"
 PHARMACY_NAME = "Drugstore.ng"
@@ -146,8 +147,9 @@ def parse_product(body: str, url: str) -> dict[str, Any] | None:
     """One listing candidate from one product page, or None when it cannot be honestly priced.
 
     Returns None -- and is counted as a failure -- for a page with no Product block, no offer, a
-    non-NGN currency, a zero/negative price, or an absurd price. Rejecting at build time matters:
-    a 0.00 row wins every `min()`-based view and becomes "cheapest".
+    non-NGN currency, or a price outside the shared plausible band (common.price_bounds_error:
+    reject < NGN 20 and > NGN 500000, accept exactly 20.00 and exactly 500000.00). Rejecting at
+    build time matters: a 0.00 or 1.00 row wins every `min()`-based view and becomes "cheapest".
     """
     product = ld_product(body)
     if product is None:
@@ -170,7 +172,11 @@ def parse_product(body: str, url: str) -> dict[str, Any] | None:
         price = Decimal(str(offer["price"]))
     except (TypeError, ValueError, ArithmeticError):
         return None
-    if price <= 0 or price > ABSURD_PRICE_NGN:
+    reason = price_bounds_error(price)
+    if reason is not None:
+        # Refuse at build time. The AUDIT_REJECT line keeps a refused price distinguishable from a
+        # parse failure, which still lands in the caller's generic `failed` counter.
+        print(f"AUDIT_REJECT {reason} url={url} price={price:.2f}")
         return None
 
     availability = offer.get("availability")

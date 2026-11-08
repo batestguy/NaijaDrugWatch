@@ -78,10 +78,12 @@ from typing import Any, Iterable
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from common import (  # noqa: E402
+    ABSURD_PRICE_NGN,
     RateLimitedClient,
     archive_jsonl,
     db_connect,
     finish_run,
+    price_bounds_error,
     record_price_history,
     start_run,
 )
@@ -101,9 +103,9 @@ MAX_PAGES = 40
 # the pack is the 46 the title also states. Without this guard, unit_price divided nappies by
 # 18,000 g and made them look near-free per gram.
 MAX_PACK_MASS_G = 5000
-# HealthPlus quotes NGN; a shop whose prices are not in this band is a shape change, not a price.
-ABSURD_PRICE_NGN = Decimal("500000")
-
+# The shared plausible-price band lives in common.price_bounds_error: reject < NGN 20 and
+# > NGN 500000, accept exactly 20.00 and exactly 500000.00. ABSURD_PRICE_NGN is re-exported from
+# here because medplus.py and drugstore.py import it from this module.
 TWO_DP = Decimal("0.01")
 FOUR_DP = Decimal("0.0001")
 
@@ -301,16 +303,21 @@ def build_record(product: dict[str, Any]) -> dict[str, Any] | None:
         return None
 
     price = _price_of(chosen)
-    if price is None or price <= 0:
-        # A zero or missing price cannot be a real listing, and it would win every min()-based
-        # view as the "cheapest" row. Reject at build time rather than only reporting it later.
+    url = f"{BASE_URL}/products/{handle}"
+    reason = price_bounds_error(price)
+    if reason is not None:
+        # A price outside the shared band cannot be a real listing, and it would win every
+        # min()-based view as the "cheapest" row. Reject at build time rather than only reporting
+        # it later. The AUDIT_REJECT line keeps a refused price distinguishable from a parse
+        # failure, which still lands in the caller's generic `failed` counter.
+        print(f"AUDIT_REJECT {reason} url={url} price={price}")
         return None
     pack_size, pack_unit = parse_pack(title)
     prices = [_price_of(v) for v in variants if _price_of(v) is not None]
 
     record = {
         "source": SOURCE,
-        "url": f"{BASE_URL}/products/{handle}",
+        "url": url,
         "handle": handle,
         "raw_title": title,
         "price_ngn": str(price) if price is not None else None,
