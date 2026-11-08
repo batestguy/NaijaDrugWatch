@@ -22,6 +22,33 @@ import streamlit as st
 
 st.set_page_config(page_title="NaijaDrugWatch", page_icon="💊", layout="wide")
 
+# Streamlit renders captions as its body text colour at 60% opacity. Measured 2026-11-08 with
+# axe-core 4.10.2: that blends #2f2d2b to #828180 on white, i.e. 3.88:1, against the 4.5:1 that
+# WCAG 2.2 AA requires at this size (14px normal). Changing the colour alone does nothing visible,
+# because the blend reproduces the same grey -- the opacity is the defect, not the colour.
+#
+# Both are therefore reset here, once, instead of at nine `st.caption` call sites. Full opacity on
+# #2f2d2b measures ~12.6:1. Captions keep their smaller font size, which is what carries the
+# hierarchy now that they are no longer faded.
+st.markdown(
+    """
+    <style>
+    [data-testid="stCaptionContainer"] {
+        opacity: 1 !important;
+        color: #2f2d2b !important;
+    }
+    [data-testid="stCaptionContainer"] p {
+        color: #2f2d2b !important;
+    }
+    [data-testid="stCaptionContainer"] code {
+        color: #2f2d2b !important;
+        background-color: #e8e8e8 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 
 def connection_string() -> str:
     """Pooled host for the app; the direct host is for DDL and long loads."""
