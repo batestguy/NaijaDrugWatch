@@ -56,6 +56,46 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      # The first run failed all eight steps in 74 seconds with no archive written, which means
+      # nothing got past startup. Two causes look identical from the annotations: an empty
+      # DATABASE_URL secret, and dependencies that did not actually install. One step now
+      # distinguishes them and names the fix, because a cron failure at 03:00 has no audience.
+      - name: Preflight
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          python -X utf8 - <<'PY'
+          import os
+          import sys
+          import urllib.parse
+
+          try:
+              import psycopg
+          except Exception as exc:  # noqa: BLE001
+              print(f"::error title=import::psycopg failed to import: {exc}")
+              sys.exit(1)
+          print("psycopg", psycopg.__version__)
+
+          raw = (os.environ.get("DATABASE_URL") or "").strip()
+          if not raw:
+              print("::error title=DATABASE_URL::secret is empty or not set. "
+                    "Settings > Secrets and variables > Actions > New repository secret.")
+              sys.exit(1)
+
+          u = urllib.parse.urlsplit(raw)
+          host = u.hostname or ""
+          print("scheme", u.scheme, "| host", host, "| db", (u.path or "").lstrip("/"))
+          print("pooler host", "-pooler" in host, "| password present", bool(u.password))
+
+          if u.scheme not in ("postgres", "postgresql") or not u.password:
+              print("::error title=DATABASE_URL::not a usable postgres URL "
+                    "(needs scheme postgresql:// and a password)")
+              sys.exit(1)
+          if "-pooler" in host:
+              print("::warning title=poller::pooled host detected; session advisory locks and "
+                    "REFRESH ... CONCURRENTLY need the direct host")
+          PY
+
       # One failing source must not stop the others: each scraper writes its own `scrape_runs` row,
       # including on failure, and that row is what v_pipeline_health reads. The job still fails at
       # the end if anything failed, so a red run is visible.
@@ -116,6 +156,9 @@ jobs:
 
       - name: Report the ledger
         if: always()
+        # Diagnostic only. If it fails it must not add a second red mark on a job that already
+        # failed for a real reason.
+        continue-on-error: true
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
