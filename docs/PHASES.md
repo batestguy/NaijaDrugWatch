@@ -23,7 +23,7 @@ the command under **Gate** has been run and its real output recorded.
 | **P4** | Pharmacy scrapers (HealthPlus, Drugstore.ng, MedPlus) | **all three built** — open only on `unit_price` (52.7% vs the 85% gate) |
 | **P5** | Two-stage matcher (pgvector → rules) | **closed** 2026-11-07 |
 | **P6** | Views proven on real rows | **substantially met** — **24** `is_comparison` cells; `v_price_change_7d` still needs 2026-11-14 |
-| **P7** | Prefect daily flow, 7 green runs | **not started** — needs a scheduler credential before the gate is reachable |
+| **P7** | Daily workflow (GitHub Actions cron), 7 green runs | **built, never run** — needs `DATABASE_URL` in repo secrets plus one manual dispatch |
 | **P8** | Streamlit dashboard + read-only API | **partial** — dashboard renders on live data, **axe gate passes 0 violations**; API and deployment not built |
 | **P9** | Publish: disclosure, attribution, v1 tag | blocked on P8 |
 
@@ -207,16 +207,31 @@ must never be labelled "cheapest".
 
 ---
 
-## P7 — Prefect daily flow · not started
+## P7 — Daily workflow · built, not yet run
 
-**One deployment**, not one per source or view — Prefect Hobby allows 5 and the budget assumes 1.
-Writes `scrape_runs` on every path including failure, then refreshes the matview.
+**The scheduler is GitHub Actions cron, not Prefect** (decision 2026-11-08). The spec names `flows/`
+as a Prefect deliverable; that file does not exist. `.github/workflows/daily.yml` runs the whole
+pipeline in one job: index → details → link → healthplus → medplus → drugstore → match → refresh. The
+swap buys a free, unlimited scheduler with no second account; it costs a retry engine, run history
+beyond the Actions UI, and a backfill button. Recorded as a deviation in `AGENTS.md`.
 
-**Open defect to resolve first.** `v_pipeline_health` groups `scrape_runs`, so a source with zero
-runs produces zero rows — dark, not `STALE`. Either list known sources inside the view or seed one
-placeholder run per source. Decision needed before this gate can be trusted.
+Steps are allowed to fail individually so one broken source does not stop the rest — each scraper
+writes its own `scrape_runs` row on success *and* failure, and that row is what `v_pipeline_health`
+reads. The job still exits non-zero if any step failed.
+
+**Measured durations (2026-11-08):** index ~20 s, details (restricted scope) ~45 min, healthplus
+~1 min, medplus ~25 min, drugstore ~1 min, link/match/refresh seconds. Fits the 6 h job cap with room;
+the full Greenbook sweep (~14 h) does not and must stay restricted or be sharded.
+
+**Still open.** `v_pipeline_health` groups `scrape_runs`, so a source with zero runs produces zero rows
+— dark, not `STALE`. All three pharmacies and both NAFDAC steps have now run, so the view is populated
+today, but a source that silently stops is still invisible rather than flagged.
 
 **Gate.** 7 consecutive days of green runs, and `v_pipeline_health` reports `OK` for every source.
+
+**To make it runnable:** add `DATABASE_URL` to the repo's Actions secrets, then dispatch once by hand
+(`workflow_dispatch`) before trusting the cron. Until that happens the workflow is unproven — written,
+never executed.
 
 **Owner.** `builder`.
 

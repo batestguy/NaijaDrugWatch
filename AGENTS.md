@@ -8,14 +8,14 @@
 - The spec's filename starts with `#`, so it must be quoted in shell: `Get-Content '#SQL NaijaDrugwatch.txt'`, `git add '#SQL NaijaDrugwatch.txt'`. Unquoted it is a PowerShell comment or a glob.
 - Open decisions live in `PLAN.md` §10 and `PROGRESS.md`, not here. The pharmacy set is chosen (HealthPlus, Drugstore.ng, MedPlus; nettpharmacy available as a fourth). **The embedding model is decided: `BAAI/bge-small-en-v1.5`, 384 dims, via fastembed — it matches the existing `vector(384)` column.** Still genuinely undecided: the `unit_price` target (~53% measured vs an 85% gate), and whether the Neon Data API works on the free plan. Do not invent answers.
 - Measurements behind the constraints below: `research/2026-11-06-feasibility-probes.md` (live probes, 6 Nov 2026). Re-probe before trusting a source figure; NAFDAC and the pharmacies change.
-- Deliverable names are fixed by the spec: `scrapers/` (Python), `flows/` (Prefect), `dashboard/` (Streamlit), plus schema / views / seed-data docs and a `README.md` carrying the data-sourcing disclosure.
+- Deliverable names are fixed by the spec: `scrapers/` (Python), `flows/` (Prefect), `dashboard/` (Streamlit), plus schema / views / seed-data docs and a `README.md` carrying the data-sourcing disclosure. **One deliberate deviation (2026-11-08): the scheduler is GitHub Actions cron in `.github/workflows/daily.yml`, not Prefect, so `flows/` does not exist.** The spec's Prefect deployment was replaced because Actions cron is free and unlimited on a public repo, needs no second account or API key, and the Prefect Hobby cap (5 deployments) was buying retries and a run history this pipeline does not yet use. Cost of the swap: no retry engine, no run history beyond the Actions UI, and no backfill button. Say so in the published limitations.
 - SQL-first on Neon Postgres: schema and views are plain `.sql` committed to the repo, run in numbered order, and idempotent (`CREATE TABLE IF NOT EXISTS`, `CREATE OR REPLACE VIEW`) so a rebuild is re-running the files. No dbt, no warehouse layer, no ORM migration framework, even though the global AGENTS.md repo shape shows `dbt/`.
 
 ## Gates (hard constraints, not style)
 
-- $0/month only: Neon Free (100 CU-h, 0.5-1 GB), Prefect Hobby (5 deployments, 500 serverless min/mo), Streamlit Community Cloud (2.7 GB RAM per app), GitHub Actions (free and unlimited on public repos, 6 h max per job), Resend (3,000 emails). No paid or metered service without explicit approval.
-- Repo stays public, because GitHub Actions cron is free only on public repos. `DATABASE_URL` and `PREFECT_API_KEY` live in GitHub Actions secrets or a gitignored local `.env`, never in a tracked file.
-- Prefect Hobby allows 5 deployments: build one daily flow covering all sources, not one deployment per pharmacy or per view refresh.
+- $0/month only: Neon Free (100 CU-h, 0.5-1 GB), Streamlit Community Cloud (2.7 GB RAM per app), GitHub Actions (free and unlimited on public repos, 6 h max per job), Resend (3,000 emails). No paid or metered service without explicit approval. Prefect is no longer used (2026-11-08).
+- Repo stays public, because GitHub Actions cron is free only on public repos. `DATABASE_URL` lives in GitHub Actions secrets or a gitignored local `.env`, never in a tracked file.
+- The whole pipeline is one workflow, `.github/workflows/daily.yml`, not one workflow per source. A GitHub job cannot exceed 6 h, so the full Greenbook sweep (~14 h) must stay restricted or be sharded across days.
 - Supabase Free is an explicit anti-choice (pauses after 7 idle days); the database is Neon. Do not swap it for convenience.
 - Scrapers: honour robots.txt per domain, at most one request every 2 s per domain, custom User-Agent naming the project, product and price fields only. No reviews, no personal data (NDP Act 2023).
 - The Greenbook has **no JSON API** (`/api/*`, `/sitemap.xml`, `/search?q=` all 404) and **no third-party mirror exists**. It is scraped as HTML: 6 category pages give name/form/strength/NRN for 10,899 registrations, and detail pages give status + expiry. With no fallback, archive a dated full dump each run so a block costs freshness, not history. No evasion — no proxy rotation, no headless tricks to defeat a block.
@@ -41,7 +41,7 @@ Spec section 11 is the workflow; section 15 priorities win over convenience:
 3. API-first scrapers (WooCommerce, then Shopify)
 4. SQL views, then the materialised view
 5. Two-stage matcher
-6. Prefect daily deployment
+6. GitHub Actions daily workflow (`.github/workflows/daily.yml`), replacing the spec's Prefect deployment
 7. Streamlit dashboard and Neon Data API
 
 MVP scope guard: three pharmacies in Lagos/Abuja and roughly 50 common drugs across malaria, hypertension, diabetes, and antibiotics. Do not chase national coverage; SMS/USSD/WhatsApp/PWA are post-v1.

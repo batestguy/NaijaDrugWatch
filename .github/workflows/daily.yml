@@ -1,0 +1,133 @@
+name: daily
+
+# The scheduled pipeline. Replaces the Prefect deployment named in the spec: GitHub Actions cron is
+# free and unlimited on a public repo, needs no extra account, and this workflow is one job rather
+# than a five-deployment cap. The trade, recorded in AGENTS.md: no retry engine, no run history
+# beyond the Actions UI, and no backfill button.
+#
+# Times are UTC. 03:00 UTC = 04:00 Africa/Lagos.
+#
+# Measured durations on 2026-11-08, so a regression shows up as a timeout rather than a silent stall:
+#   index ~20 s | details (restricted scope) ~45 min | healthplus ~1 min | medplus ~25 min
+#   drugstore ~1 min | link + match seconds | refresh seconds
+# The GitHub job cap is 6 h; this fits with room, but the FULL Greenbook sweep (~14 h) does not and
+# must stay restricted or be sharded across days.
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: daily
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      PYTHONIOENCODING: utf-8
+      PYTHONUNBUFFERED: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      # The embedding model is ~100 MB and unchanged between runs. Without this cache every run
+      # re-downloads it, which is the slowest part of the matcher step.
+      - name: Cache the embedding model
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/fastembed
+            ~/.cache/huggingface
+          key: fastembed-bge-small-en-v1.5
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # One failing source must not stop the others: each scraper writes its own `scrape_runs` row,
+      # including on failure, and that row is what v_pipeline_health reads. The job still fails at
+      # the end if anything failed, so a red run is visible.
+      - name: Pipeline
+        shell: bash
+        run: |
+          set -uo pipefail
+          FAILED=""
+
+          run_step() {
+            local name="$1"; shift
+            echo "::group::${name}"
+            if "$@"; then
+              echo "ok: ${name}"
+            else
+              echo "::error title=${name}::step failed"
+              FAILED="${FAILED} ${name}"
+            fi
+            echo "::endgroup::"
+          }
+
+          py() { python -X utf8 "$@"; }
+
+          # Regulatory half. The index is 6 pages; the detail sweep is the long step.
+          run_step "nafdac_index"    py scrapers/nafdac_index.py
+          run_step "nafdac_details"  py scrapers/nafdac_details.py --min-similarity 0.50
+          run_step "link_product_nrn" py scripts/link_product_nrn.py --refresh --min-similarity 0.35
+
+          # Market half. API-first sources, then the HTML one.
+          run_step "healthplus"      py scrapers/healthplus.py
+          run_step "medplus"         py scrapers/medplus.py --categories 12,31,32,50,57,58
+          run_step "drugstore"       py scrapers/drugstore.py --limit 200
+
+          # Matching is the gate on the headline metric, not the scraping: new listings are
+          # worthless to the views until they carry a product_id.
+          run_step "match_listings"  py scripts/match_listings.py
+
+          # A stale index is indistinguishable from a quiet market, so the refresh belongs to the
+          # flow rather than to a human remembering.
+          run_step "refresh_index"   py -c "import os, psycopg; psycopg.connect(os.environ['DATABASE_URL'], autocommit=True).execute('refresh materialized view concurrently mv_drug_price_index')"
+
+          if [ -n "${FAILED}" ]; then
+            echo "::error::failed steps:${FAILED}"
+            exit 1
+          fi
+          echo "all steps ok"
+
+      # Archives are dated dumps; they are gitignored and exist so a block costs freshness, not
+      # history. Keeping 14 days in Actions is enough to recover from a bad run.
+      - name: Keep the archives
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: archives-${{ github.run_id }}
+          path: archives/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Report the ledger
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          python -X utf8 - <<'PY'
+          import os
+          import psycopg
+
+          conn = psycopg.connect(os.environ["DATABASE_URL"], autocommit=True)
+          rows = conn.execute("""
+              select id, source, status, record_count, started_at
+              from scrape_runs order by id desc limit 10
+          """).fetchall()
+          for row in rows:
+              print(row)
+          PY

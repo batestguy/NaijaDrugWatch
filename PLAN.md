@@ -49,7 +49,7 @@ seed/fixmedprices.py        CSV       ──→ products + drug_match_rules
                                    matcher (pgvector → rules)
                                             ↓
                         views → mv_drug_price_index → dashboard / API
-flows/daily.py   one Prefect deployment: index → detail delta → prices → match → refresh mv
+.github/workflows/daily.yml   one GitHub Actions workflow: index → detail delta → prices → match → refresh mv
 ```
 
 ## 4. Schema
@@ -109,7 +109,7 @@ Only **66%** of HealthPlus SKUs are medicines (rest are vitamins, pumps, condoms
 | Service | Limit (verified Nov 2026) | Real constraint |
 |---|---|---|
 | Neon Free | 100 CU-h, 0.5–1 GB/project | none at MVP: ~0.1 GB/yr, ~1.5 CU-h/mo |
-| Prefect Hobby | 5 deployments, 500 serverless min/mo | one deployment ≈ 300 min/mo; no retry headroom |
+| GitHub Actions | free/unlimited public repos, **6 h/job** | **the scheduler** since 2026-11-08; full detail backfill ≈ 6.5 h still needs sharding |
 | GitHub Actions | free/unlimited public repos, **6 h/job** | full detail backfill ≈ 6.5 h → shard |
 | Streamlit Cloud | 2.7 GB RAM/app, sleeps 12 h | never load `price_history` into memory |
 | Neon Data API | Free-plan availability **unverified** | if unusable, serve REST from the app |
@@ -124,7 +124,7 @@ Only **66%** of HealthPlus SKUs are medicines (rest are vitamins, pumps, condoms
 | 3 | detail scraper, sharded, **retry on 500 (~10% of pages fail)** | status + expiry ≥95% populated |
 | 4 | HealthPlus end-to-end | 1,197 listings, `unit_price` on ≥85% |
 | 5 | Drugstore.ng + MedPlus; matcher; 6 views | cheapest-per-state returns rows in ≥2 states |
-| 6 | Prefect daily + `scrape_runs` on every path | 7 consecutive green runs |
+| 6 | Daily workflow (GitHub Actions cron) + `scrape_runs` on every path | 7 consecutive green runs |
 | 7 | Streamlit + API | index renders; JSON answers cheapest-per-state |
 
 Detail budget: 11,754 pages ÷ 2 s = **6.5 h**, over the 6 h job cap. Shard 3 × ~2 h runs, or
