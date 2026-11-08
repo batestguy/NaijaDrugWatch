@@ -106,8 +106,23 @@ that file does not exist. Cost of the swap — no retry engine, no run history b
 backfill button — is to be stated in the published limitations.
 
 **Unproven: it has never executed.** It parses (7 steps; `schedule` and `workflow_dispatch`), and every
-flag it calls was checked against the scripts' argparse, but it needs `DATABASE_URL` in the repo's
-Actions secrets and one manual dispatch before the cron can be trusted.
+flag it calls was checked against the scripts' argparse. Run `42464123751` (2026-11-08) is the first to
+get past preflight and was still inside `Pipeline` at shutdown; its outcome is recorded by the next
+session, not here.
+
+**Four failed dispatches before it, and the cause was the secret, not the workflow.** The first run
+failed all eight steps in 74 seconds. A preflight step was added to say why; it reported that
+`DATABASE_URL` was set but `urlsplit` found no scheme. A fingerprint step then showed the stored secret
+was **28 characters starting with `t`, with no `://`**, against the real value's **120 characters** —
+a different string entirely. Fixed by `gh secret set DATABASE_URL` from the local `.env`. Two of those
+four runs were wasted: one was a *re-run*, which replays the old commit and cannot pick up a new
+workflow file, and one added a normalisation step before checking what the value actually was.
+
+**Cost note for the daily schedule:** `medplus.py --categories 12,31,32,50,57,58` has no `--limit`, and
+category 12 alone is 1,395 products at a 2 s rate limit, so the step is ~2 h10 and the whole run ~3 h15
+— inside the 5 h job cap, but it means MedPlus's rate limit sets the floor for every daily run. Bounding
+it (a `--limit` with rotating categories, or weekly full sweeps) is a freshness-versus-cost decision,
+not a bug.
 
 ### T2 — the `unit_price` slash-strength defect does not affect stored data
 
