@@ -1,6 +1,129 @@
 # Progress
 
-Single state file for NaijaDrugWatch. Last updated **2026-11-07 (close of day)**.
+Single state file for NaijaDrugWatch. Last updated **2026-11-08 (mid-session, after the VPN fix)**.
+
+## 2026-11-08 — VPN outage, Drugstore.ng added, accessibility gate closed
+
+**RESOLVED — cause was the local Proton VPN, not Neon.** Both connection strings failed identically
+(`ConnectionTimeout`, preceded by "server closed the connection unexpectedly") while DNS resolved and
+the console showed the project healthy. The finding that settled it was a **control experiment**: a
+deliberately impossible hostname (`ep-zzzzzzzz-000000.c-7…`) failed in exactly the same way — same
+wildcard DNS, same TCP accept, same TLS reset — so nothing endpoint-specific was involved.
+`Find-NetRoute` then showed all three Neon edge IPs routing via **`ProTUN`** (Proton VPN). Neon's TLS
+on port 5432 is reset inside that tunnel. Disconnecting the VPN restored both hosts immediately.
+
+Cost: most of a session. The misleading signals were all real — console healthy, status page
+operational, port 5432 open, 45 MB of data intact, quota at 1.22/100 CU-h. **Next time this shape
+appears, run the bogus-hostname control first**; it takes one call and rules the database out.
+
+Two jobs died during the outage and **neither wrote anything**:
+
+| Job | Outcome |
+|---|---|
+| `scrapers/medplus.py --categories 12 --max-pages 80` | Failed at `db_connect` before the first category fetch. No `scrape_runs` row (the handler requires `run_id`), no archive, no listings. `medplus_expand.log` holds only the failure |
+| `dashboard/app.py` axe audit | Not possible while down. The dashboard did render a **clean error state** ("Database unavailable: OperationalError…") rather than a traceback — new evidence for the empty-state gap below |
+
+**Drugstore.ng: price does NOT vary by state route — verified by hand, not from the agent's report.**
+Fetched `https://drugstore.ng/product/coartem-80480-tablets-artemether-lumefantrine` and the same
+URL with `?state=kano`: **byte-identical**, sha256 `1A33F0288D445538…`, 93,435 bytes / 93,295 chars.
+The 908 state/LGA URLs are delivery landing pages carrying no prices. This closes
+`PLAN.md` §12's first open question.
+
+Two things the probe also produced, both of which matter more than the answer:
+
+1. **Currency is provable from the payload.** A JSON-LD block carries
+   `"priceCurrency":"NGN","price":9350,"availability":"…InStock"` — the same class of structured
+   evidence as HealthPlus's `Shopify.currency`, so no currency needs to be assumed.
+2. **Each product page is one named seller with its own state:**
+   `company:{company_name:…, state:"Lagos", pcn_license_…}`. So drugstore.ng is a marketplace with a
+   per-offer seller, not "one national price". It still cannot create `is_comparison` cells — one
+   seller per page — but the seller carries a real state, which is a modelling choice, not a fact.
+
+**Decided 2026-11-08.** One `pharmacies` row for `Drugstore.ng` with `state = 'National'`; the seller
+name and seller state are kept in the JSONL archive only. Rationale: sellers multiply pharmacy rows
+and the `is_comparison` semantics before we know whether any two sellers duplicate a drug. Revisit
+after measuring seller density — if two sellers carry the same product, seller-as-pharmacy becomes a
+genuine comparison source and earns the schema change.
+
+**Agent-reported, NOT independently verified** (`builder`, `ses_e46ce33f4ffeAki7ESf0q1TA0q`, step
+budget exhausted): the live sitemap holds 16,241 `<loc>` entries — 11,157 `/product/`, 1,182
+`/medicines/`, 908 state/LGA — which makes `PLAN.md` §2's "13,202 product URLs" wrong. I verified
+only the two product pages above; the sitemap counts are one fetch away from being settled.
+`scrapers/drugstore.py` was never written.
+
+**Doc drift corrected:** `docs/PHASES.md` still called P2 "next", P5 "blocked on the embedding model"
+(decided 2026-11-07), P6 "blocked on P5", and P4 "2 sources left" with MedPlus unbuilt. Fixed today —
+the status table now reads P5 **closed**, P6 **partial**, P7 **not started**.
+
+### `scrapers/drugstore.py` written — dry-run only, DB gate still open
+
+Built against the JSON-LD `Product` block rather than the `__NUXT__` payload, because the payload is
+minified to variable references (`company_name:h`) and JSON-LD is a published contract:
+
+```json
+{"@type":"Product","name":"Coartem 80/480 Tablets (...)","sku":3953,
+ "offers":{"priceCurrency":"NGN","price":9350,"availability":".../InStock"}}
+```
+
+**Gate met 2026-11-08, after the VPN was disconnected.** `drugstore.py --limit 20` →
+`scrape_runs id=21 status=success record_count=20`, `listings: inserted=20 unchanged=0
+price_history+=20`, `pharmacy_id=10`. Verified against the database, not the printout:
+
+| Check | Result |
+|---|---|
+| `pharmacies` | `(3, HealthPlus, Lagos)`, `(8, MedPlus, Lagos)`, `(10, Drugstore.ng, National)` |
+| listings per pharmacy | 2,396 / 313 / **20** |
+| listings with null or `<= 0` price | **0** |
+| `v_latest_listings` | 1,510 → **1,530** |
+| `v_cheapest_per_product_state` | 85 rows, **6 comparisons — unchanged** |
+
+The unchanged comparison count is the prediction from the design note above: one seller per page
+cannot create an `is_comparison` cell. Drugstore adds breadth and suspicious-listing evidence, nothing
+more. Prices ₦1,440–₦308,000, all NGN from JSON-LD.
+
+Earlier, while the DB was down, `--dry-run --limit 5` proved the parser without it:
+`products fetched 5 / records 5 / failed 0`, archive
+`archives/drugstore/drugstore-2026-11-08.jsonl.gz` sha256 `9dfeb8058d2f69a5…`.
+
+**Accessibility gate closed 2026-11-08.** axe-core 4.10.2, WCAG 2.0/2.1/2.2 A+AA, against a live
+dashboard: **0 violations on all five tabs** (Price index, Cheapest by state, Suspicious
+registrations, Pipeline health, Limits). One violation existed and was fixed; the cause is worth
+recording because the first two fixes were wrong:
+
+- Reported: `color-contrast`, serious, 4 nodes, `#828180` on white = **3.88:1**, needed 4.5:1.
+- Changing the caption colour did **nothing** — the rendered grey was identical, and
+  `getComputedStyle` even reported the new dark colour while the screen stayed grey.
+- Cause: Streamlit sets **`opacity: 0.6`** on `[data-testid="stCaptionContainer"]`. `#2f2d2b` at 60%
+  over white blends to ≈`#828180`. The opacity was the defect, not the colour.
+- Fix in `dashboard/app.py`, once: `opacity: 1` plus the body colour. Now ~12.6:1. Hierarchy comes
+  from the smaller font size.
+
+Method note: control elements with known colours confirmed axe itself was right while the DOM
+inspector was misleading. Screenshot at 2.2× zoom is what settled it — `getComputedStyle` cannot see
+a blend.
+
+**Defect found by running it, and it is not only mine.** `parse_pack()` reads a slash strength as a
+pack count: `Coartem 80/480 Tablets` became **`pack_size=480, pack_unit=tab`**, i.e.
+**₦19.48/tablet** — a drug that looks almost free per tablet and wins every unit-price comparison.
+`80/480` is artemether 80 mg / lumefantrine 480 mg. Fixed in `drugstore.py` only, by stripping
+`\d+/\d+` before pack parsing (`STRENGTH_PAIR_RE`); the raw title is still stored verbatim. Proven:
+
+| Title | `parse_pack` today | with the guard |
+|---|---|---|
+| `Coartem 80/480 Tablets` | (480, tab) **wrong** | (None, None) |
+| `Coartem 80/480 Tablets x6` | (480, tab) **wrong** | (6, tab) |
+| `Amlodipine Sandoz 10mg Tablets x28` | (28, tab) | (28, tab) — unchanged |
+| `Lonart 80/480mg x6` | (6, None) | (6, None) — unchanged |
+
+**HealthPlus is still exposed.** It calls the same `parse_pack`, so any listing titled with a slash
+strength already carries a wrong `unit_price`, and that feeds `v_cheapest_per_product_state`. The fix
+is the same one line, but changing shared parsing re-derives many rows at once and needs its own
+measurement — the same reason the `2019's`/`strips` issues were left open (see below). Not fixed.
+
+**Sampling caveat for the gate run:** the sitemap is ordered by SKU id, so the first records are
+devices — `Fine Test Auto Coding Blood Glucose Machine`, two `First Aid Box`, an Omron BP monitor, a
+test-strip refill. `--limit N` therefore samples the head of the catalogue, not a representative
+slice, and `pack parsed 0/5` on that sample says nothing about medicine coverage.
 
 ## Handoff — start here tomorrow
 
@@ -248,6 +371,7 @@ relaunch cost 15 minutes for no work.
 | 2026-11-06 | Seed CSV loads `products` + `drug_match_rules` only. It has no NRN/status/expiry, and its `price` is not NGN. |
 | 2026-11-06 | `vector(384)` is a placeholder pending the embedding model. **Resolved 2026-11-07: `BAAI/bge-small-en-v1.5` via fastembed (ONNX, CPU, no torch), 384 dims — no migration needed.** |
 | 2026-11-06 | Pharmacy set: HealthPlus, Drugstore.ng, MedPlus; nettpharmacy.com (Shopify, NGN confirmed) available as a fourth. |
+| 2026-11-08 | **Drugstore.ng is registered as one `pharmacies` row with `state = 'National'`.** Its price does not vary by state route (byte-identical pages), and each product page names only one seller, so it can never create a comparison. The per-offer seller is archived in JSONL, not stored. Revisit seller-as-pharmacy only after measuring whether two sellers carry the same product. |
 
 ## Known risks
 

@@ -20,11 +20,11 @@ the command under **Gate** has been run and its real output recorded.
 | **P1** | Seed catalogue (products + match rules) | **closed** |
 | **P2** | NAFDAC Greenbook index (10,906 NRNs) | **closed** 2026-11-07 |
 | **P3** | NAFDAC Greenbook detail pages | **partial** — 572 registrations at the 0.50 scope |
-| **P4** | Pharmacy scrapers (HealthPlus, Drugstore.ng, MedPlus) | **partial** — HealthPlus in, 2 sources left |
-| **P5** | Two-stage matcher (pgvector → rules) | **partial** — product→NRN link done; listing matcher blocked on the embedding model |
-| **P6** | Views proven on real rows | blocked on P5 |
-| **P7** | Prefect daily flow, 7 green runs | blocked on P6 |
-| **P8** | Streamlit dashboard + read-only API | **partial** — dashboard renders on live data; API not built |
+| **P4** | Pharmacy scrapers (HealthPlus, Drugstore.ng, MedPlus) | **all three built** — open only on `unit_price` (52.7% vs the 85% gate) |
+| **P5** | Two-stage matcher (pgvector → rules) | **closed** 2026-11-07 |
+| **P6** | Views proven on real rows | **partial** — 6 `is_comparison` cells; `v_price_change_7d` needs 2026-11-14 |
+| **P7** | Prefect daily flow, 7 green runs | **not started** — needs a scheduler credential before the gate is reachable |
+| **P8** | Streamlit dashboard + read-only API | **partial** — dashboard renders on live data, **axe gate passes 0 violations**; API and deployment not built |
 | **P9** | Publish: disclosure, attribution, v1 tag | blocked on P8 |
 
 P4 has no dependency on P2/P3 and can run **in parallel** with them. That is the first genuine
@@ -62,7 +62,7 @@ consecutive runs. Recorded in `PROGRESS.md`.
 
 ---
 
-## P2 — Greenbook index scraper · next
+## P2 — Greenbook index scraper · closed 2026-11-07
 
 **Why it matters.** This is the regulatory half of the join. Without it every listing is
 "unverified", and `v_suspicious_listings` can never return a row.
@@ -149,8 +149,8 @@ the views are unaffected.
 **Gate NOT met on `unit_price`: 52.7%** (631 of 1,197), against an ≥85% target. Cause is the
 source, not the parser: 428 titles state a count with no form word (`Adalat LA 30 mg X 30`), and
 `product_type` is a therapeutic category (`Hypertension`), not a dosage form. Assigning a unit by
-guess would corrupt the exact comparison `unit_price` exists to make. Drugstore.ng and MedPlus
-remain unbuilt, so P4 is open on two counts.
+guess would corrupt the exact comparison `unit_price` exists to make. Drugstore.ng remains unbuilt,
+so P4 is open on two counts. MedPlus was built later the same day and took comparisons from 0 to 6.
 
 **Two parsing defects found and fixed** while measuring: `7-18kg x46` on a nappy title was read as
 18,000 g (the baby's weight range became the pack), and a zero-price variant would have been
@@ -168,9 +168,10 @@ justified, capped at three concurrent.
 `drug_match_rules` on strength, form and active ingredient. Similarity-only or pg_trgm-only matching
 is the explicitly rejected failure mode.
 
-**Blocker, genuinely open.** `products.embedding` is `vector(384)` — a **placeholder**. The embedding
-model is undecided, and the dimension must match whatever is chosen. Do not build stage one against
-384 until that decision is made.
+**Blocker — resolved 2026-11-07.** `products.embedding` is `vector(384)`, and the model was chosen to
+fit it: `BAAI/bge-small-en-v1.5` via fastembed (ONNX, CPU, no torch), 384 dims, so no migration was
+needed. The table still said "embedding model undecided" after the decision was made; that is why
+this paragraph is historical rather than a live blocker.
 
 **Result (2026-11-07).** Stage one and two both built in `scripts/match_listings.py`:
 BAAI/bge-small-en-v1.5 (ONNX, 384 dims, matching `vector(384)` exactly, so no migration), top-10
@@ -190,7 +191,7 @@ are not in the 597-name seed at all.
 
 ---
 
-## P6 — Views proven on real rows · blocked on P5
+## P6 — Views proven on real rows · partial
 
 All six objects already execute; none has seen real data. This phase is about *numbers*, not
 compilation: `v_cheapest_per_product_state` must show `is_comparison = true` somewhere (Lagos/FCT
@@ -206,7 +207,7 @@ must never be labelled "cheapest".
 
 ---
 
-## P7 — Prefect daily flow · blocked on P6
+## P7 — Prefect daily flow · not started
 
 **One deployment**, not one per source or view — Prefect Hobby allows 5 and the budget assumes 1.
 Writes `scrape_runs` on every path including failure, then refreshes the matview.
@@ -228,6 +229,11 @@ Streamlit Community Cloud (2.7 GB per app), reading the pooled connection string
 
 **Gate.** Dashboard renders the state-by-drug index; API answers cheapest-product-per-state;
 zero axe violations on audited views (WCAG 2.2 AA is a release gate, not a nice-to-have).
+
+**Result (2026-11-08) — accessibility half satisfied, API half open.** axe-core 4.10.2 over WCAG
+2.0/2.1/2.2 A+AA on a live dashboard: **0 violations on all five tabs**. The one real violation was a
+contrast failure caused by Streamlit's `opacity: 0.6` on captions, fixed in `dashboard/app.py`
+(≈12.6:1 now). The dashboard is still **not deployed** and the read-only API does not exist.
 
 **Owner.** `builder`. **Review.** `ship-reviewer` for the accessibility gate.
 
@@ -273,7 +279,7 @@ one command or one file — P0 and P1 were not parallelisable by construction. F
 
 | Decision | Blocks | Default if nobody decides |
 |---|---|---|
-| Embedding model and dimension | P5 | stay on `vector(384)`, stage one unusable |
+| ~~Embedding model and dimension~~ | ~~P5~~ | **resolved 2026-11-07** — `BAAI/bge-small-en-v1.5`, 384 dims |
 | **Who writes `price_history`** | **resolved 2026-11-07** | `common.record_price_history()` — one row per new listing, idempotent |
 | `unit_price` target: accept ~53% or add form-word detection | P4 | P4 stays open |
 | Shard vs 50-drug scope for detail pages | P3 | shard 3 × ~2 h |

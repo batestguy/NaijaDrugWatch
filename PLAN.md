@@ -171,12 +171,17 @@ payload, no compare-pharmacies text). So Drugstore is a national **single-price*
 per-pharmacy marketplace view. "Cheapest per state" is therefore near-degenerate from that
 source alone: one price nationwide. State-level *variation* needs pharmacies with their own
 pricing, which means HealthPlus/MedPlus (Lagos) plus whatever else can be found.
-Unverified: whether that one price changes with the selected state/LGA.
+Unverified: resolved 2026-11-08 — the price does **not** change with the selected state/LGA
+(byte-identical pages); the seller's own `state` is in the payload instead.
 
 ## 12. Unproven
 
-- Does a Drugstore.ng product page show **several pharmacies' prices** (marketplace) or one
-  platform price? This decides whether pharmacy #2 and #3 need real scrapers at all.
+- ~~Does a Drugstore.ng product page show **several pharmacies' prices** (marketplace) or one
+  platform price?~~ **Answered 2026-11-08.** One named seller per page
+  (`company:{company_name, state:"Lagos", pcn_license_…}`), so not a multi-seller comparison view —
+  but not a platform price either. Price is identical under any `?state=` route (byte-identical
+  pages, sha256 `1A33F0288D445538…`). Currency provable from JSON-LD `"priceCurrency":"NGN"`.
+  Evidence and the modelling decision it forces: `PROGRESS.md` 2026-11-08.
 - MedPlus catalogue size (paginator clamps at 70, per-page count unknown).
 - Neon Data API on Free.
 - Second half of the NAFDAC status sample (IDs 6,375–12,500); exact ID bound in 12,520–12,599.

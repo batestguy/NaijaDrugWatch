@@ -18,6 +18,10 @@ data/
 # Date-stamped scraper dumps. Local working copies only; the published archive goes to HF Datasets.
 archives/
 
+# --- run logs ---
+# Local scraper/flow stdout capture. Evidence worth keeping goes into PROGRESS.md, not here.
+*.log
+
 # --- os / editor ---
 .DS_Store
 Thumbs.db
