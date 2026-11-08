@@ -10,9 +10,9 @@ The pipeline works end to end. Three pharmacies are loaded, the matcher runs, th
 **115 cells of which 24 are real comparisons**, and the dashboard shows both a cheapest-pack and a
 lowest-known-unit-price answer per row.
 
-`.github/workflows/daily.yml` is the scheduler. Run `42464123751` was dispatched at **08:43 UTC** and
-was still inside `Pipeline` when the session ended — **its outcome is not recorded here; check it
-first.** `gh run view 42464123751 --json status,conclusion`.
+`.github/workflows/daily.yml` is the scheduler. **Run `42464123751` completed green on 2026-11-08**
+(dispatched 08:43 UTC, finished 10:15 UTC, 1 h 32 m) — the first successful execution. That is **one**
+green run: the seven-consecutive-days gate needs the cron to fire on six more days, starting 2026-11-09.
 
 | Object | Value |
 |---|---|
@@ -22,6 +22,29 @@ first.** `gh run view 42464123751 --json status,conclusion`.
 | `v_suspicious_listings` | 124 |
 | `mv_drug_price_index` | 135 |
 | Pharmacies | 3 — HealthPlus, MedPlus (both Lagos), Drugstore.ng (**National**) |
+
+### The daily run works — run 42464123751, green
+
+First successful execution, 2026-11-08, **1 h 32 m**, every step `success`. What it wrote:
+
+| Source | `scrape_runs` | Records |
+|---|---|---|
+| `nafdac_greenbook` | 24 | **10,912** (up from 10,906 — the register is alive) |
+| `nafdac_details` | 25 | 576 |
+| `healthplus` | 26 | 1,194 |
+| `medplus` | 27 | **833** |
+| `drugstore` | 28 | 200 |
+
+`v_pipeline_health` reports **OK for all five sources**, and `mv_drug_price_index` now holds two days
+(2026-11-07 and 2026-11-08), so the refresh step works from the runner. `v_cheapest_per_product_state`
+is **118 cells / 24 comparisons**; `v_suspicious_listings` 127. Suspect prices stayed out:
+0 rows under ₦20 in `v_latest_listings`, lowest price ₦50.
+
+**A coverage caveat this exposed.** The workflow runs `medplus.py` with `MAX_PAGES = 40`, so it
+discovers **833** products, against **1,395** in a manual run with `--max-pages 80`. The daily job is a
+subset of the catalogue, which is why it finishes in 1 h 32 m rather than the ~3 h the missing
+`--limit` suggested. That is a coverage decision to make deliberately, not a bug — but do not read
+"green" as "whole catalogue".
 
 ### What this session produced, and what to trust
 
