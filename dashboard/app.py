@@ -109,6 +109,52 @@ def naira(value) -> str:
     return f"₦{float(value):,.0f}"
 
 
+def naira_unit(value) -> str:
+    """A cost per unit, or the word `unknown` -- never a number we cannot justify.
+
+    `unit_price` is NULL where the pack size could not be parsed. Dividing the pack price by a
+    size whose unit is missing would invent a per-unit figure, so there is deliberately no
+    fallback to `price_ngn / pack_size` here. Two decimals because a per-tablet price is a
+    fraction of a naira and rounding to whole naira would lose the ranking.
+    """
+    if value is None or pd.isna(value):
+        return "unknown"
+    return f"₦{float(value):,.2f}"
+
+
+def cheapest_table(
+    frame: pd.DataFrame, pharmacy_column: str, show_pharmacy_count: bool = False
+) -> pd.DataFrame:
+    """Display frame shared by the comparison and the single-pharmacy table.
+
+    The two price columns say different things and the headers carry that: "Pack price" is what
+    the pack costs, "Lowest known unit price" is the lowest cost per unit *among the rows whose
+    pack size could be parsed*. It is not "best value" -- where the cheapest pack's size is
+    unknown, a pricier, larger pack wins that ranking and the cheaper one is invisible. The
+    `unknown` strings are the other half of that: they mark a claim we cannot make.
+
+    `show_pharmacy_count` keeps the "Pharmacies" column on the comparison table only, where the
+    count is what makes a comparison a comparison.
+    """
+    rows = frame.reset_index(drop=True)
+    table = pd.DataFrame(
+        {
+            "Product": rows["canonical_name"],
+            "State": rows["state"],
+            pharmacy_column: rows["cheapest_pharmacy"],
+            "Pack price": rows["cheapest_pack_price"].map(naira),
+            "Cheapest pack per unit": rows["unit_price"].map(naira_unit),
+            "Lowest known unit price": rows["best_unit_unit_price"].map(naira_unit),
+            "Lowest unit price from": rows["best_unit_pharmacy"].map(
+                lambda name: "unknown" if name is None or pd.isna(name) else name
+            ),
+        }
+    )
+    if show_pharmacy_count:
+        table["Pharmacies"] = rows["pharmacy_count"]
+    return table
+
+
 # ------------------------------------------------------------------------------ header
 st.title("NaijaDrugWatch")
 st.caption(
@@ -182,62 +228,56 @@ with tabs[0]:
 with tabs[1]:
     st.subheader("Cheapest per state")
     st.caption(
-        "`v_cheapest_per_product_state`, split by `is_comparison`. The left table is a real "
-        "comparison: two or more pharmacies quote the same product in that state. The right table "
-        "is a SINGLE pharmacy's price — a national price, not a comparison, and it is not labelled "
-        "cheapest."
+        "`v_cheapest_per_product_state`, split by `is_comparison`. Every row carries two answers: "
+        "the lowest sticker price (`cheapest_pack_*`) and the lowest cost per unit among the rows "
+        "whose pack size could be parsed (`best_unit_*`). The comparison table is a real "
+        "comparison: two or more pharmacies quote the same product in that state. The "
+        "single-pharmacy table below it is ONE pharmacy's price — a national price, not a "
+        "comparison, and it is not labelled cheapest."
     )
     cheapest = query(
-        "select canonical_name, state, cheapest_pharmacy, price_ngn, unit_price, pharmacy_count,"
-        " is_comparison, url from v_cheapest_per_product_state order by canonical_name"
+        "select canonical_name, state, cheapest_pharmacy, cheapest_pack_price, unit_price,"
+        " best_unit_unit_price, best_unit_pharmacy, pharmacy_count, is_comparison"
+        " from v_cheapest_per_product_state"
+        " order by canonical_name, state, cheapest_pack_price"
     )
     if cheapest.empty:
         st.info("No matched listings yet, so no price can be attributed to a product.")
     else:
-        left, right = st.columns(2)
         comparable = cheapest[cheapest["is_comparison"]]
         single = cheapest[~cheapest["is_comparison"]]
-        with left:
-            st.markdown(f"**Comparisons ({len(comparable)})**")
-            if comparable.empty:
-                st.warning(
-                    "None yet. A comparison needs two pharmacies quoting the same product in the "
-                    "same state; with one pharmacy every row is a single-shop price."
-                )
-            else:
-                st.dataframe(
-                    comparable[
-                        ["canonical_name", "state", "cheapest_pharmacy", "price_ngn", "pharmacy_count"]
-                    ].rename(
-                        columns={
-                            "canonical_name": "Product",
-                            "state": "State",
-                            "cheapest_pharmacy": "Cheapest",
-                            "price_ngn": "Price",
-                            "pharmacy_count": "Pharmacies",
-                        }
-                    ),
-                    width="stretch",
-                    hide_index=True,
-                )
-                st.caption(
-                    "Cheapest in state means: lowest quoted price among the pharmacies we scrape "
-                    "for that product there — not among all pharmacies in Nigeria."
-                )
-        with right:
-            st.markdown(f"**Single-pharmacy prices ({len(single)})** — not a comparison")
+        st.markdown(f"**Comparisons ({len(comparable)})**")
+        if comparable.empty:
+            st.warning(
+                "None yet. A comparison needs two pharmacies quoting the same product in the "
+                "same state; with one pharmacy every row is a single-shop price."
+            )
+        else:
             st.dataframe(
-                single[["canonical_name", "state", "cheapest_pharmacy", "price_ngn"]].rename(
-                    columns={
-                        "canonical_name": "Product",
-                        "state": "State",
-                        "cheapest_pharmacy": "Pharmacy",
-                        "price_ngn": "Price",
-                    }
-                ),
+                cheapest_table(comparable, "Cheapest", show_pharmacy_count=True),
                 width="stretch",
                 hide_index=True,
             )
+            st.caption(
+                "Cheapest in state means: lowest quoted price among the pharmacies we scrape "
+                "for that product there — not among all pharmacies in Nigeria."
+            )
+        st.markdown(f"**Single-pharmacy prices ({len(single)})** — not a comparison")
+        st.dataframe(
+            cheapest_table(single, "Pharmacy"),
+            width="stretch",
+            hide_index=True,
+        )
+        known_unit = int(cheapest["best_unit_unit_price"].notna().sum())
+        st.caption(
+            f"{known_unit} of {len(cheapest)} cells shown have a known unit price "
+            f"({int(comparable['best_unit_unit_price'].notna().sum())} of {len(comparable)} "
+            f"comparisons, {int(single['best_unit_unit_price'].notna().sum())} of {len(single)} "
+            f"single-pharmacy); the other {len(cheapest) - known_unit} show `unknown` because the "
+            "pack size could not be read. Ranked only where pack size could be read; where the "
+            "cheapest pack's size is unknown this is the lowest known price per unit, not "
+            "necessarily the best value."
+        )
 
 # ------------------------------------------------------------------------ suspicious
 with tabs[2]:
