@@ -63,6 +63,36 @@ on that basis.
 Checked and **not** a problem: the matcher does not merge dosage forms. **0 cells mix `ml` with `tab`**;
 `product_id` separates suspensions from tablets correctly.
 
+### T5 — suspect prices are flagged, not deleted
+
+`schema/005_suspect_prices.sql`: `pharmacy_listings.price_suspect` (`NOT NULL DEFAULT false`), every
+stored row under **₦20** flagged (**14** rows: three at ₦1.00, eleven at ₦10.97–11.00), and
+`v_latest_listings` redefined to exclude flagged rows. Nothing deleted, no price rewritten — all 14 rows
+are still in the table.
+
+| Gate | Value |
+|---|---|
+| `v_latest_listings` | 2,613 → **2,599** (delta 14) |
+| Lowest price in it | **₦50.00**, 0 rows under ₦20 |
+| `v_cheapest_per_product_state` | **115 / 24 comparisons** — unchanged |
+| `mv_drug_price_index` | 135 rows, min ₦140 — untouched |
+
+₦20 is the threshold because the data has an empty band: nothing between ₦11 and **₦50**.
+
+**Three limits, all deliberate:**
+
+1. **The flag decays.** New rows default `false`, so a future ₦1 listing is stored *unflagged* and
+   stays visible until `005` is re-run. **T5 fixes what is stored, not the next scrape.** Build-time
+   rejection in the three scrapers is the durable fix and is not built.
+2. **`v_price_change_7d` is unprotected** — it selects `from pharmacy_listings` directly
+   (`schema/003_views.sql`), not from `v_latest_listings`. It returns 0 rows today, which hides it.
+3. **`mv_drug_price_index` is unprotected** — it reads `price_history`. Clean today only because 0
+   `price_history` rows under ₦20 have a matched product.
+
+**Also found:** `healthplus.py:304` rejects only `price <= 0` on the insert path. `ABSURD_PRICE_NGN`
+is computed at `:509` **for the report only** and never enforced, so a ₦900,000 typo would be stored.
+The earlier audit fixed the zero-price case; the upper bound has never been enforced.
+
 ### T2 — the `unit_price` slash-strength defect does not affect stored data
 
 31 latest HealthPlus rows contain a slash pair; **0** have a stored pack differing from the guarded
