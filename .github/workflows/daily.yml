@@ -56,13 +56,13 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      # The first run failed all eight steps in 74 seconds with no archive written, which means
-      # nothing got past startup. Two causes look identical from the annotations: an empty
-      # DATABASE_URL secret, and dependencies that did not actually install. One step now
-      # distinguishes them and names the fix, because a cron failure at 03:00 has no audience.
+      # Run 2 revealed the secret is set but is not a bare URL: urlsplit found no scheme and put the
+      # whole value in the path, which is what happens when the value includes the "DATABASE_URL="
+      # key or surrounding quotes. This step normalises it and writes the clean value to
+      # GITHUB_ENV so every later step uses it, and warns that it did so.
       - name: Preflight
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          RAW_DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           python -X utf8 - <<'PY'
           import os
@@ -76,24 +76,41 @@ jobs:
               sys.exit(1)
           print("psycopg", psycopg.__version__)
 
-          raw = (os.environ.get("DATABASE_URL") or "").strip()
+          raw = (os.environ.get("RAW_DATABASE_URL") or "").strip()
           if not raw:
               print("::error title=DATABASE_URL::secret is empty or not set. "
                     "Settings > Secrets and variables > Actions > New repository secret.")
               sys.exit(1)
 
-          u = urllib.parse.urlsplit(raw)
+          # Tolerate a pasted key name or wrapping quotes, but say so rather than silently fixing it.
+          cleaned = raw
+          for prefix in ("DATABASE_URL=", "database_url="):
+              if cleaned.startswith(prefix):
+                  cleaned = cleaned[len(prefix):]
+          cleaned = cleaned.strip().strip('"').strip("'").strip()
+
+          if cleaned != raw:
+              print("::warning title=DATABASE_URL::secret had a key name or quotes around it; "
+                    "normalised. Re-save it as a bare connection URL to silence this.")
+
+          u = urllib.parse.urlsplit(cleaned)
           host = u.hostname or ""
           print("scheme", u.scheme, "| host", host, "| db", (u.path or "").lstrip("/"))
           print("pooler host", "-pooler" in host, "| password present", bool(u.password))
 
-          if u.scheme not in ("postgres", "postgresql") or not u.password:
-              print("::error title=DATABASE_URL::not a usable postgres URL "
-                    "(needs scheme postgresql:// and a password)")
+          if u.scheme not in ("postgres", "postgresql") or not u.password or not host:
+              print("::error title=DATABASE_URL::not a usable connection URL. It must start with "
+                    "the postgresql scheme and contain a user, a password, a host and a dbname.")
               sys.exit(1)
           if "-pooler" in host:
               print("::warning title=poller::pooled host detected; session advisory locks and "
                     "REFRESH ... CONCURRENTLY need the direct host")
+
+          env_file = os.environ.get("GITHUB_ENV")
+          if env_file:
+              with open(env_file, "a", encoding="utf-8") as handle:
+                  handle.write(f"DATABASE_URL={cleaned}\n")
+              print("handed the normalised value to later steps")
           PY
 
       # One failing source must not stop the others: each scraper writes its own `scrape_runs` row,
