@@ -1,0 +1,99 @@
+--- expand_catalogue dry run ---
+products in catalogue      1,074
+unmatched listings         3,428 rows, 2,445 distinct titles
+  of those, the latest row per URL 2,437
+register rows available    10,912
+candidate floor            trigram similarity >= 0.35, max 8 per title
+candidate generation       7.1s
+
+1. candidate pairs (one shop title + one register row)
+   pairs considered 4,128
+   rejection reason                     count    share
+   name does not overlap the title       2,630    63.7%
+   strength disagrees                      927    22.5%
+   accepted                                298     7.2%
+   register row lacks a strength or a form      151     3.7%
+   register strength is unparseable        102     2.5%
+   register name has no distinctive token (no rule possible)       14     0.3%
+   dosage form incompatible                  6     0.1%
+   TOTAL                                 4,128
+   accepted pairs whose title states no strength: 75 (stage two will refuse these: no strength in the title, so no equality test passes)
+
+2. products
+   register rows accepted (pairs)   298
+   distinct product triples         204
+     already in the catalogue       0 (skipped)
+     new                            204
+   cap                              2,000 -> ok
+   WARN 1 new products share a name and strength with an existing product under a different form label:
+        Meloxicam                                    7.5 mg       Tablet
+
+3. what each new product needs
+   with a match rule                204 of 204
+   without a rule (no name token)   0
+   embedded                         204 products + 2,445 titles at 384 dims (53.9s)
+
+4. listings that would then match  [stage one + stage two, using match_listings.match_all]
+   unmatched listings               3,428
+   would attach to a new product    277 rows across 166 titles
+     of those, the latest row per URL 165
+   matcher reason: 2,279 stage-two rejected all candidates
+   busiest new products:
+           18 rows  M & B Vitamin C 1000 mg Tablet
+            6 rows  Bisoprolol 10 mg Tablet
+            6 rows  Bisoprolol Tablet
+            6 rows  Valsartan 160 mg Tablet
+            6 rows  KP Metronidazole Tablet
+            6 rows  Loperamide Capsule
+            5 rows  Valsartan 80 mg Tablet
+            4 rows  Adalat LA
+            4 rows  Artemether 80 mg + Lumefantrine 480 mg Tablets
+            4 rows  Rosuvastatin Tablet 20 mg
+
+5. 20 accepted examples (title -> register name -> product name / strength / form)
+   1.00  AEROLINE INHALER                             -> Aeroline Inhaler                       -> Aeroline Inhaler                   | 100 mcg/Metered-Dose | Aerosol, Metered-Dose
+   1.00  Maalox Plus suspension                       -> Maalox Plus Suspension                 -> Maalox Plus Suspension             | 175 mg/5 mL; 200 mg/5 mL; 25 mg/5 mL | Suspension
+   1.00  Muposan Powder                               -> Muposan Powder                         -> Muposan Powder                     | 5 g/sachet   | Powder
+   1.00  Piriton Expectorant Linctus                  -> Piriton Expectorant Linctus            -> Piriton Expectorant Linctus        | 2 mg/5 mL; 100 mg/5 mL; 44 mg/5 mL | Syrup
+   1.00  Rulox Suspension                             -> Rulox Suspension                       -> Rulox Suspension                   | 468.1 mg/5 mL; 100 mg/5 mL; 125 mg/5 mL | Suspension
+   1.00  lycofer capsules                             -> Lycofer Capsules                       -> Lycofer Capsules                   | 231 mg; 5 mg; 15 mcg; 5 mg | Capsule
+   0.92  Rhinathiol Expectorant                       -> Rhinathiol 5% Expectorant_             -> Rhinathiol 5% Expectorant          | 5 g/100 mL   | Syrup
+   0.87  Voltaren 50mg Suppository x10                -> Voltaren 50mg Suppository              -> Voltaren 50mg Suppository          | 50 mg        | Suppository
+   0.86  POLYDEX-N EYE DROP                           -> Polydex-N Eye Drops                    -> Polydex-N Eye Drops                | 0.1%; 0.35%; 6000 IU/mL | Suspension/Drops
+   0.82  Lofnac 100mg Tablets                         -> Lofnac 100 Tablets                     -> Lofnac 100 Tablets                 | 100 mg       | Tablet
+   0.81  Xonadine 120                                 -> Xonadine 120 mg                        -> Xonadine 120 mg                    | 120 mg       | Capsule
+   0.81  Diamicron MR 30mg Tablets                    -> Diamicron MR Tablets                   -> Diamicron MR Tablets               | 30 mg        | Tablet
+   0.80  Aprovel 150mg Tablets                        -> Aprovel 150 mg Tablets                 -> Aprovel 150 mg Tablets             | 150 mg       | Tablet
+   0.80  DGF Neobacin Powder                          -> Neobacin Powder                        -> Neobacin Powder                    | 5 mg/g; 250 IU/g | Powder
+   0.80  Rhinathiol Promethazine                      -> Rhinathiol Promethazine Syrup          -> Rhinathiol Promethazine Syrup      | 100 mg/5 mL; 2.5 mg/5 mL | Syrup
+   0.79  Coversyl 5mg Tablets                         -> Coversyl 5 mg Tablets                  -> Coversyl 5 mg Tablets              | 5 mg         | Tablet
+   0.77  Shaltoux Cough Syrup                         -> Shaltoux Chesty Cough Syrup            -> Shaltoux Chesty Cough Syrup        | 2 mg/5 mL; 4 mg/5 mL; 100 mg/5 mL; 1 mg/5 mL | Syrup
+   0.74  ASHTON &amp; PARSONS INFANTS&#039; POWDER *  -> Ashton & Parsons Infants Powder        -> Ashton & Parsons Infants Powder    | 4 mg         | Powder
+   0.74  Rhinathiol Child Expectorant                 -> Rhinathiol 5% Expectorant_             -> Rhinathiol 5% Expectorant          | 5 g/100 mL   | Syrup
+   0.72  Omefast Plus - Combo Kit x42                 -> Omefast Plus Combi Kit_                -> Omefast Plus Combi Kit             | 20 mg; 250 mg; 500 mg | Kit
+
+6. 20 rejections that came close (high similarity, failed strength or form)
+   0.91  AMATEM SOFTGEL 20/120 * 18 SOFTGEL           -> Amatem 20/120 Softgel                  [strength disagrees: 20 mg; 120 mg / Capsule]
+   0.85  Emcap Paracetamol Suspension 60ml            -> Emcap Paracetamol Suspension           [strength disagrees: 120 mg/5 mL / Suspension]
+   0.85  Bunto Blood Tonic 1l                         -> Bunto Blood Tonic                      [strength disagrees: 85 mg; 250 mcg; 5 mcg; 2 mg; 2 mg; 2 mg; 5 mg; 0.4 mg; 5 mg / Liquid]
+   0.85  Acepol Paracetamol Suspension 60ml           -> Acepol Paracetamol Suspension          [strength disagrees: 120 mg/5 mL / Syrup]
+   0.84  AMATEM 20/120MG * 12 SOFTGEL                 -> Amatem 20/120 Softgel                  [strength disagrees: 20 mg; 120 mg / Capsule]
+   0.83  EMZOR PARACETAMOL SYRUP 60ML                 -> Emzor Paracetamol Syrup                [strength disagrees: 125 mg/5 mL / Syrup]
+   0.82  MAXITROL EYE DROP 5ML                        -> Maxitrol Eye Drop                      [strength disagrees: 0.1%; 0.35%; 6000 IU/mL / Suspension/Drops]
+   0.82  Maxitrol Eye Drop 5ml                        -> Maxitrol Eye Drop                      [strength disagrees: 0.1%; 0.35%; 6000 IU/mL / Suspension/Drops]
+   0.82  Reludrine (100 tablets)                      -> Reludrine Tablets                      [strength disagrees: 100 mg / Tablet]
+   0.81  AMATEM 20/120MG * 24 SOFTGEL                 -> Amatem 20/120 Softgel                  [strength disagrees: 20 mg; 120 mg / Capsule]
+   0.80  Bromex Plus Cough Syrup 100ml                -> Bromex Plus Cough Syrup                [strength disagrees: 8 mg/5 mL; 10 mg/5 mL; 100 mg/5 mL; 5 mg/5 mL / Syrup]
+   0.80  STREPSILS ORANGE WITH VITAMIN C * 24 LOZ     -> Strepsils Orange with Vitamin C Lozeng [strength disagrees: 1.2 mg; 0.6 mg; 100 mg / Lozenge]
+   0.79  Dorbaxin Forte by 10 Tablets                 -> Dorbaxin Forte Tablets                 [strength disagrees: 400 mg; 500 mg / Tablet]
+   0.79  Loratyn-10 by 100 tablets                    -> Loratyn-10 Tablets                     [strength disagrees: 10 mg / Tablet]
+   0.79  Lonart X24 Tablets                           -> Lonart Tablets                         [strength disagrees: 20 mg; 120 mg / Tablet]
+   0.79  Tydineal Cream 20g                           -> Tydineal Cream                         [strength disagrees: 0.25 mg/g; 10 mg/g; 5000 IU/g / Cream]
+   0.79  Woodward's Gripe Water 100ml                 -> Woodward's Gripe Water                 [strength disagrees: 50 mg/5 mL; 2.14 mg/5 mL; 0.368 mL/5 mL / Liquid]
+   0.78  ZENTEL SUSPENSION 20ML                       -> Zentel Suspension                      [strength disagrees: 100 mg/5 mL / Suspension]
+   0.78  Mixtard 30 Flexpen 100IU/ml 3ml x5           -> Mixtard 30 FlexPen 100IU               [strength disagrees: 300 units/3 mL / Suspension for injection]
+   0.77  BUNTO BLOOD TONIC 1LTR                       -> Bunto Blood Tonic                      [strength disagrees: 85 mg; 250 mcg; 5 mcg; 2 mg; 2 mg; 2 mg; 5 mg; 0.4 mg; 5 mg / Liquid]
+
+7. existing catalogue triples the dedupe refused to duplicate: 0
+
+VERDICT: would create 204 products and attach 277 listing rows. Nothing written (dry run).

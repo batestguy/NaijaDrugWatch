@@ -1,6 +1,50 @@
 # Progress
 
-Single state file for NaijaDrugWatch. Last updated **2026-11-09 05:15Z**.
+Single state file for NaijaDrugWatch. Last updated **2026-11-09 08:00Z**.
+
+## 2026-11-09 — catalogue expanded by a third; comparisons nearly doubled
+
+The product list was the binding constraint, not scraper volume: 88% of the 2,779 live prices had no
+product to attach to, and the #FixMedPrices seed is a national **commodities** list (mosquito nets,
+female condoms, an HIV test kit, Rituximab), not a pharmacy shelf list. It carried only 14 malaria
+names, 9 hypertension, 8 diabetes and 12 antibiotics. Sampled unmatched shop titles — Crestor,
+Tums, pyrantin, Simbrinza, orphenadrine — existed nowhere in it.
+
+`scripts/expand_catalogue.py` (new) turns unmatched shop titles into products using the NAFDAC register
+already on disk as the authority. A pair is accepted only when the name overlaps **and** the strength
+agrees (or one side is silent) **and** the dosage form is compatible; the strength/name/form parsers
+are imported from `link_product_nrn.py`, not re-written. Dry-run by default; `--apply` additionally
+requires `--i-know-this-writes` and refuses before opening a connection otherwise.
+
+**Measured, from the live database, before → after:**
+
+| Object | Before | After |
+|---|---|---|
+| `products` / `drug_match_rules` | 1,074 / 1,074 | **1,433 / 1,433** |
+| `v_latest_listings` matched | 342 (one in eight) | **580 (one in five)** |
+| Distinct products cited by a shop | 158 | **338** |
+| `v_cheapest_per_product_state` cells | 118 | **260** |
+| …`is_comparison` (two pharmacies) | **24** | **44** |
+| `v_suspicious_listings` | 127 | 132 |
+| `mv_drug_price_index` | 139 | 340 |
+
+Insert order was: apply (359 products + 359 rules) → `match_listings.py` (355 rows attached, 10.4% of
+the 3,428 unmatched) → `REFRESH MATERIALIZED VIEW CONCURRENTLY`. `scrape_runs` id 29 (expand) and 30
+(match) both `success`. Duplicate triples: **0**. New products without a registration number: **0**.
+One near-duplicate was skipped by decision — Meloxicam 7.5 mg, already present as `tab-cap` where the
+register says `Tablet`.
+
+**What this does not fix, and now shows up as a measured cost.** The tool's own rejection list is
+dominated by pairs that are obviously the same drug: `AMATEM 20/120MG * 12 SOFTGEL` against
+`Amatem 20/120 Softgel`, `MAXITROL EYE DROP 5ML`, `PANADOL EXTRA *20 CAPLETS`, `ZENTEL SUSPENSION
+20ML`. They are rejected as "strength disagrees" because a slash strength (`20/120MG`) parses as one
+token while the register writes `20 mg; 120 mg`. This is the same slash-strength defect already
+recorded for `parse_pack` in Drugstore.ng, now measurably excluding valid products — Amatem and
+Coartem are first-line antimalarials.
+
+**Known limitation, unchanged:** a brand and its generic are separate products (e.g. `Glucophage
+500 mg` and `METFORMIN TABLETS 500MG`). Cells still compare only like with like, so no comparison is
+false, but the product count counts a drug twice when the shop lists it both ways.
 
 ## 2026-11-09 — the cron has never fired on schedule, and the index thins on day 2
 
