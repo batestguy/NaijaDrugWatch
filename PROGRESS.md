@@ -1,6 +1,124 @@
 # Progress
 
-Single state file for NaijaDrugWatch. Last updated **2026-11-09 08:00Z**.
+Single state file for NaijaDrugWatch. Last updated **2026-11-09 08:30Z**.
+
+## Handoff — state at close, 2026-11-09
+
+Read this block only. Everything below it is history, and the numbers in the 2026-11-08 handoff are
+superseded.
+
+### Where it stands
+
+The pipeline works end to end, the catalogue is a third bigger than yesterday, and the daily job has
+been rebuilt to survive a dropped trigger — but **it has still never fired on its own.** One green
+run exists (42464123751, 2026-11-08, manual, 1 h 32 m). Zero `schedule` events in the repo's history.
+
+### One authoritative snapshot (re-queried 2026-11-09, after the expansion)
+
+| Object | Value |
+|---|---|
+| `products` / `drug_match_rules` | **1,433 / 1,433** |
+| `pharmacy_listings` (latest) | **2,779** — MedPlus 1,382, HealthPlus 1,197, Drugstore.ng 200 |
+| …of those, matched to a product | **580 (one in five)**; distinct products cited **338** |
+| `nafdac_registrations` / with status | **10,912 / 581 (5.3%)** |
+| `v_cheapest_per_product_state` | **260 cells, 44 `is_comparison`** — all Lagos |
+| `v_suspicious_listings` | **132** |
+| `mv_drug_price_index` | **340 rows over 2 days** |
+| `v_price_change_7d` | 0 rows — expected, needs a second scrape ≥7 days after the first |
+| Pharmacies | 3 — HealthPlus, MedPlus (Lagos), Drugstore.ng (National) |
+| `scrape_runs` last ids | 29 (`expand_catalogue`, 359), 30 (`match_listings`, 355), both `success` |
+
+### What changed today, file by file
+
+| File | State | Why |
+|---|---|---|
+| `.github/workflows/daily.yml` | **committed `bf07881`**, +116 −0 | Three fires (03:00, 04:17, 06:43 UTC); `freshness` gate job; `pipeline` gated on it; `notify` job on `always()` opening one deduplicated issue per reason. |
+| `scripts/freshness_gate.py` | **new, committed `bf07881`** | Decides from `scrape_runs` (never `v_pipeline_health`) whether the day has run. Requires a success from **all six** steps inside the 03:00 window. Exit 2 when it cannot decide. |
+| `scripts/match_listings.py` | committed `bf07881` | Writes a `scrape_runs` row (success/failure). Body re-indented inside `try`; logic unchanged. Dry runs write nothing. |
+| `scripts/link_product_nrn.py` | committed `bf07881` | Same ledger row, same reason. |
+| `scripts/expand_catalogue.py` | **new, committed `bf00c2d`** | Turns unmatched shop titles into products, using the NAFDAC register as the authority. Dry-run default; `--apply` needs `--i-know-this-writes`. |
+| `PROGRESS.md` | committed | This file. |
+| `.agent/T10-evidence.md`, `T10-report.md`, `T10-review-findings.md` | committed | The schedule fix: evidence, verification, the reviewer's two findings (both fixed as T12). |
+| `.agent/T13-dryrun.txt` | committed | The full pre-write expansion report the user approved. |
+
+`*‑brief.md` and `*‑progress.md` under `.agent/` are gitignored by design.
+
+### The three things that matter tomorrow
+
+1. **04:00Z is the first scheduled fire in the project's life.** If it lands, check that the gate
+   reasoned correctly and that `scrape_runs` gained rows for all six steps. If it does not land,
+   check 05:17Z and 07:43Z before concluding anything — that is what they are there for.
+2. **If all three are dropped, nothing reports.** The notifier only speaks when the workflow runs.
+   Closing that gap needs an external heartbeat hitting `workflow_dispatch`, which is a new
+   third-party dependency and a token: the user's decision, not a default.
+3. **The 44 comparisons have never been checked by eye.** Open two pharmacy pages, confirm the same
+   pack is priced. This is the credibility gate for every "cheapest" claim and no agent can do it.
+
+### Open, in priority order
+
+1. **Slash strengths refuse real drugs.** `AMATEM 20/120MG`, `COARTEM 80/480` parse as one token while
+   the register writes `20 mg; 120 mg`, so 610 pairs are rejected as "strength disagrees" that are the
+   same drug — including two first-line antimalarials. Same defect already logged for `parse_pack` on
+   Drugstore.ng. Fixing it is the cheapest next win.
+2. **`mv_drug_price_index` is unprotected** from suspect prices and, separately, is an index of *new*
+   prices per day (83 cells on day 1, 56 on day 2, from 2,709 and 1,293 price rows). It must not be
+   published as a market average without a relabel or a recompute from `v_latest_listings`.
+3. **`v_pipeline_health` cannot see a source that never ran** — zero rows means zero output, not
+   `STALE`. The new gate works around it by reading `scrape_runs` directly; the view itself is still
+   wrong for anyone else who reads it.
+4. **The dashboard is not deployed and there is no public interface.** Two of the four
+   definition-of-done items.
+5. **`unit_price` coverage is 52.7%** on HealthPlus (631/1,197) against an 85% gate.
+
+### Before anything is published
+
+- Open two pharmacy pages and confirm the same pack. **44 comparison cells, none checked.**
+- Compare one suspicious listing against a rendered NAFDAC record. **132 rows, none checked.**
+- View the cheapest-per-state table at 430 px. Measured for overflow, never looked at.
+- State the scope honestly: **Lagos, two pharmacies.** Drugstore.ng is one national price and can
+  never create a comparison. 44 cells is a demonstration, not a national price index.
+
+### Resume commands, in dependency order
+
+```powershell
+$env:DATABASE_URL = ((Select-String -Path .env -Pattern '^DATABASE_URL=').Line).Substring(13).Trim()
+$env:PYTHONIOENCODING = 'utf-8'
+```
+
+```powershell
+.venv\Scripts\python.exe -X utf8 scrapers\nafdac_index.py
+.venv\Scripts\python.exe -X utf8 scrapers\nafdac_details.py --min-similarity 0.50
+.venv\Scripts\python.exe -X utf8 scripts\link_product_nrn.py --refresh --min-similarity 0.35
+.venv\Scripts\python.exe -X utf8 scrapers\healthplus.py
+.venv\Scripts\python.exe -X utf8 scrapers\medplus.py --categories 12,31,32,50,57,58
+.venv\Scripts\python.exe -X utf8 scrapers\drugstore.py --limit 200
+.venv\Scripts\python.exe -X utf8 scripts\expand_catalogue.py            # dry run; add --apply --i-know-this-writes
+.venv\Scripts\python.exe -X utf8 scripts\match_listings.py
+.venv\Scripts\python.exe -X utf8 -c "import os,psycopg; psycopg.connect(os.environ['DATABASE_URL'],autocommit=True).execute('refresh materialized view concurrently mv_drug_price_index')"
+```
+
+Order is not optional. A scrape un-matches what it re-inserts, so skipping the matcher makes the views
+shrink. `expand_catalogue.py` runs **before** the matcher: it inserts products, and the matcher is what
+attaches listings to them.
+
+### Unproven
+
+- **The schedule.** Built, reviewed, verified by hand in eight states, and never once fired.
+- **The 44 comparisons.** Computed, never eyeballed.
+- **The 359 new products' shelf reality.** Each is backed by a registration and a shop title, but no
+  human has confirmed that a pharmacy actually stocks that pack.
+- **`mv_drug_price_index` as a market measure.** It counts what was newly observed, not what is live.
+
+### Environment gotchas that still apply
+
+- **VPN:** a Proton VPN tunnel resets Neon's 5432 inside it. Run the bogus-hostname control first if
+  the database stops answering. This cost a session on 2026-11-08.
+- **Console is cp1252:** always `-X utf8`, or `₦` raises.
+- **This shell mangles embedded newlines:** put multi-line work in a file.
+- **`percent` in psycopg:** no `%%` escaping is needed when the query has no parameters; `%%` becomes
+  a literal operator error.
+- **Greenbook TLS is expired:** `common.RateLimitedClient` falls back to HTTP per host and records the
+  downgrade. Say so in the published limitations.
 
 ## 2026-11-09 — catalogue expanded by a third; comparisons nearly doubled
 
@@ -90,30 +208,22 @@ published as a market average without a relabel or a recompute from `v_latest_li
 suspect-price flag has not decayed yet: nothing has been scraped since `schema/005` was applied.
 `v_price_change_7d` is still 0 rows, still expected until a second scrape ≥7 days after the first.
 
-## Handoff — read this first
+## Handoff — 2026-11-08 (historical; its numbers are superseded by the block at the top)
 
 ### Where it stood at session end
 
-The pipeline works end to end. Three pharmacies are loaded, the matcher runs, the views return
-**115 cells of which 24 are real comparisons**, and the dashboard shows both a cheapest-pack and a
-lowest-known-unit-price answer per row.
+The pipeline works end to end. Three pharmacies are loaded, the matcher runs, and the dashboard shows
+both a cheapest-pack and a lowest-known-unit-price answer per row.
 
 `.github/workflows/daily.yml` is the scheduler. **Run `42464123751` completed green on 2026-11-08**
-(dispatched 08:43 UTC, finished 10:15 UTC, 1 h 32 m) — the first successful execution. That is **one**
-green run: the seven-consecutive-days gate needs the cron to fire on six more days, starting 2026-11-09.
+(dispatched 08:43 UTC, finished 10:15 UTC, 1 h 32 m) — the first successful execution, and still the
+only one.
 
-Live figures below re-queried **2026-11-09 05:12Z**. The previous version of this table held the
-pre-daily-run numbers (2,599 / 115 / 124 / 135) while the run section further down described the
-post-run ones — a drift that would have been quoted wrongly. One set now.
+The figures formerly tabulated here (2,779 listings / 118 cells / 24 comparisons / 127 suspicious /
+139 index rows) have been **deleted rather than corrected**, because a second copy of a moving number
+is how this file drifted once already. The live set is in the handoff at the top of this file. What
+that day established — what the run wrote, and why — is in the prose below.
 
-| Object | Value (2026-11-09) |
-|---|---|
-| `pharmacy_listings` (latest) | **2,779** — MedPlus 1,382, HealthPlus 1,197, Drugstore.ng 200 |
-| `nafdac_registrations` / with status | **10,912 / 581 (5.3%)** |
-| `v_cheapest_per_product_state` | **118 cells, 24 comparisons** |
-| `v_suspicious_listings` | **127** |
-| `mv_drug_price_index` | **139 rows over 2 days** (2026-11-07: 83, 2026-11-08: 56) |
-| Pharmacies | 3 — HealthPlus, MedPlus (both Lagos), Drugstore.ng (**National**) |
 
 ### The daily run works — run 42464123751, green
 
