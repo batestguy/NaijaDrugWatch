@@ -75,8 +75,12 @@ run exists (42464123751, 2026-11-08, manual, 1 h 32 m). Zero `schedule` events i
 - Open two pharmacy pages and confirm the same pack. **44 comparison cells, none checked.**
 - Compare one suspicious listing against a rendered NAFDAC record. **132 rows, none checked.**
 - View the cheapest-per-state table at 430 px. Measured for overflow, never looked at.
-- State the scope honestly: **Lagos, two pharmacies.** Drugstore.ng is one national price and can
-  never create a comparison. 44 cells is a demonstration, not a national price index.
+- **Describe the state honestly.** The `state` column is the pharmacy's own location, not a price
+  dimension: all three sources publish exactly one price per product and none of them carries a state
+  input (evidence in the decisions table, 2026-11-09). Say "cheapest among the online pharmacies that
+  publish prices", scope Lagos. Do not imply a national or state-by-state comparison exists.
+- State the scale honestly: **Lagos, two pharmacies, 44 products.** That is a demonstration, not a
+  national price index.
 
 ### Resume commands, in dependency order
 
@@ -816,6 +820,7 @@ relaunch cost 15 minutes for no work.
 | 2026-11-06 | `vector(384)` is a placeholder pending the embedding model. **Resolved 2026-11-07: `BAAI/bge-small-en-v1.5` via fastembed (ONNX, CPU, no torch), 384 dims — no migration needed.** |
 | 2026-11-06 | Pharmacy set: HealthPlus, Drugstore.ng, MedPlus; nettpharmacy.com (Shopify, NGN confirmed) available as a fourth. |
 | 2026-11-08 | **Drugstore.ng is registered as one `pharmacies` row with `state = 'National'`.** Its price does not vary by state route (byte-identical pages), and each product page names only one seller, so it can never create a comparison. The per-offer seller is archived in JSONL, not stored. Revisit seller-as-pharmacy only after measuring whether two sellers carry the same product. |
+| 2026-11-09 | **Scope is Lagos, and "state" is the shop's location, not a price dimension.** Probed 2026-11-09: `healthplusnigeria.com/products/zoladex-goserelin-36mg-injection.json` returns one variant at `266670.00` NGN with no location field anywhere in the payload; `medplusnig.com/product/nutravit-syrup-100ml-hTnxx4` shows one price (₦3,800.00) and "Nationwide Delivery" with no state selector that changes it; Drugstore.ng was already proven byte-identical with `?state=kano`. **No source in this project carries a per-state price.** The comparison we can honestly publish is shop-against-shop (`is_comparison`), and the fixed view name `v_cheapest_per_product_state` keeps the word "state" as a contract name — but no claim of state variation is made anywhere. Publishing language: "cheapest among the online pharmacies that publish prices", scope Lagos, two pharmacies. |
 
 ## Known risks
 
