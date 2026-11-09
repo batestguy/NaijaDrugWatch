@@ -23,6 +23,14 @@ Selection rules, all deterministic:
     3. dosage form families must intersect when both sides map to a known family
     4. rank: Active > future expiry > higher similarity
 
+WHAT IT WRITES
+    products.nafdac_registration_number   one registration per product, ranked Active first
+    scrape_runs                           one row per run, `success` or `failed`,
+                                          source='link_product_nrn'
+
+    The ledger row exists because `v_pipeline_health` reads `scrape_runs`: a step that fails without
+    leaving a row is a step nobody can see fail. `--dry-run` writes none.
+
 Usage
 -----
     python scripts/link_product_nrn.py --dry-run
@@ -42,10 +50,15 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "scrapers"))
 
-from common import db_connect  # noqa: E402
+from common import db_connect, ensure_connection, finish_run, start_run  # noqa: E402
 
 DEFAULT_MIN_SIMILARITY = 0.45
 CANDIDATES_PER_PRODUCT = 20
+
+# The `scrape_runs.source` value. Not a required source in scripts/freshness_gate.py (a night that
+# fails here still leaves the views correct, just with fewer suspicious rows), but the row must
+# exist: v_pipeline_health reads this table, and a step that leaves no record cannot be seen to fail.
+SOURCE = "link_product_nrn"
 
 # -------------------------------------------------------------- normalisation
 
@@ -181,57 +194,88 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--refresh", action="store_true", help="re-link products that already have an NRN")
     args = parser.parse_args(argv)
 
-    connection = db_connect()
-    sql = "select id, canonical_name, form, strength from products"
-    if not args.refresh:
-        sql += " where nafdac_registration_number is null"
-    sql += " order by id"
-    with connection.cursor() as cursor:
-        cursor.execute(sql)
-        products = [
-            {"id": row[0], "canonical_name": row[1], "form": row[2], "strength": row[3]}
-            for row in cursor.fetchall()
-        ]
-    if args.limit:
-        products = products[: args.limit]
-
+    connection = None
+    run_id = None
     linked: list[tuple[str, str, str, str | None]] = []
     unmatched: dict[str, int] = {}
 
-    for product in products:
-        candidates = fetch_candidates(connection, product["canonical_name"], args.min_similarity)
-        chosen, reason = choose(product, candidates)
-        if chosen is None:
-            unmatched[reason] = unmatched.get(reason, 0) + 1
-            continue
-        linked.append(
-            (product["canonical_name"], chosen["registration_number"], reason, chosen["status"])
-        )
+    try:
+        connection = db_connect()
+        # A dry run writes no ledger row: it wrote no links, and `success` for it would be a claim
+        # about a pipeline step that did not happen. A real run records one on success and failure.
         if not args.dry_run:
-            with connection.cursor() as cursor:
-                cursor.execute(UPDATE_SQL, (chosen["registration_number"], product["id"]))
+            run_id = start_run(connection, SOURCE)
+            print(f"scrape_runs id={run_id} status=running source={SOURCE}")
 
-    if not args.dry_run:
-        connection.commit()
+        sql = "select id, canonical_name, form, strength from products"
+        if not args.refresh:
+            sql += " where nafdac_registration_number is null"
+        sql += " order by id"
+        with connection.cursor() as cursor:
+            cursor.execute(sql)
+            products = [
+                {"id": row[0], "canonical_name": row[1], "form": row[2], "strength": row[3]}
+                for row in cursor.fetchall()
+            ]
+        if args.limit:
+            products = products[: args.limit]
 
-    total = len(products)
-    active = sum(1 for _, _, _, status in linked if status == "Active")
-    known = sum(1 for _, _, _, status in linked if status is not None)
-    print(f"\n--- link {'dry run' if args.dry_run else 'run'} ---")
-    print(f"products considered  {total}")
-    print(f"linked               {len(linked)} ({100.0 * len(linked) / total:.1f}%)" if total else "linked 0")
-    print(f"  to Active          {active}")
-    print(f"  to known non-Active{known - active:>4d}")
-    print(f"  to UNVERIFIED      {len(linked) - known} (status not scraped: cannot be judged suspicious)")
-    print(f"not linked           {sum(unmatched.values())}")
-    for reason, count in sorted(unmatched.items(), key=lambda kv: -kv[1])[:6]:
-        print(f"  {count:4d}  {reason}")
-    print("\nfirst 10 links:")
-    for name, nrn, reason, status in linked[:10]:
-        print(f"  {name[:30]:30s} -> {nrn:12s} [{status or 'unverified'}] ({reason})")
-    if args.dry_run:
-        print("\ndry run: nothing written")
-    return 0
+        for product in products:
+            candidates = fetch_candidates(connection, product["canonical_name"], args.min_similarity)
+            chosen, reason = choose(product, candidates)
+            if chosen is None:
+                unmatched[reason] = unmatched.get(reason, 0) + 1
+                continue
+            linked.append(
+                (product["canonical_name"], chosen["registration_number"], reason, chosen["status"])
+            )
+            if not args.dry_run:
+                with connection.cursor() as cursor:
+                    cursor.execute(UPDATE_SQL, (chosen["registration_number"], product["id"]))
+
+        if not args.dry_run:
+            connection.commit()
+
+        total = len(products)
+        active = sum(1 for _, _, _, status in linked if status == "Active")
+        known = sum(1 for _, _, _, status in linked if status is not None)
+        print(f"\n--- link {'dry run' if args.dry_run else 'run'} ---")
+        print(f"products considered  {total}")
+        print(f"linked               {len(linked)} ({100.0 * len(linked) / total:.1f}%)" if total else "linked 0")
+        print(f"  to Active          {active}")
+        print(f"  to known non-Active{known - active:>4d}")
+        print(f"  to UNVERIFIED      {len(linked) - known} (status not scraped: cannot be judged suspicious)")
+        print(f"not linked           {sum(unmatched.values())}")
+        for reason, count in sorted(unmatched.items(), key=lambda kv: -kv[1])[:6]:
+            print(f"  {count:4d}  {reason}")
+        print("\nfirst 10 links:")
+        for name, nrn, reason, status in linked[:10]:
+            print(f"  {name[:30]:30s} -> {nrn:12s} [{status or 'unverified'}] ({reason})")
+        if args.dry_run:
+            print("\ndry run: nothing written")
+
+        if run_id is not None:
+            # `record_count` is products linked, not products considered: a run that read 1,074 and
+            # linked 278 says 278, so the number cannot be mistaken for work that did not happen.
+            connection = ensure_connection(connection)
+            finish_run(connection, run_id, status="success", record_count=len(linked))
+            print(f"scrape_runs id={run_id} status=success record_count={len(linked)}")
+        return 0
+    except Exception as exc:  # noqa: BLE001
+        message = f"{type(exc).__name__}: {exc}"
+        print(f"\nFAILED: {message}", file=sys.stderr)
+        if run_id is not None:
+            try:
+                finish_run(connection or db_connect(), run_id, status="failed", record_count=len(linked) or None, error=message)
+                print(f"scrape_runs id={run_id} status=failed", file=sys.stderr)
+            except Exception as ledger_exc:  # noqa: BLE001
+                # The socket is often what died; try a fresh one before leaving the run 'running'.
+                try:
+                    finish_run(db_connect(), run_id, status="failed", record_count=len(linked) or None, error=message)
+                    print(f"scrape_runs id={run_id} status=failed (reconnected)", file=sys.stderr)
+                except Exception:  # noqa: BLE001
+                    print(f"could not write scrape_runs failure: {ledger_exc}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

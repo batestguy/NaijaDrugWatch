@@ -22,6 +22,13 @@ WHY THIS FILE DOES NOT QUERY PER CANDIDATE
 WHAT IT WRITES
     products.embedding            canonical_name + form + strength
     pharmacy_listings.product_id  only where a rule accepted the candidate
+    scrape_runs                   one row per run, `success` or `failed`, source='match_listings'
+
+    The ledger row is not bookkeeping for its own sake: scripts/freshness_gate.py requires a
+    `match_listings` success inside the day's window before it calls the day run. A night that
+    scrapes every source and dies here leaves every view a day old, which looks exactly like a
+    quiet market -- so the next scheduled fire has to see it and retry. `--dry-run` and
+    `--embed-only` write no row: neither matched anything.
 
 Usage
 -----
@@ -44,13 +51,17 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "scrapers"))
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
-from common import db_connect  # noqa: E402
+from common import db_connect, ensure_connection, finish_run, start_run  # noqa: E402
 from link_product_nrn import form_families, strength_tokens  # noqa: E402
 
 MODEL_NAME = "BAAI/bge-small-en-v1.5"
 EMBED_DIM = 384
 TOP_N = 10
 EMBED_BATCH = 64
+
+# The `scrape_runs.source` value. scripts/freshness_gate.py REQUIRES_SOURCES names this string, so
+# a rename here silently makes the gate treat every day as unrun.
+SOURCE = "match_listings"
 
 
 def normalise(text: str) -> str:
@@ -182,68 +193,107 @@ def main(argv: list[str] | None = None) -> int:
 
     from fastembed import TextEmbedding
 
-    model = TextEmbedding(MODEL_NAME)
-    connection = db_connect()
+    connection = None
+    run_id = None
+    matched = 0
 
-    embed_sql = "select id, canonical_name, form, strength from products"
-    embed_sql += "" if args.reembed else " where embedding is null"
-    with connection.cursor() as cursor:
-        cursor.execute(embed_sql)
-        product_rows = cursor.fetchall()
-    if product_rows:
-        texts = [f"{name} {form or ''} {strength or ''}".strip() for _, name, form, strength in product_rows]
-        vectors = embed_texts(model, texts)
+    try:
+        connection = db_connect()
+        # A dry run and an embedding-only maintenance pass write no ledger row: neither matched a
+        # listing, and a `success` for either would let the freshness gate skip a night whose views
+        # are a day old. A real run writes one on success AND on failure, like the scrapers do, so
+        # a night that scrapes every source and then fails here is retried by the next fire.
+        if not (args.dry_run or args.embed_only):
+            run_id = start_run(connection, SOURCE)
+            print(f"scrape_runs id={run_id} status=running source={SOURCE}")
+
+        model = TextEmbedding(MODEL_NAME)
+
+        embed_sql = "select id, canonical_name, form, strength from products"
+        embed_sql += "" if args.reembed else " where embedding is null"
         with connection.cursor() as cursor:
-            for (product_id, *_rest), vector in zip(product_rows, vectors):
-                cursor.execute(
-                    "update products set embedding = %s::vector where id = %s",
-                    (vector_literal(vector), product_id),
+            cursor.execute(embed_sql)
+            product_rows = cursor.fetchall()
+        if product_rows:
+            texts = [f"{name} {form or ''} {strength or ''}".strip() for _, name, form, strength in product_rows]
+            vectors = embed_texts(model, texts)
+            with connection.cursor() as cursor:
+                for (product_id, *_rest), vector in zip(product_rows, vectors):
+                    cursor.execute(
+                        "update products set embedding = %s::vector where id = %s",
+                        (vector_literal(vector), product_id),
+                    )
+            connection.commit()
+        print(f"products embedded    {len(product_rows)} (dim {EMBED_DIM})")
+        if args.embed_only:
+            return 0
+
+        listing_sql = "select id, raw_title from pharmacy_listings where product_id is null order by id"
+        if args.limit:
+            listing_sql += f" limit {int(args.limit)}"
+        with connection.cursor() as cursor:
+            cursor.execute(listing_sql)
+            listings = [{"id": row[0], "raw_title": row[1]} for row in cursor.fetchall()]
+
+        products = load_products(connection)
+        rules_by_name = load_rules(connection)
+        print(f"products loaded      {len(products)} with embeddings, {sum(len(v) for v in rules_by_name.values())} rules")
+
+        global WORDS_CACHE, STRENGTH_CACHE, FORMS_CACHE
+        WORDS_CACHE = [title_words(l["raw_title"]) for l in listings]
+        STRENGTH_CACHE = [strength_tokens(l["raw_title"]) for l in listings]
+        FORMS_CACHE = [form_families(l["raw_title"]) for l in listings]
+
+        vectors = np.array(embed_texts(model, [l["raw_title"] for l in listings]), dtype=np.float32) if listings else np.zeros((0, EMBED_DIM), dtype=np.float32)
+        assignments, reasons = match_all(vectors, products, rules_by_name)
+        matched = len(assignments)
+
+        if not args.dry_run and assignments:
+            with connection.cursor() as cursor:
+                cursor.executemany(
+                    "update pharmacy_listings set product_id = %s where id = %s",
+                    [(product_id, listings[index]["id"]) for index, product_id, _ in assignments],
                 )
-        connection.commit()
-    print(f"products embedded    {len(product_rows)} (dim {EMBED_DIM})")
-    if args.embed_only:
+            connection.commit()
+
+        print(f"\n--- match {'dry run' if args.dry_run else 'run'} ---")
+        print(f"listings considered  {len(listings)}")
+        print(f"matched              {matched} ({100.0 * matched / len(listings):.1f}%)" if listings else "matched 0")
+        print(f"unmatched            {len(listings) - matched}")
+        for reason, count in sorted(reasons.items(), key=lambda kv: -kv[1]):
+            if count:
+                print(f"  {count:4d}  {reason}")
+        print("\nexamples:")
+        for index, _product_id, note in assignments[:12]:
+            print(f"  {listings[index]['raw_title'][:48]:48s} -> {note}")
+        if args.dry_run:
+            print("\ndry run: nothing written")
+
+        if run_id is not None:
+            # `record_count` is what this run matched, so a night with no new listings records 0 and
+            # stays visibly distinct from a night that matched thousands. The embedding pass can
+            # outlast a Neon idle timeout (AdminShutdown), which would make the ledger write itself
+            # fail, so reconnect first.
+            connection = ensure_connection(connection)
+            finish_run(connection, run_id, status="success", record_count=matched)
+            print(f"scrape_runs id={run_id} status=success record_count={matched}")
         return 0
-
-    listing_sql = "select id, raw_title from pharmacy_listings where product_id is null order by id"
-    if args.limit:
-        listing_sql += f" limit {int(args.limit)}"
-    with connection.cursor() as cursor:
-        cursor.execute(listing_sql)
-        listings = [{"id": row[0], "raw_title": row[1]} for row in cursor.fetchall()]
-
-    products = load_products(connection)
-    rules_by_name = load_rules(connection)
-    print(f"products loaded      {len(products)} with embeddings, {sum(len(v) for v in rules_by_name.values())} rules")
-
-    global WORDS_CACHE, STRENGTH_CACHE, FORMS_CACHE
-    WORDS_CACHE = [title_words(l["raw_title"]) for l in listings]
-    STRENGTH_CACHE = [strength_tokens(l["raw_title"]) for l in listings]
-    FORMS_CACHE = [form_families(l["raw_title"]) for l in listings]
-
-    vectors = np.array(embed_texts(model, [l["raw_title"] for l in listings]), dtype=np.float32) if listings else np.zeros((0, EMBED_DIM), dtype=np.float32)
-    assignments, reasons = match_all(vectors, products, rules_by_name)
-
-    if not args.dry_run and assignments:
-        with connection.cursor() as cursor:
-            cursor.executemany(
-                "update pharmacy_listings set product_id = %s where id = %s",
-                [(product_id, listings[index]["id"]) for index, product_id, _ in assignments],
-            )
-        connection.commit()
-
-    print(f"\n--- match {'dry run' if args.dry_run else 'run'} ---")
-    print(f"listings considered  {len(listings)}")
-    print(f"matched              {len(assignments)} ({100.0 * len(assignments) / len(listings):.1f}%)" if listings else "matched 0")
-    print(f"unmatched            {len(listings) - len(assignments)}")
-    for reason, count in sorted(reasons.items(), key=lambda kv: -kv[1]):
-        if count:
-            print(f"  {count:4d}  {reason}")
-    print("\nexamples:")
-    for index, _product_id, note in assignments[:12]:
-        print(f"  {listings[index]['raw_title'][:48]:48s} -> {note}")
-    if args.dry_run:
-        print("\ndry run: nothing written")
-    return 0
+    except Exception as exc:  # noqa: BLE001
+        message = f"{type(exc).__name__}: {exc}"
+        print(f"\nFAILED: {message}", file=sys.stderr)
+        if run_id is not None:
+            try:
+                finish_run(connection or db_connect(), run_id, status="failed", record_count=matched or None, error=message)
+                print(f"scrape_runs id={run_id} status=failed", file=sys.stderr)
+            except Exception as ledger_exc:  # noqa: BLE001
+                # The database socket is often what died; try a fresh one before leaving the run
+                # stuck at 'running', which is the one state the ledger must never keep.
+                try:
+                    finish_run(db_connect(), run_id, status="failed", record_count=matched or None, error=message)
+                    print(f"scrape_runs id={run_id} status=failed (reconnected)", file=sys.stderr)
+                except Exception:  # noqa: BLE001
+                    print(f"could not write scrape_runs failure: {ledger_exc}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

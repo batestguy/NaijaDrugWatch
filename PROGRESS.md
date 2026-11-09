@@ -1,6 +1,50 @@
 # Progress
 
-Single state file for NaijaDrugWatch. Last updated **2026-11-08 (session end)**.
+Single state file for NaijaDrugWatch. Last updated **2026-11-09 05:15Z**.
+
+## 2026-11-09 — the cron has never fired on schedule, and the index thins on day 2
+
+Re-queried against the live database (VPN disconnected, connection confirmed PG 17.11).
+
+### `schedule` has produced zero runs, ever
+
+`.github/workflows/daily.yml:18` is `cron: "0 3 * * *"`. `gh workflow list` reports `daily active`.
+`gh run list --limit 10` returns **five runs, all `event=workflow_dispatch`** — there is no
+`schedule`-triggered run in the project's history. At 05:10Z on 2026-11-09 the day's fire was
+2 h 10 m overdue, and `select count(*) from scrape_runs where started_at >= '2026-11-09'` returned
+**0**. So the seven-consecutive-days gate has not started: yesterday's green run
+42464123751 was dispatched by hand.
+
+GitHub documents cron delay under load as minutes-to-hours, so a single miss is not proof of a fault.
+**The evidence that matters is the history: 0 schedule events, not 0 today.** Watch 2026-11-10 03:00Z
+before concluding either way. A failure-notification step must not be mistaken for a fix — a notifier
+on a schedule that never fires is silent in the same way.
+
+### `mv_drug_price_index` is an index of *new* prices, not of the market
+
+| Day | `price_history` rows | mv cells |
+|---|---|---|
+| 2026-11-07 | 2,709 | 83 |
+| 2026-11-08 | 1,293 | 56 |
+
+The definition (`pg_get_viewdef`) joins `price_history` → `pharmacy_listings` → `products` and groups
+by Lagos-local day. `record_price_history()` writes one row **per new listing**, so a day's cells
+count only what was newly observed that day, not what is live. Day 2 has 2,779 live listings and 118
+cheapest-per-state cells, yet the index shows 56 — the label "daily price index" overstates what it
+measures. Not proven to be misleading (no consumer has read it as market-wide), but it must not be
+published as a market average without a relabel or a recompute from `v_latest_listings`.
+
+### Live coverage, same query
+
+| Pharmacy | `unit_price` known / latest | Share |
+|---|---|---|
+| HealthPlus | 631 / 1,197 | **52.7%** — still under the 85% gate |
+| MedPlus | 1,008 / 1,382 | 72.9% |
+| Drugstore.ng | 55 / 200 | 27.5% |
+
+`select count(*) from pharmacy_listings where price_suspect=false and price_ngn < 20` → **0**, so the
+suspect-price flag has not decayed yet: nothing has been scraped since `schema/005` was applied.
+`v_price_change_7d` is still 0 rows, still expected until a second scrape ≥7 days after the first.
 
 ## Handoff — read this first
 
@@ -14,13 +58,17 @@ lowest-known-unit-price answer per row.
 (dispatched 08:43 UTC, finished 10:15 UTC, 1 h 32 m) — the first successful execution. That is **one**
 green run: the seven-consecutive-days gate needs the cron to fire on six more days, starting 2026-11-09.
 
-| Object | Value |
+Live figures below re-queried **2026-11-09 05:12Z**. The previous version of this table held the
+pre-daily-run numbers (2,599 / 115 / 124 / 135) while the run section further down described the
+post-run ones — a drift that would have been quoted wrongly. One set now.
+
+| Object | Value (2026-11-09) |
 |---|---|
-| `pharmacy_listings` (latest) | 2,599 (14 suspect rows flagged and excluded) |
-| `nafdac_registrations` / with status | 10,906 / **572 (5%)** |
-| `v_cheapest_per_product_state` | 115 cells, **24 comparisons** |
-| `v_suspicious_listings` | 124 |
-| `mv_drug_price_index` | 135 |
+| `pharmacy_listings` (latest) | **2,779** — MedPlus 1,382, HealthPlus 1,197, Drugstore.ng 200 |
+| `nafdac_registrations` / with status | **10,912 / 581 (5.3%)** |
+| `v_cheapest_per_product_state` | **118 cells, 24 comparisons** |
+| `v_suspicious_listings` | **127** |
+| `mv_drug_price_index` | **139 rows over 2 days** (2026-11-07: 83, 2026-11-08: 56) |
 | Pharmacies | 3 — HealthPlus, MedPlus (both Lagos), Drugstore.ng (**National**) |
 
 ### The daily run works — run 42464123751, green

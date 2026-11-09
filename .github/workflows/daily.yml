@@ -13,11 +13,27 @@ name: daily
 # The GitHub job cap is 6 h; this fits with room, but the FULL Greenbook sweep (~14 h) does not and
 # must stay restricted or be sharded across days.
 
+# Three fires, because one `schedule` entry is not a schedule. GitHub's scheduler is best-effort and
+# documents that queued runs "may be dropped" under load -- silently, with no run, no log and no
+# notification. This repo has had 0 `schedule` events since the file landed on main (2026-11-09), so
+# the pipeline cannot depend on the 03:00 fire arriving. Every fire passes the `freshness` job below
+# first, so an extra fire costs ~40 s when the day has already run, and the retries exist for the
+# night when it has not:
+#   03:00  the intended daily time (04:00 Africa/Lagos).
+#   04:17  +77 min, so a merely *delayed* 03:00 fire has usually started -- concurrency then makes
+#          this fire wait for it instead of overlapping -- and early enough to still finish by day.
+#   06:43  +3 h43, for the case where both earlier fires were dropped. A night with no run is not
+#          recoverable after the fact, and a fire that skips costs under a minute.
+# Neither retry sits on :00 or :30, the minutes GitHub's own docs call the most contended.
 on:
   schedule:
     - cron: "0 3 * * *"
+    - cron: "17 4 * * *"
+    - cron: "43 6 * * *"
   workflow_dispatch:
 
+# Workflow-level, so it serialises the whole run including the gate job: a retry that arrives while
+# a pipeline is in progress waits, then asks the database again and finds the day already run.
 concurrency:
   group: daily
   cancel-in-progress: false
@@ -26,7 +42,41 @@ permissions:
   contents: read
 
 jobs:
+  # Cheap gate, before the expensive job. Asks the database -- not the Actions UI, and not
+  # v_pipeline_health, which cannot see a source that never ran because zero rows produce no row
+  # rather than STALE -- whether today's pipeline has already run. Exits 0 either way and publishes
+  # the decision; fails only when it cannot decide.
+  freshness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      run: ${{ steps.gate.outputs.run }}
+      decision: ${{ steps.gate.outputs.decision }}
+      missed: ${{ steps.gate.outputs.missed }}
+      reason: ${{ steps.gate.outputs.reason }}
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # psycopg only: the gate must not pay for fastembed and streamlit to answer one question.
+      - name: Install psycopg
+        run: pip install "psycopg[binary]>=3.2,<3.3"
+
+      # No continue-on-error, deliberately. If the database is unreachable this job fails, which
+      # skips the pipeline and goes red: the alternative is to guess "stale" and scrape on top of an
+      # unknown state, or guess "fresh" and be green while nobody knows anything.
+      - name: Decide whether the day has run
+        id: gate
+        run: python -X utf8 scripts/freshness_gate.py --event "$GITHUB_EVENT_NAME"
+
   pipeline:
+    needs: freshness
+    if: needs.freshness.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 300
 
@@ -201,3 +251,69 @@ jobs:
           for row in rows:
               print(row)
           PY
+
+  # Failures and absences both land here, because they are different events with different
+  # triggers: a red job needs `if: failure()`, but a dropped fire is an *absence* -- there is no
+  # failure to catch, only a gate that noticed the day was unrun and ran it. That is why this job is
+  # on `always()` and computes its reason, instead of being keyed on failure.
+  notify:
+    needs: [freshness, pipeline]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Job-scoped, overriding the workflow's read-only default for this job only. `github.token`
+    # is the automatic GITHUB_TOKEN: no new secret, no PAT, nothing to rotate.
+    permissions:
+      contents: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      FRESHNESS_RESULT: ${{ needs.freshness.result }}
+      PIPELINE_RESULT: ${{ needs.pipeline.result }}
+      DECISION: ${{ needs.freshness.outputs.decision }}
+      MISSED: ${{ needs.freshness.outputs.missed }}
+      REASON: ${{ needs.freshness.outputs.reason }}
+      EVENT: ${{ github.event_name }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      # One issue per reason, deduplicated by exact title: a week of failures is one issue with
+      # seven comments, not seven issues. Nothing is posted when the run is healthy and the day ran.
+      - name: Open or update the tracking issue
+        shell: bash
+        run: |
+          set -uo pipefail
+
+          TITLE=""
+          if [ "${FRESHNESS_RESULT}" = "failure" ]; then
+            TITLE="daily: the freshness gate could not decide"
+          elif [ "${PIPELINE_RESULT}" = "failure" ]; then
+            TITLE="daily: the pipeline run failed"
+          elif [ "${MISSED}" = "true" ]; then
+            TITLE="daily: a day passed with no run"
+          fi
+
+          if [ -z "${TITLE}" ]; then
+            echo "nothing to report: gate=${DECISION:-none} missed=${MISSED:-false} pipeline=${PIPELINE_RESULT}"
+            exit 0
+          fi
+
+          BODY=$(printf '%s\n' \
+            "Automated by .github/workflows/daily.yml. One issue per reason; later occurrences are comments here." \
+            "" \
+            "- gate decision: ${DECISION:-none}" \
+            "- freshness job: ${FRESHNESS_RESULT}" \
+            "- pipeline job: ${PIPELINE_RESULT}" \
+            "- gate detail: ${REASON:-none}" \
+            "- trigger: ${EVENT}" \
+            "- run: ${RUN_URL}")
+
+          EXISTING=$(gh issue list --state open --limit 100 --json number,title \
+            --jq ".[] | select(.title == \"${TITLE}\") | .number" | head -n 1)
+
+          if [ -n "${EXISTING}" ]; then
+            echo "commenting on issue #${EXISTING}: ${TITLE}"
+            gh issue comment "${EXISTING}" --body "${BODY}"
+          else
+            echo "opening issue: ${TITLE}"
+            gh issue create --title "${TITLE}" --body "${BODY}"
+          fi
