@@ -80,6 +80,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 300
 
+    # Published for `notify` only. `stock` is the watch's own verdict (`ok`/`alarm`/`undecided`) and
+    # `stock_outcome` is the step's pre-continue-on-error outcome (`success`/`failure`), because the
+    # step is allowed to fail without failing this job -- see the last step.
+    outputs:
+      stock: ${{ steps.stock.outputs.signal }}
+      stock_detail: ${{ steps.stock.outputs.detail }}
+      stock_outcome: ${{ steps.stock.outcome }}
+
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       PYTHONIOENCODING: utf-8
@@ -252,6 +260,25 @@ jobs:
               print(row)
           PY
 
+      # A source can keep writing rows while losing the only signal that says whether the thing is
+      # in stock. On 2026-11-09 MedPlus wrote 128 rows, every one with `in_stock = null`, and
+      # nothing complained: the rows landed, `scrape_runs` said success, `v_pipeline_health` said OK.
+      # The price view lost 18 entries and two comparisons, and a human found it by eye the next
+      # morning. This is the step that complains instead.
+      #
+      # It is a monitor, so it must never be able to fail the collection: exit 1 means "a source
+      # lost its stock signal", and `continue-on-error` turns that into a job output for `notify`
+      # rather than a red step -- the job's own conclusion stays `success`. Exit 2 ("cannot decide")
+      # is reported the same way and is also not a job failure; the red mark for an unreadable
+      # database belongs to the steps that needed one, and this step is read-only and last.
+      #
+      # `if: always()` because the night worth watching hardest is the night something else broke.
+      - name: Watch the stock signal
+        id: stock
+        if: always()
+        continue-on-error: true
+        run: python -X utf8 scripts/stock_signal_watch.py
+
   # Failures and absences both land here, because they are different events with different
   # triggers: a red job needs `if: failure()`, but a dropped fire is an *absence* -- there is no
   # failure to catch, only a gate that noticed the day was unrun and ran it. That is why this job is
@@ -270,6 +297,12 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       FRESHNESS_RESULT: ${{ needs.freshness.result }}
       PIPELINE_RESULT: ${{ needs.pipeline.result }}
+      # The stock watch runs with continue-on-error, so "a source lost its stock signal" arrives
+      # here as an outcome of `failure` on a job whose conclusion is `success`. Both spellings are
+      # checked below: the signal when the script decided, the outcome when it could not run.
+      STOCK_RESULT: ${{ needs.pipeline.outputs.stock_outcome }}
+      STOCK_SIGNAL: ${{ needs.pipeline.outputs.stock }}
+      STOCK_DETAIL: ${{ needs.pipeline.outputs.stock_detail }}
       DECISION: ${{ needs.freshness.outputs.decision }}
       MISSED: ${{ needs.freshness.outputs.missed }}
       REASON: ${{ needs.freshness.outputs.reason }}
@@ -290,10 +323,14 @@ jobs:
             TITLE="daily: the pipeline run failed"
           elif [ "${MISSED}" = "true" ]; then
             TITLE="daily: a day passed with no run"
+          elif [ "${STOCK_SIGNAL}" = "alarm" ] || [ "${STOCK_RESULT}" = "failure" ]; then
+            # Same mechanism as every other reason: one issue per exact title, later occurrences
+            # commented. The day is green; a source merely stopped telling us what is in stock.
+            TITLE="daily: a source stopped reporting its stock signal"
           fi
 
           if [ -z "${TITLE}" ]; then
-            echo "nothing to report: gate=${DECISION:-none} missed=${MISSED:-false} pipeline=${PIPELINE_RESULT}"
+            echo "nothing to report: gate=${DECISION:-none} missed=${MISSED:-false} pipeline=${PIPELINE_RESULT} stock=${STOCK_SIGNAL:-none}"
             exit 0
           fi
 
@@ -306,6 +343,15 @@ jobs:
             "- gate detail: ${REASON:-none}" \
             "- trigger: ${EVENT}" \
             "- run: ${RUN_URL}")
+
+          # The watch's own verdict, when it produced one. Appended conditionally so every other
+          # reason does not carry a blank line, and so a stock alarm can name the source and the
+          # day without a human opening the log.
+          if [ -n "${STOCK_DETAIL}" ]; then
+            BODY=$(printf '%s\n%s' "${BODY}" "- stock signal: ${STOCK_DETAIL}")
+          elif [ "${STOCK_RESULT}" = "failure" ]; then
+            BODY=$(printf '%s\n%s' "${BODY}" "- stock signal: the watch step failed before it named a source; see the run log")
+          fi
 
           EXISTING=$(gh issue list --state open --limit 100 --json number,title \
             --jq ".[] | select(.title == \"${TITLE}\") | .number" | head -n 1)

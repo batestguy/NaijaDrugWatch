@@ -22,11 +22,15 @@ STRUCTURE
     That is the seam we read: no price regex, no currency guessing.
 
 STOCK IS READ, NOT INFERRED
-    The visible quantity input carries `max="<units available>"`, so stock is a number the page
-    states: `in_stock = max > 0`. When no quantity input and no marker exist, stock is NULL
-    (unknown) rather than assumed true -- claiming stock we did not read is how an unavailable
-    item ends up winning a "cheapest" comparison. `stock_quantity` and `stock_evidence` are
-    archived per product so the reading can be audited.
+    The add-to-cart form's own hidden quantity input carries `max="<units available>"`, so stock
+    is a number the page states: `in_stock = max > 0`. Read since the 2026-11-09 rebuild, whose
+    *visible* quantity input (`x-ref="quantityInput"`) carries a constant `max="50"` on every
+    page -- a per-order cap, not stock, and it is 50 on pages that render "Notify me" too. The
+    pre-rebuild `class="input-number"` input is still tried, but only when the cart input is
+    absent, so a fallback can never overwrite a reading that succeeded. When neither a count nor
+    a marker is present, stock is NULL (unknown) rather than assumed true -- claiming stock we
+    did not read is how an unavailable item ends up winning a "cheapest" comparison.
+    `stock_quantity` and `stock_evidence` are archived per product so the reading can be audited.
 
 Usage
 -----
@@ -76,8 +80,10 @@ NON_PRODUCT_PATHS = ("/product/availability/",)
 CART_FORM_RE = re.compile(r'<form id="add-to-cart-form"[^>]*>', re.S)
 ATTR_RE = re.compile(r'data-(?:product-)?([a-z]+)="([^"]*)"')
 OOS_RE = re.compile(r"(?i)out of stock")
-# The real stock signal: the visible quantity input carries max="<units available>". The first
-# such input belongs to the product; later ones are the hidden inputs of related items.
+INPUT_TAG_RE = re.compile(r"<input[^>]*>", re.S)
+# PRE-REBUILD stock signal, kept as a fallback only: the visible quantity input carried
+# max="<units available>". As of 2026-11-09 that input is gone and its replacement carries a
+# constant max="50", so this now matches nothing on current pages.
 STOCK_INPUT_RE = re.compile(r'<input[^>]*class="[^"]*input-number[^"]*"[^>]*>', re.S)
 MAX_ATTR_RE = re.compile(r'max="(\d+)"')
 
@@ -93,8 +99,35 @@ returning id
 # ------------------------------------------------------------------------------------ parsing
 
 
+def cart_form_region(body: str, form_start: int) -> str:
+    """The add-to-cart form up to the next `<form>`: its hidden inputs live there, not elsewhere.
+
+    Scoping matters on this site. The page also carries a "request a product" form whose
+    `<input name="quantity" id="quantity">` has no `max` at all, so a document-wide search for
+    `id="quantity"` can land on an unrelated field.
+    """
+    next_form = body.find("<form", form_start + len("<form"))
+    return body[form_start: next_form if next_form != -1 else len(body)]
+
+
+def cart_stock_quantity(region: str) -> int | None:
+    """Units the cart form will accept, from its own `<input name="quantity" ... max="N">`.
+
+    `max` is the page's own count of units available: 0 on every control we know to be
+    unavailable, a positive count on every control we know to be available. Only the zero vs
+    non-zero distinction is load-bearing; the magnitude is archived, not interpreted.
+    """
+    for tag in INPUT_TAG_RE.findall(region):
+        if 'name="quantity"' not in tag:
+            continue
+        maximum = MAX_ATTR_RE.search(tag)
+        if maximum is not None:
+            return int(maximum.group(1))
+    return None
+
+
 def parse_product(body: str, url: str) -> dict[str, Any] | None:
-    """Name, price and currency from the add-to-cart form; stock inferred from its lead-in."""
+    """Name, price and currency from the add-to-cart form; stock from the same form's cap."""
     form = CART_FORM_RE.search(body)
     if form is None:
         return None
@@ -108,24 +141,26 @@ def parse_product(body: str, url: str) -> dict[str, Any] | None:
     lead_in = body[: form.start()]
     out_of_stock_marker = OOS_RE.search(lead_in) is not None
 
-    stock_quantity: int | None = None
-    stock_input = STOCK_INPUT_RE.search(body)
-    if stock_input is not None:
-        maximum = MAX_ATTR_RE.search(stock_input.group(0))
-        if maximum is not None:
-            stock_quantity = int(maximum.group(1))
-
+    stock_quantity = cart_stock_quantity(cart_form_region(body, form.start()))
     if stock_quantity is not None:
         in_stock: bool | None = stock_quantity > 0
-        evidence = f"quantity max={stock_quantity}"
-    elif out_of_stock_marker:
-        in_stock = False
-        evidence = "out-of-stock marker before add-to-cart"
+        evidence = f"cart quantity max={stock_quantity}"
     else:
-        # No quantity cap and no marker: UNKNOWN, not in stock. Claiming stock we did not read
-        # is how an unavailable item ends up winning a "cheapest" comparison.
-        in_stock = None
-        evidence = "no stock signal on page"
+        # Fallback, consulted only when the current signal is absent, so it cannot overwrite it.
+        legacy = STOCK_INPUT_RE.search(body)
+        legacy_max = MAX_ATTR_RE.search(legacy.group(0)) if legacy is not None else None
+        if legacy_max is not None:
+            stock_quantity = int(legacy_max.group(1))
+            in_stock = stock_quantity > 0
+            evidence = f"legacy quantity max={stock_quantity}"
+        elif out_of_stock_marker:
+            in_stock = False
+            evidence = "out-of-stock marker before add-to-cart"
+        else:
+            # No count and no marker: UNKNOWN, not in stock. Claiming stock we did not read
+            # is how an unavailable item ends up winning a "cheapest" comparison.
+            in_stock = None
+            evidence = "no stock signal on page"
 
     try:
         price_value = f"{float(price):.2f}"

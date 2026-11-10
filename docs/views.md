@@ -79,6 +79,34 @@ reason.
 pharmacies quoting the product in the state, and the best-value row may be the same pharmacy as the
 cheapest-pack row (it usually is — 12 of 85 cells currently pick a different row).
 
+### Since 2026-11-10 — stock we could not read is counted, and labelled
+
+The view used to filter `in_stock is true`. On 2026-11-09 MedPlus rebuilt its product page, our reader
+stopped finding the stock signal, and all 128 rows that run wrote carried `in_stock = null` — 108 of
+which had been `true` the day before. They fell out of the view without a sound: 18 cells and two
+comparisons disappeared because a parser blind spot was being expressed as "not available".
+
+The filter is now `in_stock is not false`, so a null (unknown) row still counts, and three appended
+columns say how much of the cell is confirmed:
+
+| Column | Meaning |
+|---|---|
+| `cheapest_pack_stock_confirmed` | `true` when the winning row is confirmed in stock; NULL when its stock is unknown |
+| `best_unit_stock_confirmed` | the same rule for the best-value row; NULL whenever the whole `best_unit_*` group is NULL |
+| `confirmed_pharmacy_count` | distinct pharmacies in the cell whose stock is `true`. **0 is a real answer**, not a missing one |
+
+Ranking now prefers a confirmed row over a cheaper unconfirmed one, because "cheapest" must not name
+an item we cannot see is available. The change measured **242 → 264 cells and 42 → 45 comparisons** at
+the moment it was applied; after that day's own scrape (four antimalarials went out of stock) the live
+figures are 260 cells, 45 comparisons, 18 cells whose winner is unconfirmed.
+
+`is_comparison` is unchanged (`pharmacy_count >= 2`) — a second pharmacy quoting a price is still a
+second price. Read `confirmed_pharmacy_count` before calling a cell a clean comparison: 3 cells are
+`is_comparison` with fewer than two confirmed pharmacies.
+
+Known-unavailable rows (`in_stock = false`) are still excluded. A pharmacy telling us it has none is
+information, not a gap.
+
 ## `v_suspicious_listings` — two conditions, not one
 
 ```sql

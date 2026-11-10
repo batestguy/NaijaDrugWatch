@@ -1,11 +1,119 @@
 # Progress
 
-Single state file for NaijaDrugWatch. Last updated **2026-11-09 08:30Z**.
+Single state file for NaijaDrugWatch. Last updated **2026-11-10 07:40Z**.
 
-## Handoff — state at close, 2026-11-09
+## Handoff — state at close, 2026-11-10
 
-Read this block only. Everything below it is history, and the numbers in the 2026-11-08 handoff are
-superseded.
+Read this block only. Everything below it is history; the 2026-11-09 and 2026-11-08 snapshots are
+superseded by the table here.
+
+### Where it stands
+
+**The schedule has now fired on its own, twice, and behaved correctly both times.** That was the
+project's biggest open risk and it is closed:
+
+| run | fired | gate said | what happened |
+|---|---|---|---|
+| 42604737743 | 2026-11-09 10:54Z (≈8 h late) | `stale` — 5 of 6 sources missing | ran the whole pipeline, 1 h 33 m, all steps `success` (`scrape_runs` 31-37) |
+| 42658950671 | 2026-11-09 16:51Z | `fresh` — all 6 inside the window | **skipped the pipeline in 7 s**, nothing re-scraped |
+
+Both halves of the anti-drop design are now proven against the real event: it runs when the day is
+missing, and it stands down when the day is already there. GitHub delivers these fires with a
+multi-hour delay — 03:00Z arrived at 10:54Z — so "4am" is the intent, not the schedule.
+
+**The day's real discovery: a parser blind spot was being reported as an empty shelf.** MedPlus
+rebuilt its product page on 2026-11-09. `scrapers/medplus.py` looked for an `<input class="input-number">`
+that no longer exists, so all 128 rows that run wrote carried `in_stock = null` — 108 of them had been
+`true` the day before. Because `v_cheapest_per_product_state` filtered `in_stock is true`, those rows
+vanished: 18 cells and 2 comparisons. Nothing complained. It was found by eye the next morning.
+
+### One authoritative snapshot (re-queried 2026-11-10, after these fixes)
+
+| Object | Value |
+|---|---|
+| `products` / `drug_match_rules` | **1,433 / 1,433** |
+| `pharmacy_listings` (latest) | **2,792** — MedPlus 1,391, HealthPlus 1,201, Drugstore.ng 200 |
+| …of those, matched to a product | **575**; distinct products cited **338**. Down 5 from 580 because 43 rows from today's re-scrape have not been through the matcher yet |
+| `nafdac_registrations` / with status | **10,912 / 1,848 (16.9%)** — the 2026-11-09 detail sweep raised it from 581 |
+| `v_cheapest_per_product_state` | **260 cells, 45 `is_comparison`**, 18 with an unconfirmed winner — all Lagos |
+| `v_suspicious_listings` | **159** — all one reason, `inactive_registration` (88 Inactive, 72 Expired); 12 of those products still form a two-pharmacy comparison |
+| `mv_drug_price_index` | **403 rows over 3 days** |
+| `v_price_change_7d` | 0 rows — expected until 2026-11-14 |
+| `scrape_runs` last ids | 41 (`medplus`, 25) on 2026-11-10; 31-37 the first automatic run |
+
+### What changed today, file by file
+
+| File | State | Why |
+|---|---|---|
+| `schema/006_stock_confidence.sql` | **new, applied live, uncommitted** | Base filter becomes `in_stock is not false`; ranking prefers a confirmed-in-stock row over a cheaper unconfirmed one; three columns appended (`cheapest_pack_stock_confirmed`, `best_unit_stock_confirmed`, `confirmed_pharmacy_count`). 242→264 cells, 42→45 comparisons when applied. Idempotent (re-applied four times). |
+| `scrapers/medplus.py` | **modified, uncommitted** | Stock read from the add-to-cart form's hidden `name="quantity"` `max` (0 on unavailable pages, 145/194 on available ones), instead of the vanished `input-number` selector. The old selector is kept as a fallback consulted only when the new one finds nothing. |
+| `scripts/stock_signal_watch.py` | **new, uncommitted** | Alarms when a source's share of unknown-stock rows jumps. Baseline is "this source has at least one prior clean day", not the median — the median version silenced its own alarm on the fourth broken day (proven with synthetic series). Read-only, enforced by `options="-c default_transaction_read_only=on"`. |
+| `.github/workflows/daily.yml` | **modified, uncommitted** | One new last step (`continue-on-error`, `if: always()`), three job outputs, one notify branch. The three crons and the gate's `REQUIRED_SOURCES` are untouched. |
+| `docs/views.md` | **modified, uncommitted** | Documents the new contract, the three columns, and why an unknown reading is counted rather than dropped. |
+| `.agent/T14-report.md`, `T15-report.md`, `T16-report.md`, `T16-review-findings.md` | new | T15 and T16 reports are written by the secretary; both agents hit their step limits before writing one. |
+
+### The process problem this exposed, which is bigger than the bug
+
+**No independent execution-based review exists for today's work.** Two reviewer sessions were launched.
+The first ran out of steps reading files and executed nothing — but did find two real defects (the
+self-silencing alarm and stale documentation), both fixed. The second was **blocked from running any
+program at all**: every non-git command, including `.venv\Scripts\python.exe -V`, was rejected with
+`permission.rejected: shell`. The parent session runs the same interpreter without trouble, so helper
+sessions are being denied shell access in a way that makes "re-run the claim yourself" impossible.
+
+Until that is fixed, every review in this repo is a read-through, and the only execution-based
+verification is the secretary's own — which is a plausibility check of its own work, not an audit.
+
+### Open, in priority order
+
+1. **Slash strengths still refuse real drugs.** `AMATEM 20/120MG`, `COARTEM 80/480` parse as one token
+   while the register writes `20 mg; 120 mg`: 610 pairs rejected as "strength disagrees". The rejection
+   list is dominated by first-line antimalarials. Cheapest next win, unchanged from yesterday.
+2. **Most of MedPlus's catalogue still carries the 2026-11-09 null reading** — 43 of 1,405 rows
+   re-read. The nightly run fixes it by collecting; nothing needs repairing by hand.
+3. **`mv_drug_price_index` is unprotected** from suspect prices and is an index of *new* prices per
+   day, not of the market. Must not be published as a market average without a relabel.
+4. **`v_pipeline_health` cannot see a source that never ran** — zero rows means zero output, not
+   `STALE`. The gate works around it; the view is still wrong for anyone else.
+5. **The dashboard is not deployed** and there is no public interface. Two of the four
+   definition-of-done items.
+6. **`unit_price` coverage is 52.7%** on HealthPlus against an 85% gate.
+
+### Before anything is published
+
+- Open two pharmacy pages and confirm the same pack. **45 comparison cells, none checked by eye.**
+- Compare one suspicious listing against a rendered NAFDAC record. **159 rows, none checked.**
+- View the cheapest-per-state table at 430 px. Measured for overflow, never looked at.
+- Say "cheapest among the online pharmacies that publish prices — Lagos, two shops". Never
+  "cheapest in Lagos".
+- Disclose that only 16.9% of the register has a status, so "suspicious" describes a fraction.
+
+### Resume commands and gotchas
+
+Unchanged from 2026-11-09 — the ordered command list and the environment traps (VPN, cp1252 console,
+`%%` in psycopg, expired Greenbook TLS) are in the block below and are still correct. Two additions:
+
+- `scripts/stock_signal_watch.py` runs **after** `REFRESH MATERIALIZED VIEW`, last, and must never be
+  moved into the gate's required sources.
+- `schema/006_stock_confidence.sql` is safe to re-run at any time; it is `create or replace view` in a
+  transaction and was applied four times on 2026-11-10 with identical results.
+
+### Unproven
+
+- **GitHub Actions has never executed today's changes.** `continue-on-error` keeping the job green is
+  documented behaviour, not observed. The first night it matters is its first test.
+- **The alarm threshold** (10% / 25% / 50 rows) is a judgement fitted to one real event.
+- **The magnitude of the stock count is not interpreted** — zero versus non-zero only. A template that
+  used `max` as a per-order cap would read as a confident "in stock" and the monitor would not see it.
+- **The 200-ish products the register cannot resolve** at all: 3,265 listings remain unmatched.
+
+---
+
+## Handoff — state at close, 2026-11-09 (historical)
+
+The figures tabulated here on 2026-11-09 have been **deleted rather than corrected** — a second copy of
+a moving number is how this file drifted twice. What that day established is in the prose below; the
+live set is in the block above.
 
 ### Where it stands
 
@@ -13,20 +121,12 @@ The pipeline works end to end, the catalogue is a third bigger than yesterday, a
 been rebuilt to survive a dropped trigger — but **it has still never fired on its own.** One green
 run exists (42464123751, 2026-11-08, manual, 1 h 32 m). Zero `schedule` events in the repo's history.
 
-### One authoritative snapshot (re-queried 2026-11-09, after the expansion)
+### One authoritative snapshot — **deleted, see the 2026-11-10 block above**
 
-| Object | Value |
-|---|---|
-| `products` / `drug_match_rules` | **1,433 / 1,433** |
-| `pharmacy_listings` (latest) | **2,779** — MedPlus 1,382, HealthPlus 1,197, Drugstore.ng 200 |
-| …of those, matched to a product | **580 (one in five)**; distinct products cited **338** |
-| `nafdac_registrations` / with status | **10,912 / 581 (5.3%)** |
-| `v_cheapest_per_product_state` | **260 cells, 44 `is_comparison`** — all Lagos |
-| `v_suspicious_listings` | **132** |
-| `mv_drug_price_index` | **340 rows over 2 days** |
-| `v_price_change_7d` | 0 rows — expected, needs a second scrape ≥7 days after the first |
-| Pharmacies | 3 — HealthPlus, MedPlus (Lagos), Drugstore.ng (National) |
-| `scrape_runs` last ids | 29 (`expand_catalogue`, 359), 30 (`match_listings`, 355), both `success` |
+The 2026-11-09 table held 2,779 listings / 260 cells / 44 comparisons / 132 suspicious / 340 index
+rows. All of those numbers have moved. They are recorded here as prose rather than as a table so they
+cannot be quoted as current.
+
 
 ### What changed today, file by file
 
