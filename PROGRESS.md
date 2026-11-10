@@ -1,6 +1,6 @@
 # Progress
 
-Single state file for NaijaDrugWatch. Last updated **2026-11-10 07:40Z**.
+Single state file for NaijaDrugWatch. Last updated **2026-11-10 06:50Z**.
 
 ## Handoff — state at close, 2026-11-10
 
@@ -45,11 +45,11 @@ vanished: 18 cells and 2 comparisons. Nothing complained. It was found by eye th
 
 | File | State | Why |
 |---|---|---|
-| `schema/006_stock_confidence.sql` | **new, applied live, uncommitted** | Base filter becomes `in_stock is not false`; ranking prefers a confirmed-in-stock row over a cheaper unconfirmed one; three columns appended (`cheapest_pack_stock_confirmed`, `best_unit_stock_confirmed`, `confirmed_pharmacy_count`). 242→264 cells, 42→45 comparisons when applied. Idempotent (re-applied four times). |
-| `scrapers/medplus.py` | **modified, uncommitted** | Stock read from the add-to-cart form's hidden `name="quantity"` `max` (0 on unavailable pages, 145/194 on available ones), instead of the vanished `input-number` selector. The old selector is kept as a fallback consulted only when the new one finds nothing. |
-| `scripts/stock_signal_watch.py` | **new, uncommitted** | Alarms when a source's share of unknown-stock rows jumps. Baseline is "this source has at least one prior clean day", not the median — the median version silenced its own alarm on the fourth broken day (proven with synthetic series). Read-only, enforced by `options="-c default_transaction_read_only=on"`. |
-| `.github/workflows/daily.yml` | **modified, uncommitted** | One new last step (`continue-on-error`, `if: always()`), three job outputs, one notify branch. The three crons and the gate's `REQUIRED_SOURCES` are untouched. |
-| `docs/views.md` | **modified, uncommitted** | Documents the new contract, the three columns, and why an unknown reading is counted rather than dropped. |
+| `schema/006_stock_confidence.sql` | **new, applied live, committed `1c7b422`** | Base filter becomes `in_stock is not false`; ranking prefers a confirmed-in-stock row over a cheaper unconfirmed one; three columns appended (`cheapest_pack_stock_confirmed`, `best_unit_stock_confirmed`, `confirmed_pharmacy_count`). 242→264 cells, 42→45 comparisons when applied. Idempotent (re-applied four times). |
+| `scrapers/medplus.py` | **modified, committed `1c7b422`** | Stock read from the add-to-cart form's hidden `name="quantity"` `max` (0 on unavailable pages, 145/194 on available ones), instead of the vanished `input-number` selector. The old selector is kept as a fallback consulted only when the new one finds nothing. |
+| `scripts/stock_signal_watch.py` | **new, committed `1c7b422`** | Alarms when a source's share of unknown-stock rows jumps. Baseline is "this source has at least one prior clean day", not the median — the median version silenced its own alarm on the fourth broken day (proven with synthetic series). Read-only, enforced by `options="-c default_transaction_read_only=on"`. |
+| `.github/workflows/daily.yml` | **modified, committed `1c7b422`** | One new last step (`continue-on-error`, `if: always()`), three job outputs, one notify branch. The three crons and the gate's `REQUIRED_SOURCES` are untouched. |
+| `docs/views.md` | **modified, committed `1c7b422`** | Documents the new contract, the three columns, and why an unknown reading is counted rather than dropped. |
 | `.agent/T14-report.md`, `T15-report.md`, `T16-report.md`, `T16-review-findings.md` | new | T15 and T16 reports are written by the secretary; both agents hit their step limits before writing one. |
 | `schema/007_index_stock_confidence.sql` | **new, applied live, committed `2a16c29`** | Rebuilds `mv_drug_price_index` in one transaction. `stock_rate` no longer averages an unreadable row in as zero; a fully unreadable group returns NULL; `stock_read_rate` appended so the denominator is visible. 23 groups that previously published a false 0% now return NULL, 3 partial groups corrected, 377 unchanged. |
 | `dashboard/app.py` | **modified, committed `2a16c29`** | Index tab shows the read rate and stops calling the figure a plain "In stock"; cheapest tab shows `Stock confirmed` ("not read" where we could not read it) and `Confirmed pharmacies`, with the caveat in the caption. Two edits, no redesign. |
@@ -84,8 +84,25 @@ The fix has three parts:
 (`1c7b422`) and the watch script (ALARM + exit 1), all permitted, and answered "can you run this
 project's code — yes". So the next review in this repo can be an audit rather than a read-through.
 
-That fix is tooling, not verification. **The three changes in commit `1c7b422` still have no
-independent audit** — the next review should be aimed at them.
+That fix is tooling, not verification. **The audit was then run properly** (`.agent/T17-findings.md`):
+it executed every check, reproduced 260/45, proved the read-only connection blocks a `with`-wrapped
+delete server-side, re-ran the alarm on synthetic series and closed 4 of 4 parser pages. Verdict: **no
+blocking defects, ship with fixes** — the two it raised (a stale docstring, the dashboard not showing
+the new columns) were fixed the same day.
+
+**Still unaudited:** `2a16c29` (the index rebuild) and `683e266` (the licence labels). Both were verified
+by the secretary only. Aim the next review at those two.
+
+### State at pause — 2026-11-10 06:50Z
+
+- **Two files on disk, uncommitted and deliberate:** `scripts/crosscheck_pages.py` (works; its first
+  pass was cut short by a 429) and `.agent/eyeball-sheet.md` (**superseded — do not use it**).
+- **2026-11-10's scheduled fire had not arrived** by 06:50Z. It was due 03:00Z; 2026-11-09's first fire
+  arrived 7 h 54 m late, so this is within the observed range and not yet a fault.
+- **The rate limit is the live risk, not a curiosity.** HealthPlus returns `429` to this machine after
+  today's probing. If the nightly job runs while that holds, `healthplus` fails, and by the gate's own
+  rule a day where one source fails does not count as done.
+- Last verified database reading: 260 cells / 45 comparisons / 159 suspicious / 403 index rows.
 
 ### Open, in priority order
 
@@ -110,11 +127,14 @@ independent audit** — the next review should be aimed at them.
 |---|---|---|
 | What "comparison" means | **Keep it as it is**: two pharmacies publishing a price for the same product. 45 entries. | 3 of the 45 rest on one shop we can see holding the item and one we cannot. Tightening to "two confirmed shops" would give 42 and would make the comparison count hostage to the other shop's page markup — the failure mode that cost two comparisons on 2026-11-09. The caveat is on screen instead. |
 | Drugs whose NAFDAC registration is inactive or expired | **Label them**, in the price table and on the dashboard. Do not hide them, do not leave them silent. | 159 listings; 12 of their products still form two-shop comparisons. The finding is the point of the project, so it stays — but a reader must be able to see it. Implemented as `schema/008` with three states: active / not active / not read. |
-| Eyeballing real pharmacy pages | **Last thing.** Open two pages, confirm the same pack, before any publication. | 45 comparison cells, none checked by eye. Every other number in this file is arithmetic until that is done, and no agent can do it. |
+| Eyeballing real pharmacy pages | **Last thing**, and **automate the mechanical part**. | The 20-minute manual sheet was withdrawn: fetching a page and comparing a pack size is work a machine should do. `scripts/crosscheck_pages.py` reads each shop by a different route from the scraper — HealthPlus through its storefront JSON rather than HTML. **But MedPlus has no second server-side source**: its page carries exactly one price, in the same `data-product-price` attribute the scraper reads, so an automated re-read there catches drift, not a parsing error. A rendered browser is the only independent read for that shop. The human part is reduced to reading the mismatch list. |
 
 ### Before anything is published
 
-- Open two pharmacy pages and confirm the same pack. **45 comparison cells, none checked by eye.**
+- **Run the cross-check over all 45 comparisons** (`scripts/crosscheck_pages.py --all`) and read the
+  mismatch list. As of the pause it has only reached 5 MedPlus pages — all agreeing — because
+  HealthPlus was returning **429 Too Many Requests** to this machine after too much ad-hoc probing.
+  A completed pass, not a page-by-page tick, is the evidence bar.
 - Compare one suspicious listing against a rendered NAFDAC record. **159 rows, none checked.**
 - View the cheapest-per-state table at 430 px. Measured for overflow, never looked at.
 - Say "cheapest among the online pharmacies that publish prices — Lagos, two shops". Never
@@ -135,10 +155,16 @@ Unchanged from 2026-11-09 — the ordered command list and the environment traps
 
 - **GitHub Actions has never executed today's changes.** `continue-on-error` keeping the job green is
   documented behaviour, not observed. The first night it matters is its first test.
+- **The page cross-check has not completed a pass.** Five MedPlus pages agreed exactly; HealthPlus
+  refused the rest with `429`. Until a full run finishes, every "cheapest" claim is still arithmetic.
+- **MedPlus has no independent server-side source.** Its page carries one price, in the same field the
+  scraper reads. Only a rendered browser can give that shop a genuinely second opinion.
+- **`2a16c29` and `683e266` have had no independent audit** — secretary verification only.
 - **The alarm threshold** (10% / 25% / 50 rows) is a judgement fitted to one real event.
 - **The magnitude of the stock count is not interpreted** — zero versus non-zero only. A template that
   used `max` as a per-order cap would read as a confident "in stock" and the monitor would not see it.
-- **The 200-ish products the register cannot resolve** at all: 3,265 listings remain unmatched.
+- **2,217 of 2,792 latest listings are unmatched** — no product to attach them to. The register cannot
+  resolve all of them at all; the slash-strength rule is what is blocking the antimalarials.
 
 ---
 
