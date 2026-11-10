@@ -152,6 +152,13 @@ def cheapest_table(
     )
     if show_pharmacy_count:
         table["Pharmacies"] = rows["pharmacy_count"]
+    # Stock confidence for the row that won `cheapest_pack_*`: `yes` only where we actually read the
+    # stock signal, `not read` where we could not. It is never `no` -- a row known out of stock is not
+    # in this view at all -- and `not read` is the honest label, not a quiet zero.
+    table["Stock confirmed"] = rows["cheapest_pack_stock_confirmed"].map(
+        lambda flag: "not read" if flag is None or pd.isna(flag) else ("yes" if flag else "no")
+    )
+    table["Confirmed pharmacies"] = rows["confirmed_pharmacy_count"]
     return table
 
 
@@ -193,11 +200,16 @@ with tabs[0]:
     st.subheader("Daily price index")
     st.caption(
         "`mv_drug_price_index` — average, minimum and maximum price per day, product and state, "
-        "refreshed by the pipeline. A high `pharmacy_count` means more than one shop is quoting it."
+        "refreshed by the pipeline. A high `pharmacy_count` means more than one shop is quoting it. "
+        "`In stock (of readable)` is the share of this row's prices we could see were in stock, and "
+        "it counts only the prices whose stock we could read: a price whose stock could not be read "
+        "is left out of that rate, not counted as out of stock. `Rows with a stock reading` is how "
+        "much of the row the rate rests on. Where that is 0 the rate is blank, which means nothing "
+        "was readable that day — not that nothing was in stock."
     )
     index = query(
         "select day, canonical_name, state, avg_price_ngn, min_price_ngn, max_price_ngn,"
-        " pharmacy_count, stock_rate from mv_drug_price_index"
+        " pharmacy_count, stock_rate, stock_read_rate from mv_drug_price_index"
         " order by avg_price_ngn desc"
     )
     if index.empty:
@@ -216,7 +228,8 @@ with tabs[0]:
                     "min_price_ngn": "Minimum",
                     "max_price_ngn": "Maximum",
                     "pharmacy_count": "Pharmacies",
-                    "stock_rate": "In stock",
+                    "stock_rate": "In stock (of readable)",
+                    "stock_read_rate": "Rows with a stock reading",
                 }
             ),
             width="stretch",
@@ -233,11 +246,15 @@ with tabs[1]:
         "whose pack size could be parsed (`best_unit_*`). The comparison table is a real "
         "comparison: two or more pharmacies quote the same product in that state. The "
         "single-pharmacy table below it is ONE pharmacy's price — a national price, not a "
-        "comparison, and it is not labelled cheapest."
+        "comparison, and it is not labelled cheapest. `Stock confirmed` is `not read` where we "
+        "could not read that shop's stock, and a comparison whose `Confirmed pharmacies` is below "
+        "two includes a price from a shop whose stock we could not read — the price is real, the "
+        "availability is not confirmed."
     )
     cheapest = query(
         "select canonical_name, state, cheapest_pharmacy, cheapest_pack_price, unit_price,"
-        " best_unit_unit_price, best_unit_pharmacy, pharmacy_count, is_comparison"
+        " best_unit_unit_price, best_unit_pharmacy, pharmacy_count, is_comparison,"
+        " cheapest_pack_stock_confirmed, confirmed_pharmacy_count"
         " from v_cheapest_per_product_state"
         " order by canonical_name, state, cheapest_pack_price"
     )
