@@ -37,7 +37,7 @@ vanished: 18 cells and 2 comparisons. Nothing complained. It was found by eye th
 | `nafdac_registrations` / with status | **10,912 / 1,848 (16.9%)** — the 2026-11-09 detail sweep raised it from 581 |
 | `v_cheapest_per_product_state` | **260 cells, 45 `is_comparison`**, 18 with an unconfirmed winner — all Lagos |
 | `v_suspicious_listings` | **159** — all one reason, `inactive_registration` (88 Inactive, 72 Expired); 12 of those products still form a two-pharmacy comparison |
-| `mv_drug_price_index` | **403 rows over 3 days** |
+| `mv_drug_price_index` | **403 rows over 3 days**; 23 groups have no readable stock, so their `stock_rate` is NULL rather than a false zero |
 | `v_price_change_7d` | 0 rows — expected until 2026-11-14 |
 | `scrape_runs` last ids | 41 (`medplus`, 25) on 2026-11-10; 31-37 the first automatic run |
 
@@ -51,6 +51,9 @@ vanished: 18 cells and 2 comparisons. Nothing complained. It was found by eye th
 | `.github/workflows/daily.yml` | **modified, uncommitted** | One new last step (`continue-on-error`, `if: always()`), three job outputs, one notify branch. The three crons and the gate's `REQUIRED_SOURCES` are untouched. |
 | `docs/views.md` | **modified, uncommitted** | Documents the new contract, the three columns, and why an unknown reading is counted rather than dropped. |
 | `.agent/T14-report.md`, `T15-report.md`, `T16-report.md`, `T16-review-findings.md` | new | T15 and T16 reports are written by the secretary; both agents hit their step limits before writing one. |
+| `schema/007_index_stock_confidence.sql` | **new, applied live, committed `2a16c29`** | Rebuilds `mv_drug_price_index` in one transaction. `stock_rate` no longer averages an unreadable row in as zero; a fully unreadable group returns NULL; `stock_read_rate` appended so the denominator is visible. 23 groups that previously published a false 0% now return NULL, 3 partial groups corrected, 377 unchanged. |
+| `dashboard/app.py` | **modified, committed `2a16c29`** | Index tab shows the read rate and stops calling the figure a plain "In stock"; cheapest tab shows `Stock confirmed` ("not read" where we could not read it) and `Confirmed pharmacies`, with the caveat in the caption. Two edits, no redesign. |
+| `scripts/envfile.py`, `scripts/dbq.py` | **new, committed `5d8fa0d`** | Make a reviewer able to run the project: scripts load `DATABASE_URL` from `.env`, and `dbq.py` runs one read-only query in one command (server-side `default_transaction_read_only`). |
 
 ### The process problem this exposed, which is bigger than the bug
 
@@ -91,8 +94,10 @@ independent audit** — the next review should be aimed at them.
    list is dominated by first-line antimalarials. Cheapest next win, unchanged from yesterday.
 2. **Most of MedPlus's catalogue still carries the 2026-11-09 null reading** — 43 of 1,405 rows
    re-read. The nightly run fixes it by collecting; nothing needs repairing by hand.
-3. **`mv_drug_price_index` is unprotected** from suspect prices and is an index of *new* prices per
-   day, not of the market. Must not be published as a market average without a relabel.
+3. **`mv_drug_price_index` is still unprotected from suspect prices**, and is an index of *new* prices
+   per day, not of the market. Its stock figure was fixed on 2026-11-10 (`schema/007`): unreadable rows
+   are no longer averaged in as zero and a fully unreadable group now returns NULL. The price columns
+   still have no `price_suspect` filter. Must not be published as a market average without a relabel.
 4. **`v_pipeline_health` cannot see a source that never ran** — zero rows means zero output, not
    `STALE`. The gate works around it; the view is still wrong for anyone else.
 5. **The dashboard is not deployed** and there is no public interface. Two of the four
