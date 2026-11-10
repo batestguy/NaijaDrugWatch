@@ -104,6 +104,14 @@ independent audit** — the next review should be aimed at them.
    definition-of-done items.
 6. **`unit_price` coverage is 52.7%** on HealthPlus against an 85% gate.
 
+### Decisions taken 2026-11-10 — do not re-open without a new reason
+
+| Decision | What was chosen | Why, and what it cost |
+|---|---|---|
+| What "comparison" means | **Keep it as it is**: two pharmacies publishing a price for the same product. 45 entries. | 3 of the 45 rest on one shop we can see holding the item and one we cannot. Tightening to "two confirmed shops" would give 42 and would make the comparison count hostage to the other shop's page markup — the failure mode that cost two comparisons on 2026-11-09. The caveat is on screen instead. |
+| Drugs whose NAFDAC registration is inactive or expired | **Label them**, in the price table and on the dashboard. Do not hide them, do not leave them silent. | 159 listings; 12 of their products still form two-shop comparisons. The finding is the point of the project, so it stays — but a reader must be able to see it. Implemented as `schema/008` with three states: active / not active / not read. |
+| Eyeballing real pharmacy pages | **Last thing.** Open two pages, confirm the same pack, before any publication. | 45 comparison cells, none checked by eye. Every other number in this file is arithmetic until that is done, and no agent can do it. |
+
 ### Before anything is published
 
 - Open two pharmacy pages and confirm the same pack. **45 comparison cells, none checked by eye.**

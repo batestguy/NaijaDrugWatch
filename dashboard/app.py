@@ -122,6 +122,30 @@ def naira_unit(value) -> str:
     return f"₦{float(value):,.2f}"
 
 
+def registration_label(status, flagged) -> str:
+    """Three labels, never a blank: `active`, `not active`, `not read`.
+
+    `registration_flagged` is only TRUE where a status was actually read, so FALSE covers both "we read
+    it and it is active" and "we never read it". Rendering the boolean directly would print the second
+    as "no" -- calling a medicine unregistered because our scrape missed its record, which is the same
+    error as calling an unread shelf empty. The label is therefore derived from BOTH columns:
+
+      status is NULL                 -> `not read`   (we hold no status; say nothing about it)
+      flagged                        -> `not active` (we read it; it is not Active or it has expired)
+      otherwise                      -> `active`     (we read it and it passed)
+
+    A status read as `Active` whose expiry has passed is flagged by the view, so it renders `not active`:
+    the label reports the licence's standing, not the literal text of `status`.
+    """
+    if status is None or pd.isna(status):
+        return "not read"
+    if flagged is None or pd.isna(flagged):
+        # Not reachable with the current view (registration_flagged is NOT NULL), kept so a future
+        # nullable definition degrades to the status text rather than to a crash.
+        return "active" if str(status).strip().lower() == "active" else "not active"
+    return "not active" if bool(flagged) else "active"
+
+
 def cheapest_table(
     frame: pd.DataFrame, pharmacy_column: str, show_pharmacy_count: bool = False
 ) -> pd.DataFrame:
@@ -159,6 +183,12 @@ def cheapest_table(
         lambda flag: "not read" if flag is None or pd.isna(flag) else ("yes" if flag else "no")
     )
     table["Confirmed pharmacies"] = rows["confirmed_pharmacy_count"]
+    # The licence behind the price. Three labels, never blank -- see registration_label(). Deliberately
+    # not a yes/no: a registration we never read is not a registration that is not active.
+    table["Registration"] = [
+        registration_label(status, flagged)
+        for status, flagged in zip(rows["registration_status"], rows["registration_flagged"])
+    ]
     return table
 
 
@@ -249,12 +279,16 @@ with tabs[1]:
         "comparison, and it is not labelled cheapest. `Stock confirmed` is `not read` where we "
         "could not read that shop's stock, and a comparison whose `Confirmed pharmacies` is below "
         "two includes a price from a shop whose stock we could not read — the price is real, the "
-        "availability is not confirmed."
+        "availability is not confirmed. `Registration` is the NAFDAC status of the matched "
+        "registration: where it says `not active` the price is real and the licence is not, and "
+        "where it says `not read` we hold no status for that registration, so the row says nothing "
+        "about its licence either way."
     )
     cheapest = query(
         "select canonical_name, state, cheapest_pharmacy, cheapest_pack_price, unit_price,"
         " best_unit_unit_price, best_unit_pharmacy, pharmacy_count, is_comparison,"
-        " cheapest_pack_stock_confirmed, confirmed_pharmacy_count"
+        " cheapest_pack_stock_confirmed, confirmed_pharmacy_count,"
+        " registration_status, registration_flagged"
         " from v_cheapest_per_product_state"
         " order by canonical_name, state, cheapest_pack_price"
     )

@@ -107,6 +107,39 @@ second price. Read `confirmed_pharmacy_count` before calling a cell a clean comp
 Known-unavailable rows (`in_stock = false`) are still excluded. A pharmacy telling us it has none is
 information, not a gap.
 
+### Since 2026-11-10 — the licence behind the price is labelled
+
+The view named a "cheapest" and said nothing about whether the product's NAFDAC registration is allowed
+to be sold. It mattered: 159 listings carry a registration that is not Active or is past its expiry, and
+12 of those products still form a two-pharmacy comparison. The finding is the point of the project, so it
+is labelled rather than filtered out. Two columns are appended at the end
+([`../schema/008_registration_confidence.sql`](../schema/008_registration_confidence.sql)):
+
+| Column | Meaning |
+|---|---|
+| `registration_status` | the raw `nafdac_registrations.status` for the product's registration. **NULL when the product has no registration number, or when no status was ever read** |
+| `registration_flagged` | `true` only where a status was read **and** (`status <> 'Active'` or `expiry_date < current_date`) — the same condition `v_suspicious_listings` uses. Never NULL |
+
+Read them together. Three states, and a reader must be able to tell them apart:
+
+| `registration_status` | `registration_flagged` | Label to render | Count in the 260 cells (2026-11-10) |
+|---|---|---|---|
+| `'Active'`, not expired | `false` | `active` | 142 |
+| not Active, or expired | `true` | `not active` | 70 |
+| NULL | `false` | `not read` | 48 |
+
+**`registration_flagged = false` does not mean the licence is active.** It means "not flagged", which is
+true both for a licence we read and found active and for one we never read at all — 48 of the 190
+unflagged cells are in the second group. Rendering the boolean alone would print those 48 as "no" and
+call a medicine unregistered because our scraper never fetched its record, which is the same error as
+calling an unread shelf empty. The dashboard shows `active` / `not active` / `not read` from both
+columns and never a blank.
+
+Nothing about the ranking, the row set or `is_comparison` changed: 260 cells and 45 comparisons before
+and after, and all 23 pre-existing columns return identical values against an independent recomputation
+of the previous definition. `mv_drug_price_index` is deliberately untouched — it aggregates a
+product-day-state market figure and names no winner, so it has no "cheapest" claim to disclaim.
+
 ## `v_suspicious_listings` — two conditions, not one
 
 ```sql
