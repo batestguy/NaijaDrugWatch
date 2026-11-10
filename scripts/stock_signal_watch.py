@@ -22,12 +22,21 @@ stopped early, or a source that holds only 20 products in a category) is a sampl
 statement about the reader, and letting one in would move the "latest day" backwards to a day that
 was never finished.
 
-A source is flagged when its *prior* days were mostly readable and its latest day is not:
+A source is flagged when it *used to* be readable and its latest day is not:
 
-    median(prior days) < 10% unknown   AND   latest day > 25% unknown
+    at least one prior day < 10% unknown   AND   latest day > 25% unknown
 
-Both halves are needed. A source that has never reported stock (median 100% unknown) can only stay
-as it is, so the rule cannot fire on HealthPlus just for being terse -- only a *loss* is an alarm.
+Both halves are needed. A source that has never reported stock can only stay as it is, so the rule
+cannot fire on HealthPlus just for being terse -- only a *loss* is an alarm.
+
+WHY "has ever been clean" AND NOT "median of prior days". This was the first rule and it was wrong.
+With the median as the baseline, a break that persisted silenced its own alarm: three clean days
+followed by 100% unknown alarmed on days 1-3, and on day 4 the bad days became the majority of the
+prior window, the median crossed 10%, and the verdict flipped to `ok` while the source was still
+broken. A monitor whose alarm decays exactly when the fault becomes permanent is worse than none.
+The cost of the current rule is that a source which legitimately stops carrying stock for months will
+alarm nightly until a human resolves the issue -- which is the intended behaviour, because the notify
+job keeps one issue open per reason rather than opening a new one each night.
 The gap between 10% and 25% is a margin, not a measurement: 13 of MedPlus's 1,092 rows were unknown
 on a good day (1.2%), so the tolerable baseline is single digits and a breach has to be an order of
 magnitude worse to be worth waking someone.
@@ -66,7 +75,7 @@ from envfile import ensure_database_url
 MIN_ROWS_PER_DAY = 50
 
 # The two halves of the alarm. See the module docstring for why they are 10 and 25.
-PRIOR_MEDIAN_MAX_UNKNOWN_PCT = 10.0
+CLEAN_DAY_MAX_UNKNOWN_PCT = 10.0
 LATEST_UNKNOWN_ALARM_PCT = 25.0
 
 # One aggregate over the whole table, grouped so one query answers every pharmacy and every day.
@@ -148,7 +157,7 @@ def assess(days: list[dict], *, as_of: date | None = None) -> dict:
     # resolves it, and the notify job's one-issue-per-title dedup turns that into one issue with
     # comments rather than a new issue each night.
     clean_prior_days = [
-        item for item in prior if unknown_pct(item) < PRIOR_MEDIAN_MAX_UNKNOWN_PCT
+        item for item in prior if unknown_pct(item) < CLEAN_DAY_MAX_UNKNOWN_PCT
     ]
     result["clean_prior_days"] = len(clean_prior_days)
     if clean_prior_days and result["latest_pct"] > LATEST_UNKNOWN_ALARM_PCT:
