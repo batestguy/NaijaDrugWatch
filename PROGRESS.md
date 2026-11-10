@@ -58,11 +58,31 @@ vanished: 18 cells and 2 comparisons. Nothing complained. It was found by eye th
 The first ran out of steps reading files and executed nothing — but did find two real defects (the
 self-silencing alarm and stale documentation), both fixed. The second was **blocked from running any
 program at all**: every non-git command, including `.venv\Scripts\python.exe -V`, was rejected with
-`permission.rejected: shell`. The parent session runs the same interpreter without trouble, so helper
-sessions are being denied shell access in a way that makes "re-run the claim yourself" impossible.
+`permission.rejected: shell`.
 
-Until that is fixed, every review in this repo is a read-through, and the only execution-based
-verification is the secretary's own — which is a plausibility check of its own work, not an audit.
+**Cause, found and fixed the same day.** Not a platform bug: the reviewer had `steps: 12` and a shell
+allowlist that admitted `python *` but not the pinned interpreter path, while every command in this repo
+needs a variable set first (`$env:DATABASE_URL = ...; python ...`). The permission matcher tests one
+command against one pattern, so the two-part command was refused as a whole.
+
+The fix has three parts:
+
+- `scripts/envfile.py` — scripts load `DATABASE_URL` from `.env` when it is not already set, so no
+  command needs a variable prefix. An already-set variable always wins, so a workflow secret is never
+  overridden by a file.
+- `scripts/dbq.py` — one command that runs a single read-only query. Guarded twice: it refuses anything
+  that is not `select`/`with`, and the connection carries `default_transaction_read_only=on`, so the
+  server refuses a write even inside a `with` (`ReadOnlySqlTransaction`, verified with a
+  `with ... (delete ...) select`).
+- The reviewer agent now has `steps: 30`, the pinned interpreter in its allowlist, and a section
+  telling it to use `dbq.py` instead of chaining commands.
+
+**Verified by spawning a reviewer with three commands**: it ran the query (`260 / 45`), `git log`
+(`1c7b422`) and the watch script (ALARM + exit 1), all permitted, and answered "can you run this
+project's code — yes". So the next review in this repo can be an audit rather than a read-through.
+
+That fix is tooling, not verification. **The three changes in commit `1c7b422` still have no
+independent audit** — the next review should be aimed at them.
 
 ### Open, in priority order
 

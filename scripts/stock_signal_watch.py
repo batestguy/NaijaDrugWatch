@@ -57,6 +57,11 @@ import statistics
 import sys
 from datetime import date
 
+# A workflow supplies DATABASE_URL in the job environment. On a laptop it lives in .env, and reading it
+# here means this script runs as ONE command -- which is the only shape a reviewer agent's shell
+# permission allowlist can express. An already-set variable always wins.
+from envfile import ensure_database_url
+
 # A day with fewer rows than this is a partial observation, not a reading of the source's reader.
 MIN_ROWS_PER_DAY = 50
 
@@ -269,7 +274,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"::error title=stock watch::cannot import freshness_gate: {exc}", file=sys.stderr)
         return 2
 
-    raw = os.environ.get("DATABASE_URL", "")
+    raw = ensure_database_url() or ""
     url = normalise_url(raw)
     if not url:
         print(
