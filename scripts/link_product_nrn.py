@@ -62,23 +62,133 @@ SOURCE = "link_product_nrn"
 
 # -------------------------------------------------------------- normalisation
 
-STRENGTH_TOKEN_RE = re.compile(r"(\d+(?:[.,]\d+)?)\s*([a-z]+(?:\s*/\s*[a-z]+)?)")
+# A strength is a number, and a slash pair is TWO numbers sharing the unit that follows: the shops
+# write `AMATEM 20/120MG` for artemether 20 mg / lumefantrine 120 mg, and the register writes
+# `20 mg; 120 mg`. Reading the pair as one number silently dropped the first component -- `20` has no
+# unit after it -- so the token set was {120 mg} against the register's {20 mg, 120 mg} and rule 2
+# rejected the pair. The number group therefore collects `A/B/...` and the loop below splits it.
+STRENGTH_TOKEN_RE = re.compile(
+    r"(\d+(?:[.,]\d+)?(?:\s*/\s*\d+(?:[.,]\d+)?)*)\s*([a-z]+(?:\s*/\s*[a-z]+)?)"
+)
+STRENGTH_PAIR_SPLIT_RE = re.compile(r"\s*/\s*")
 
 
 def strength_tokens(value: str | None) -> frozenset[tuple[str, str]] | None:
-    """Numeric strength as an order-insensitive token set: '60mg+30mg' == '30 mg; 60 mg'."""
+    """Numeric strength as an order-insensitive token set: '60mg+30mg' == '30 mg; 60 mg'.
+
+    A slash pair sharing a unit is two tokens: '20/120MG' == '20 mg; 120 mg'. Keep that in mind
+    before widening the pattern -- a slash is not always a combination. `250/5 SUSP` means 250 mg
+    per 5 ml and `30/70` is an insulin ratio; neither is a pair of strengths, and both are asserted
+    against in SELF_TEST_CASES below.
+    """
     if not value:
         return None
     text = value.lower().replace("µg", "mcg").replace("ug", "mcg")
     tokens: set[tuple[str, str]] = set()
-    for number, unit in STRENGTH_TOKEN_RE.findall(text):
-        try:
-            amount = Decimal(number.replace(",", ".")).normalize()
-        except InvalidOperation:
-            continue
+    for numbers, unit in STRENGTH_TOKEN_RE.findall(text):
         unit = re.sub(r"\s+", "", unit)
-        tokens.add((str(amount), unit))
+        for number in STRENGTH_PAIR_SPLIT_RE.split(numbers):
+            try:
+                amount = Decimal(number.replace(",", ".")).normalize()
+            except InvalidOperation:
+                continue
+            tokens.add((str(amount), unit))
     return frozenset(tokens) or None
+
+
+# ---------------------------------------------------------------- self test
+#
+# Run with `python scripts/link_product_nrn.py --self-test`. No database, no network, nothing
+# written: it exercises the parsers and `choose()` against a fixture table and exits non-zero if a
+# fixture disagrees. It exists because the slash-strength rule is the whole reason a pair of
+# first-line antimalarials was being rejected, and a rule that decides what links needs a check that
+# fails loudly when it is edited. A pair that compares equal today must still compare equal unless
+# the table says otherwise, and the table says so in writing.
+
+# (product strength, register strength, must the token sets be equal?, why this row exists)
+SELF_TEST_CASES: list[tuple[str, str | None, bool, str]] = [
+    # -- the defect this ticket fixes: a slash pair is a combination, not one strength
+    ("20/120MG", "20 mg; 120 mg", True, "AMATEM -- the reported case"),
+    ("80/480MG", "80 mg; 480 mg", True, "COARTEM -- first-line antimalarial"),
+    ("500/125MG", "500 mg; 125 mg", True, "amoxicillin/clavulanate shape"),
+    ("100/12.5MG", "100 mg; 12.5 mg", True, "decimal in the second component"),
+    ("20/120 mg", "20 mg; 120 mg", True, "space before the unit, no space at the slash"),
+    ("100/12,5MG", "100 mg; 12.5 mg", True, "comma decimal in the second component"),
+    ("80/480MG", "480 mg; 80 mg", True, "order-insensitive, as rule 2 requires"),
+    # -- must not regress: these already compare equal
+    ("60mg+30mg", "30 mg; 60 mg", True, "plus-separated pair, order-insensitive"),
+    ("500MG", "500 mg", True, "one plain strength"),
+    ("80MG/480MG", "80 mg; 480 mg", True, "unit repeated on both sides -- one token each, already"),
+    ("500MG/5ML", "500 mg; 5 ml", True, "a concentration, already two tokens -- must stay two"),
+    ("1/2 TAB", "2 TAB", False, "a half-tablet dose must not equal a two-tablet one -- it does today"),
+    # -- must NOT become equal: the wrong-link direction
+    ("20/120MG", "20 mg", False, "a combination is not one of its components"),
+    ("80/480MG", "480 mg", False, "the component-only register row must not win"),
+    ("5/5", "5 mg", False, "no unit after the pair: not a strength at all"),
+    ("30/70", "30 mg; 70 mg", False, "an insulin ratio with no unit -- must not invent mg"),
+    ("250/5 SUSP", "250 mg; 5 ml", False, "'per 5 ml' is a concentration, not two strengths"),
+    ("500MG", "250 mg", False, "plain different strengths never match"),
+]
+
+# (label, product side, candidate strengths, must `choose()` return a registration?)
+SELF_TEST_CHOOSE_CASES: list[tuple[str, dict, list[str], bool]] = [
+    ("slash strength vs semicolon register", {"form": "tablet", "strength": "20/120MG"}, ["20 mg; 120 mg"], True),
+    ("plain strength, passes today", {"form": "tablet", "strength": "500MG"}, ["500 mg"], True),
+    ("combination vs a component-only register row", {"form": "tablet", "strength": "80/480MG"}, ["480 mg"], False),
+    ("plain strength vs a different strength", {"form": "tablet", "strength": "500MG"}, ["250 mg"], False),
+]
+
+
+def _format_tokens(tokens: frozenset[tuple[str, str]] | None) -> str:
+    if not tokens:
+        return "(none)"
+    return "{" + ", ".join(f"{amount} {unit}" for amount, unit in sorted(tokens)) + "}"
+
+
+def run_self_test() -> int:
+    """Print the fixture table with real parser output. Returns 0 when every row agrees."""
+    failures = 0
+    print(f"{'product strength':<20} {'register strength':<20} {'equal':<6} {'want':<5} {'result':<7} why")
+    print("-" * 118)
+    for product_strength, reg_strength, want_equal, why in SELF_TEST_CASES:
+        product_tokens = strength_tokens(product_strength)
+        reg_tokens = strength_tokens(reg_strength)
+        got_equal = product_tokens == reg_tokens
+        ok = got_equal == want_equal
+        failures += 0 if ok else 1
+        print(
+            f"{product_strength:<20} {str(reg_strength):<20} {str(got_equal):<6} "
+            f"{str(want_equal):<5} {'PASS' if ok else 'FAIL':<7} {why}"
+        )
+        print(f"{'':<20} {_format_tokens(product_tokens):<48} | {_format_tokens(reg_tokens)}")
+    print(f"\nstrength fixtures: {len(SELF_TEST_CASES) - failures}/{len(SELF_TEST_CASES)} pass")
+
+    print("\n--- choose() verdicts (one candidate each) ---")
+    choose_failures = 0
+    for label, product, strengths, must_link in SELF_TEST_CHOOSE_CASES:
+        candidates = [
+            {
+                "registration_number": f"TEST-{index}",
+                "product_name": "TEST",
+                "dosage_form": "Tablet",
+                "strength": strength,
+                "status": "Active",
+                "expiry_date": None,
+                "sim": 0.80,
+            }
+            for index, strength in enumerate(strengths)
+        ]
+        chosen, reason = choose({"canonical_name": "TEST", **product}, candidates)
+        got_link = chosen is not None
+        ok = got_link == must_link
+        choose_failures += 0 if ok else 1
+        verdict = f"linked {chosen['registration_number']}" if chosen else "rejected"
+        print(f"  {'PASS' if ok else 'FAIL'}  {label:<48} want={'link' if must_link else 'reject':<6} {verdict:<16} ({reason})")
+    print(f"\nchoose fixtures: {len(SELF_TEST_CHOOSE_CASES) - choose_failures}/{len(SELF_TEST_CHOOSE_CASES)} pass")
+
+    total_failures = failures + choose_failures
+    print(f"\nself test: {'FAILED' if total_failures else 'OK'} ({total_failures} failing)")
+    return 1 if total_failures else 0
 
 
 # Dosage-form families. Order matters: ophthalmic before oral liquid, so "eye drops" does not
@@ -192,7 +302,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--min-similarity", type=float, default=DEFAULT_MIN_SIMILARITY)
     parser.add_argument("--refresh", action="store_true", help="re-link products that already have an NRN")
+    parser.add_argument("--self-test", action="store_true", help="run the parser fixtures, no database")
     args = parser.parse_args(argv)
+
+    if args.self_test:
+        return run_self_test()
 
     connection = None
     run_id = None

@@ -10,6 +10,10 @@ name: daily
 # Measured durations on 2026-11-08, so a regression shows up as a timeout rather than a silent stall:
 #   index ~20 s | details (restricted scope) ~45 min | healthplus ~1 min | medplus ~25 min
 #   drugstore ~1 min | link + match seconds | refresh seconds
+# Changed 2026-11-12: medplus now walks the whole drugs catalogue (1,396 products over 70 pages)
+# instead of six category pages (128 rows), so its step is ~68 min and the run is ~2 h 50 m. The
+# `--categories` argument was dropped because the drugs route ignores it; the default is the full
+# sweep. Measured 2026-11-12: 20 links per page, page 70 holds 16, page 71 is empty.
 # The GitHub job cap is 6 h; this fits with room, but the FULL Greenbook sweep (~14 h) does not and
 # must stay restricted or be sharded across days.
 
@@ -211,7 +215,7 @@ jobs:
 
           # Market half. API-first sources, then the HTML one.
           run_step "healthplus"      py scrapers/healthplus.py
-          run_step "medplus"         py scrapers/medplus.py --categories 12,31,32,50,57,58
+          run_step "medplus"         py scrapers/medplus.py
           run_step "drugstore"       py scrapers/drugstore.py --limit 200
 
           # Matching is the gate on the headline metric, not the scraping: new listings are

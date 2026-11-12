@@ -1,11 +1,110 @@
 # Progress
 
-Single state file for NaijaDrugWatch. Last updated **2026-11-10 06:50Z**.
+Single state file for NaijaDrugWatch. Last updated **2026-11-12 05:45Z**.
 
-## Handoff — state at close, 2026-11-10
+## Handoff — state at close, 2026-11-12
 
-Read this block only. Everything below it is history; the 2026-11-09 and 2026-11-08 snapshots are
-superseded by the table here.
+Read this block only. Everything below it is history.
+
+### Where it stands
+
+**The nightly job has now run by itself for three nights, and the way it collects MedPlus has been
+repaired twice.** Two fixes are uncommitted on disk (details below). Nothing is deployed.
+
+The schedule fired eight times over 2026-11-09/10/11 and behaved correctly in both directions:
+three nights found the day missing and ran the whole pipeline (1 h 33 m, 1 h 31 m, 1 h 49 m); five
+fires found the day already done and stood down in 11-17 s. One fire queued behind a running one
+instead of scraping twice. GitHub delivers these fires hours late - 03:00Z arrived at 10:54Z, 10:46Z
+and 10:21Z - so "4am" is the intent, not the schedule. 2026-11-12's fire had not arrived at 05:45Z.
+
+**Live snapshot, queried 2026-11-12 03:38Z** (the database was reachable again once the Proton VPN
+was disconnected; the control experiment was run first and failed identically on a bogus host):
+
+| Object | Value |
+|---|---|
+| `products` | **1,433** |
+| `pharmacy_listings` (latest per URL) | **2,792** - MedPlus 1,391, HealthPlus 1,201, Drugstore.ng 200 |
+| …matched to a product | **580** (MedPlus 227, HealthPlus 343, Drugstore 10); **2,212 unmatched** |
+| `products` with no registration linked | **698**, of which 184 carry a slash in the strength |
+
+### What changed on 2026-11-12, and what each change is worth
+
+| Change | Evidence | Worth |
+|---|---|---|
+| `scrapers/medplus.py` discovery moved from six category pages to the site's drugs route | 20 links/page, 0 repeats; page 70 holds 16, page 71 empty; re-verified by the secretary | **128 -> 1,396 products**, 11x. Costs ~68 min/night: 1 h 49 m becomes ~2 h 51 m of a 6 h cap |
+| `.github/workflows/daily.yml:214` | `--categories` removed; header runtime note updated | the nightly now does the full sweep by default |
+| `scripts/link_product_nrn.py` strength parser | `20/120MG` now equals `20 mg; 120 mg`; 18/18 fixtures, and an independent old-vs-new sweep over 54,544 real strings changed 367, **all of them containing a slash, none without** | **1 product rescued**, measured against the live database: 690 verdicts, 1 gained, 0 lost |
+| `scrapers/medplus.py` block and blip handling | stub-proved by the secretary: 429 on page 3 stops at 3 requests; 403 at 2; one half-read page retried and the walk completes; persistent failure abandons after 3 attempts | a refusal now ends the night as `failed` instead of grading a partial run as a done day |
+
+**The strength fix is smaller than the ticket that asked for it.** The "610 pairs" figure was a count
+of product-against-candidate comparisons; in product terms it was about 193 products, and after the
+fix **193 are still rejected on strength**. Of those, 68 carry a slash that is a *concentration*
+(`250 mg/5 ml`, `20 mg/ml`) against a register that states a plain amount - a different rule problem,
+not a parsing one. 501 of the 698 unlinked products never had a candidate at all above the similarity
+floor. The next real gain is in the concentration rule, and it must be measured before it is trusted.
+
+### Two judgement numbers now in the code
+
+`MAX_FAILED_SHARE = 0.10` and `MIN_RECORDS_FULL_SWEEP = 1000` (today's catalogue is 1,396). More than
+10% of product pages failing, or a full sweep under 1,000 records, marks the night **failed**. Both
+are a judgement, not a measurement, and say so in the code. The records floor applies only to a full
+sweep (no `--limit`, drugs route, whole page budget from page 1), so a deliberate sample is not
+punished.
+
+Ledger rows written while proving this: **id 56 failed** ("Blocked: … HTTP 429") and **id 57 failed**
+("thin night: 20 records from a full sweep (floor 100)"). Both came from runs whose HTTP client was
+stubbed. Row 57's floor reads 100 because the floor was lowered for one run to reach the branch; that
+row is about a stub run, not a real night. These two rows mean `v_pipeline_health` will show medplus
+failing until a real success lands.
+
+### What a reviewer found that the builders did not
+
+`.agent/T3-review.md`: both fixes ship, with two defects in the new walk - **both fixed the same day
+as T5** - and one overstated claim in the strength report, namely that existing links are only
+recomputed on request. They are recomputed nightly, because the workflow passes `--refresh`.
+
+### Uncommitted on disk, and why
+
+`scrapers/medplus.py`, `scripts/link_product_nrn.py`, `.github/workflows/daily.yml`, plus `.agent/`
+reports. Two untracked files predate today: `scripts/crosscheck_pages.py` (works; its first pass was
+cut short by a 429) and `.agent/eyeball-sheet.md` (**superseded - do not use**). `PROGRESS.md` is
+edited, not committed. Nothing is committed, pushed, deployed or published today.
+
+### Open, in priority order
+
+1. **The full MedPlus sweep has never been run end to end.** Discovery is proven; a 70-page walk plus
+   1,396 product pages costs ~68 min and has not happened. The first real test is the next nightly.
+2. **The concentration problem.** 68 products state a mass per volume against a register that states
+   a plain mass. Fixing it needs a rule decision and a measurement, in that order.
+3. **`mv_drug_price_index`** is still unprotected from suspect prices and is an index of *new* prices
+   per day, not of the market. Must not be published as a market average without a relabel.
+4. **`v_pipeline_health` cannot see a source that never ran** - zero rows means zero output, not
+   `STALE`.
+5. **The dashboard is not deployed** and there is no public interface. Two of the four
+   definition-of-done items.
+6. **`unit_price` coverage is 52.7%** on HealthPlus against an 85% gate.
+7. **Nothing has been eyeballed.** Every "cheapest" claim is arithmetic; `crosscheck_pages.py` has
+   never completed a full pass.
+
+### Decisions taken 2026-11-12
+
+| Decision | What was chosen | Why, and what it cost |
+|---|---|---|
+| MedPlus nightly size | **Full sweep every night**, user's choice | 1,396 products instead of 128. Costs ~68 min/night and raises the request volume from ~134 to ~1,466 a night, which has never been run. A rotating window (400/night, full coverage every 4 nights) was offered and rejected as slower for the same coverage. |
+| 2026-11-10 decisions on comparison semantics, inactive licences and eyeballing | **Unchanged** | See the 2026-11-10 block below. |
+
+### Unproven
+
+- **The full MedPlus sweep** at real volume, and whether the site tolerates ~1,466 requests a night.
+- **The concentration rule** - not attempted.
+- **The 1,396-discovery count as a nightly record count**: the nightly re-reads, but whether all
+  1,396 parse and write cleanly is unmeasured.
+- **GitHub Actions has never executed any of today's three changes.**
+- **`2a16c29` and `683e266` still have had no independent audit** (secretary verification only).
+- **The page cross-check has not completed a pass.**
+
+## Handoff — state at close, 2026-11-10 (historical)
+
 
 ### Where it stands
 
