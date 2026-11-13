@@ -18,6 +18,12 @@ data/
 # Date-stamped scraper dumps. Local working copies only; the published archive goes to HF Datasets.
 archives/
 
+# --- build output ---
+# The public page and its JSON are generated from the database by scripts/build_site.py and published
+# by the `publish` job in .github/workflows/daily.yml. Build output, never source: a stale copy in git
+# would be a page nobody re-derived.
+site/
+
 # --- run logs ---
 # Local scraper/flow stdout capture. Evidence worth keeping goes into PROGRESS.md, not here.
 *.log

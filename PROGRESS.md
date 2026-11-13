@@ -9,7 +9,8 @@ Read this block only. Everything below it is history.
 ### Where it stands
 
 **The nightly job has now run by itself for three nights, and the way it collects MedPlus has been
-repaired twice.** Two fixes are uncommitted on disk (details below). Nothing is deployed.
+repaired twice.** Both repairs are pushed as of 2026-11-13; the public page and the verification desk
+are built but uncommitted. Nothing is deployed.
 
 The schedule fired eight times over 2026-11-09/10/11 and behaved correctly in both directions:
 three nights found the day missing and ran the whole pipeline (1 h 33 m, 1 h 31 m, 1 h 49 m); five
@@ -65,10 +66,20 @@ recomputed on request. They are recomputed nightly, because the workflow passes 
 
 ### Uncommitted on disk, and why
 
-`scrapers/medplus.py`, `scripts/link_product_nrn.py`, `.github/workflows/daily.yml`, plus `.agent/`
-reports. Two untracked files predate today: `scripts/crosscheck_pages.py` (works; its first pass was
-cut short by a 429) and `.agent/eyeball-sheet.md` (**superseded - do not use**). `PROGRESS.md` is
-edited, not committed. Nothing is committed, pushed, deployed or published today.
+**Pushed 2026-11-13: `4f29fbf..cdda082`.** `babd652` carries the MedPlus full-catalogue discovery,
+the block/transport guard and the strength parser; `cdda082` repairs two ticket reports that shared a
+path. Verified by reading the remote back: `origin/main` carries `DRUGS_URL`, `MAX_PAGES = 70`,
+`class Blocked`, the medplus step without `--categories`, and `STRENGTH_PAIR_SPLIT_RE`.
+
+**Still local and uncommitted, on purpose:** `scripts/build_site.py` with its `publish` job in
+`.github/workflows/daily.yml` (the public page), `scripts/build_verify_desk.py` and its `site/verify/`
+output (the human verification desk), the rewritten `README.md`, `.gitignore`, and the `.agent/`
+reports for both. The public page is held because it names real pharmacies and states licence
+findings; the page and the desk both run, and neither is published.
+
+Two untracked files predate today: `scripts/crosscheck_pages.py` (works; its first pass was cut short
+by a 429) and `.agent/eyeball-sheet.md` (**superseded - do not use**).
+
 
 ### Open, in priority order
 

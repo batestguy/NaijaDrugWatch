@@ -4,24 +4,29 @@ An open, daily-refreshed database that joins **NAFDAC drug registration status**
 Nigerian pharmacy prices** — so a patient, pharmacist or researcher can answer: *is this drug
 genuine, is it in stock, and where is it cheapest?*
 
-**Status: the pipeline works end to end; the daily schedule is not yet proven.** Three pharmacies
-and the NAFDAC register are loaded, the views return numbers, and the dashboard renders them. The
-schedule exists as a GitHub Actions workflow but has not yet completed seven consecutive green runs,
-so **do not cite this repo as a data source yet.** `v_pipeline_health` is the gate.
+**Status: it runs itself, and it has not been checked by eye.** The pipeline completes end to end and
+the daily schedule has fired by itself for three nights running: three nights found the day missing
+and ran the whole pipeline (1 h 33 m, 1 h 31 m, 1 h 49 m), and five later fires found the day already
+done and stood down in seconds. What is **not** established: seven consecutive green days, any
+comparison checked against a live pharmacy page, and any lapsed registration compared against a
+rendered NAFDAC record. So **do not cite this as a price source yet** — and read
+[`PROGRESS.md`](PROGRESS.md) before quoting any number here.
 
-Every figure below is as of **2026-11-08** and moves on every scrape. Current state and row counts
+Every figure below is as of **2026-11-12** and moves on every scrape. Current state and row counts
 live in [`PROGRESS.md`](PROGRESS.md), which is the single state file for this repo.
 
 ## What the data currently says
 
 | Object | Value | Meaning |
 |---|---|---|
-| `pharmacy_listings` (latest) | 2,599 | three pharmacies, all Lagos except Drugstore.ng |
-| `nafdac_registrations` | 10,906 | the Greenbook index |
-| …with a status scraped | 572 | **5% of the register** — the restricted scope, not the full sweep |
-| `v_cheapest_per_product_state` | 115 cells, **24 comparisons** | only 24 are genuine two-pharmacy comparisons |
-| `v_suspicious_listings` | 124 | matched to a registration that is not Active, or has expired |
-| `mv_drug_price_index` | 135 rows | refreshed by the pipeline, never by hand |
+| `pharmacy_listings` (latest per URL) | 2,792 | three pharmacies, all Lagos except Drugstore.ng |
+| …matched to a product | 580 | 2,212 are unmatched: no product to attach them to |
+| `nafdac_registrations` | 10,925 | the Greenbook index |
+| …with a status scraped | 1,856 | **17% of the register** — still the restricted scope, not the full sweep |
+| `v_cheapest_per_product_state` | 262 cells, **45 comparisons** | only 45 are genuine two-pharmacy comparisons |
+| `v_suspicious_listings` | 163 | matched to a registration that is not Active, or has expired |
+| `mv_drug_price_index` | 426 rows | refreshed by the pipeline, never by hand |
+
 
 **A "cheapest" cell is only a comparison when `is_comparison` is true** — two or more independent
 pharmacies quoting the same product in the same state. Every other cell is one pharmacy's price, and
@@ -74,9 +79,12 @@ transient failure waits for tomorrow), run history only in the Actions UI, and *
 pipeline runs `REFRESH MATERIALIZED VIEW CONCURRENTLY`, and both break under PgBouncer transaction
 pooling.
 
-**Durations, measured 2026-11-08:** index ~20 s, details (restricted) ~45 min, healthplus ~1 min,
-medplus ~2 h 10, drugstore ~1 min. A full run is ~3 h 15, inside the 6-hour job cap. The complete
-Greenbook sweep (~14 h) does **not** fit and must be sharded across days.
+**Durations, measured 2026-11-08 and updated 2026-11-12:** index ~20 s, details (restricted) ~45 min,
+healthplus ~1 min, drugstore ~1 min, and medplus now walks its whole drug catalogue — 1,396 products
+over 70 pages, about 68 minutes, where six category pages used to yield 128 rows. A full run is
+therefore ~2 h 50 m, inside the 6-hour job cap. The complete Greenbook sweep (~14 h) does **not** fit
+and must be sharded across days. GitHub delivers scheduled fires hours late: 03:00Z has arrived
+between 10:21Z and 10:54Z, which is why the workflow fires three times and lets a gate decide.
 
 ## Quickstart
 
@@ -109,7 +117,7 @@ python -X utf8 scrapers/nafdac_index.py
 python -X utf8 scrapers/nafdac_details.py --min-similarity 0.50
 python -X utf8 scripts/link_product_nrn.py --refresh --min-similarity 0.35
 python -X utf8 scrapers/healthplus.py
-python -X utf8 scrapers/medplus.py --categories 12,31,32,50,57,58
+python -X utf8 scrapers/medplus.py            # full drugs catalogue, ~1,396 products, ~68 min
 python -X utf8 scrapers/drugstore.py --limit 200
 python -X utf8 scripts/match_listings.py
 python -X utf8 -c "import os,psycopg; psycopg.connect(os.environ['DATABASE_URL'],autocommit=True).execute('refresh materialized view concurrently mv_drug_price_index')"
@@ -154,9 +162,10 @@ publicly published NAFDAC Greenbook. Specifically:
 - **`unit_price` is unknown for roughly half of the listings.** Pack sizes are parsed from titles, and
   many titles state a count with no unit (`* 10 STRIPS`). The parser returns NULL rather than guessing,
   which is why `best_unit_*` is NULL so often.
-- **Registration coverage is 5%.** Status and expiry exist for 572 of 10,906 registrations — the scope
-  matching the catalogue we price, not the register. A product with no status has *unknown* status,
-  which `v_suspicious_listings` does not treat as suspicious.
+- **Registration coverage is 17%.** Status and expiry exist for 1,856 of 10,925 registrations — the
+  scope matching the catalogue we price, not the register. A product with no status has *unknown*
+  status, which `v_suspicious_listings` does not treat as suspicious, so the 163 rows it returns are
+  a fraction of a fraction and not an estimate of the whole register.
 - **Drugstore.ng carries a single national price**, not a per-state one, and is registered with
   `state = 'National'`. It can never create a comparison. Its product pages name one seller each.
 - **The scheduler has no retries.** A transient failure loses that day's run.

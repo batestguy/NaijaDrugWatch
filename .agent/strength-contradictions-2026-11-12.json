@@ -1,0 +1,448 @@
+[
+ {
+  "product_id": 59,
+  "product": "Amoxicillin+Clavulanic Acid",
+  "product_strength": "1000+200 mg",
+  "title": "Augmentin (Amoxicillin/Clavulanic Acid) 228mg/5ml Suspension 70ml",
+  "price": 10340.0,
+  "pharmacy_id": 3,
+  "url": "https://healthplusnigeria.com/products/augmentin-amoxicillinclavulanic-acid-228mg5ml-suspension-70ml",
+  "in_comparison": false,
+  "want": [
+   "2E+2"
+  ],
+  "got": [
+   "228"
+  ]
+ },
+ {
+  "product_id": 59,
+  "product": "Amoxicillin+Clavulanic Acid",
+  "product_strength": "1000+200 mg",
+  "title": "Augmentin (Amoxicillin/Clavulanic Acid) 457mg/5ml Suspension 70ml",
+  "price": 16610.0,
+  "pharmacy_id": 3,
+  "url": "https://healthplusnigeria.com/products/augmentin-amoxicillinclavulanic-acid-457mg5ml-suspension-70ml",
+  "in_comparison": false,
+  "want": [
+   "2E+2"
+  ],
+  "got": [
+   "457"
+  ]
+ },
+ {
+  "product_id": 56,
+  "product": "Amoxicillin+Clavulanic Acid",
+  "product_strength": "875mg+125mg",
+  "title": "Augmentin (Amoxicillin/Clavulanic Acid) 625mg Tabs x 14",
+  "price": 14520.0,
+  "pharmacy_id": 3,
+  "url": "https://healthplusnigeria.com/products/augmentin-amoxicillinclavulanic-acid-625mg-tabs-x-14",
+  "in_comparison": false,
+  "want": [
+   "125",
+   "875"
+  ],
+  "got": [
+   "625"
+  ]
+ },
+ {
+  "product_id": 295,
+  "product": "Diclofenac",
+  "product_strength": "100 mg",
+  "title": "Cataflam Diclofenac 50mg x100 Blister Pack",
+  "price": 46700.0,
+  "pharmacy_id": 3,
+  "url": "https://healthplusnigeria.com/products/cataflam-diclofenac-50mg-x100-blister-pack",
+  "in_comparison": false,
+  "want": [
+   "1E+2"
+  ],
+  "got": [
+   "5E+1"
+  ]
+ },
+ {
+  "product_id": 190,
+  "product": "Chloramphenicol",
+  "product_strength": "1 g",
+  "title": "Chloramphenicol Eye Ointment Drugfield 5g",
+  "price": 500.0,
+  "pharmacy_id": 3,
+  "url": "https://healthplusnigeria.com/products/chloramphenicol-eye-ointment-drugfield-5g",
+  "in_comparison": false,
+  "want": [
+   "1E+3"
+  ],
+  "got": [
+   "5E+3"
+  ]
+ },
+ {
+  "product_id": 59,
+  "product": "Amoxicillin+Clavulanic Acid",
+  "product_strength": "1000+200 mg",
+  "title": "Clavulin Amoxicillin/Clavulanic Acid 625mg x14",
+  "price": 11050.0,
+  "pharmacy_id": 3,
+  "url": "https://healthplusnigeria.com/products/clavulin-amoxicillinclavulanic-acid-625mg-x14",
+  "in_comparison": false,
+  "want": [
+   "2E+2"
+  ],
+  "got": [
+   "625"
+  ]
+ },
+ {
+  "product_id": 470,
+  "product": "Hydrochlorothiazide",
+  "product_strength": "12.5 mg",
+  "title": "Co-Diovan (Valsartan/Hydrochlorothiazide) 160mg/12.5mg Tablets x 28",
+  "price": 41670.0,
+  "pharmacy_id": 3,
+  "url": "https://healthplusnigeria.com/products/codiovan-valsartanhydrochlorothiazide-160mg125mg-tablets-x-28",
+  "in_comparison": false,
+  "want": [
+   "12.5"
+  ],
+  "got": [
+   "1.6E+2",
+   "12.5"
+  ]
+ },
+ {
+  "product_id": 471,
+  "product": "Hydrochlorothiazide",
+  "product_strength": "25 mg",
+  "title": "Co-Diovan (Valsartan/Hydrochlorothiazide) 160mg/25mg Tablets x28",
+  "price": 35570.0,
+  "pharmacy_id": 3,
+  "url": "https://healthplusnigeria.com/products/codiovan-valsartanhydrochlorothiazide-160mg25mg-tablets-x28",
+  "in_comparison": false,
+  "want": [
+   "25"
+  ],
+  "got": [
+   "1.6E+2",
+   "25"
+  ]
+ },
+ {
+  "product_id": 470,
+  "product": "Hydrochlorothiazide",
+  "product_strength": "12.5 mg",
+  "title": "Co-Diovan (Valsartan/Hydrochlorothiazide) 80mg/12.5mg Tabs x28",
+  "price": 31290.0,
+  "pharmacy_id": 3,
+  "url": "https://healthplusnigeria.com/products/codiovan-valsartanhydrochlorothiazide-80mg125mg-tabs-x28",
+  "in_comparison": false,
+  "want": [
+   "12.5"
+  ],
+  "got": [
+   "12.5",
+   "8E+1"
+  ]
+ },
+ {
+  "product_id": 294,
+  "product": "Diclofenac",
+  "product_strength": "12.5 mg",
+  "title": "Curefenac Diclofenac 50mg x10",
+  "price": 320.0,
+  "pharmacy_id": 3,
+  "url": "https://healthplusnigeria.com/products/curefenac-diclofenac-50mg-x10",
+  "in_comparison": false,
+  "want": [
+   "12.5"
+  ],
+  "got": [
+   "5E+1"
+  ]
+ },
+ {
+  "product_id": 923,
+  "product": "Tamsulosin",
+  "product_strength": "0.4 mg",
+  "title": "Duodart (Dutasteride/Tamsulosin) 0.5mg/0.4mg Caps x30",
+  "price": 26010.0,
+  "pharmacy_id": 3,
+  "url": "https://healthplusnigeria.com/products/duodart-dutasteridetamsulosin-05mg04mg-caps-x30",
+  "in_comparison": false,
+  "want": [
+   "0.4"
+  ],
+  "got": [
+   "0.4",
+   "0.5"
+  ]
+ },
+ {
+  "product_id": 490,
+  "product": "Ibuprofen",
+  "product_strength": "100 mg/5 ml",
+  "title": "Emprofen Ibuprofen 400mg x100",
+  "price": 13740.0,
+  "pharmacy_id": 3,
+  "url": "https://healthplusnigeria.com/products/emprofen-ibuprofen-400mg-x100",
+  "in_comparison": false,
+  "want": [
+   "1E+2"
+  ],
+  "got": [
+   "4E+2"
+  ]
+ },
+ {
+  "product_id": 2303,
+  "product": "Exforge 10 mg/320 mg Tablets",
+  "product_strength": "10 mg; 320 mg",
+  "title": "Exforge HCT 10mg/320mg/25mg x28",
+  "price": 63500.0,
+  "pharmacy_id": 3,
+  "url": "https://healthplusnigeria.com/products/exforge-hct-10mg320mg25mg-x28",
+  "in_comparison": false,
+  "want": [
+   "1E+1",
+   "3.2E+2"
+  ],
+  "got": [
+   "1E+1",
+   "25",
+   "3.2E+2"
+  ]
+ },
+ {
+  "product_id": 433,
+  "product": "Gentamicin",
+  "product_strength": "10 mcg",
+  "title": "Gentalek Gentamicin 80mg/2ml x50",
+  "price": 77000.0,
+  "pharmacy_id": 3,
+  "url": "https://healthplusnigeria.com/products/gentalek-gentamicin-80mg2ml-x50",
+  "in_comparison": false,
+  "want": [
+   "0.01"
+  ],
+  "got": [
+   "8E+1"
+  ]
+ },
+ {
+  "product_id": 437,
+  "product": "Glibenclamide",
+  "product_strength": "5 mg",
+  "title": "Glucovance (Metformin/Glibenclamide) 1000/5mg Tablet x30",
+  "price": 17700.0,
+  "pharmacy_id": 3,
+  "url": "https://healthplusnigeria.com/products/glucovance-metforminglibenclamide-10005mg-tablet-x30",
+  "in_comparison": true,
+  "want": [
+   "5"
+  ],
+  "got": [
+   "1E+3",
+   "5"
+  ]
+ },
+ {
+  "product_id": 437,
+  "product": "Glibenclamide",
+  "product_strength": "5 mg",
+  "title": "Glucovance (Metformin/Glibenclamide) 500/5mg Tablet x30",
+  "price": 18000.0,
+  "pharmacy_id": 3,
+  "url": "https://healthplusnigeria.com/products/glucovance-metforminglibenclamide-5005mg-tablet-x30",
+  "in_comparison": true,
+  "want": [
+   "5"
+  ],
+  "got": [
+   "5",
+   "5E+2"
+  ]
+ },
+ {
+  "product_id": 580,
+  "product": "Levothyroxine",
+  "product_strength": "200 mcg",
+  "title": "Levothyroxine Accord 100mcg x28",
+  "price": 3000.0,
+  "pharmacy_id": 3,
+  "url": "https://healthplusnigeria.com/products/levothyroxine-accord-100mcg-x28",
+  "in_comparison": false,
+  "want": [
+   "0.2"
+  ],
+  "got": [
+   "0.1"
+  ]
+ },
+ {
+  "product_id": 816,
+  "product": "Proguanil",
+  "product_strength": "100 mg",
+  "title": "Malanil (Artovaquone/Proguanil) 250mg/100mg Tabs x12",
+  "price": 115590.0,
+  "pharmacy_id": 3,
+  "url": "https://healthplusnigeria.com/products/malanil-artovaquoneproguanil-250mg100mg-tabs-x12",
+  "in_comparison": false,
+  "want": [
+   "1E+2"
+  ],
+  "got": [
+   "1E+2",
+   "2.5E+2"
+  ]
+ },
+ {
+  "product_id": 47,
+  "product": "Amlodipine",
+  "product_strength": "10 mg",
+  "title": "Norvasc (Amlodipine) 5mg Blister x 10",
+  "price": 50990.0,
+  "pharmacy_id": 3,
+  "url": "https://healthplusnigeria.com/products/norvasc-amlodipine-5mg-blister-x-10",
+  "in_comparison": true,
+  "want": [
+   "1E+1"
+  ],
+  "got": [
+   "5"
+  ]
+ },
+ {
+  "product_id": 753,
+  "product": "Paracetamol",
+  "product_strength": "120 mg/5 ml",
+  "title": "Panda Paracetamol 125mg/5ml 60ml",
+  "price": 1000.0,
+  "pharmacy_id": 3,
+  "url": "https://healthplusnigeria.com/products/panda-paracetamol-125mg5ml-60ml",
+  "in_comparison": true,
+  "want": [
+   "1.2E+2"
+  ],
+  "got": [
+   "125"
+  ]
+ },
+ {
+  "product_id": 2161,
+  "product": "Valsartan 160 mg Tablet",
+  "product_strength": "160 mg",
+  "title": "Valvas Amlodipine/Valsartan 10/160mg x30",
+  "price": 21930.0,
+  "pharmacy_id": 3,
+  "url": "https://healthplusnigeria.com/products/valvas-amlodipinevalsartan-10160mg-x30",
+  "in_comparison": false,
+  "want": [
+   "1.6E+2"
+  ],
+  "got": [
+   "1.6E+2",
+   "1E+1"
+  ]
+ },
+ {
+  "product_id": 296,
+  "product": "Diclofenac Sodium",
+  "product_strength": "25 mg",
+  "title": "Voltaren Retard (Diclofenac Sodium) 100mg Tabs x10",
+  "price": 7480.0,
+  "pharmacy_id": 3,
+  "url": "https://healthplusnigeria.com/products/voltaren-retard-diclofenac-sodium-100mg-tabs-x10",
+  "in_comparison": false,
+  "want": [
+   "25"
+  ],
+  "got": [
+   "1E+2"
+  ]
+ },
+ {
+  "product_id": 15,
+  "product": "Aciclovir",
+  "product_strength": "400 mg",
+  "title": "ACICLOVIR 800MG * 35 TABS (RANBAXY)",
+  "price": 17750.0,
+  "pharmacy_id": 8,
+  "url": "https://medplusnig.com/product/aciclovir-800mg-35-tabs-ranbaxy-mJ8l7t",
+  "in_comparison": true,
+  "want": [
+   "4E+2"
+  ],
+  "got": [
+   "8E+2"
+  ]
+ },
+ {
+  "product_id": 294,
+  "product": "Diclofenac",
+  "product_strength": "12.5 mg",
+  "title": "DICLOFENAC 50MG *10 STRIPS (ROCKOX)",
+  "price": 300.0,
+  "pharmacy_id": 8,
+  "url": "https://medplusnig.com/product/diclofenac-50mg-10-strips-rockox-fuNB3U",
+  "in_comparison": false,
+  "want": [
+   "12.5"
+  ],
+  "got": [
+   "5E+1"
+  ]
+ },
+ {
+  "product_id": 2247,
+  "product": "Galvus 50 mg Tablets",
+  "product_strength": "50 mg",
+  "title": "GALVUS MET 50MG/1000MG * 60 TABS",
+  "price": 61600.0,
+  "pharmacy_id": 8,
+  "url": "https://medplusnig.com/product/galvus-met-50mg1000mg-60-tabs-bssS58",
+  "in_comparison": true,
+  "want": [
+   "5E+1"
+  ],
+  "got": [
+   "1E+3",
+   "5E+1"
+  ]
+ },
+ {
+  "product_id": 1047,
+  "product": "Vitamin C",
+  "product_strength": "100 mg",
+  "title": "N/A VITAMIN C 500MG CHEWABLE *100 TABS",
+  "price": 20250.0,
+  "pharmacy_id": 8,
+  "url": "https://medplusnig.com/product/na-vitamin-c-500mg-chewable-100-tabs-I96kKu",
+  "in_comparison": true,
+  "want": [
+   "1E+2"
+  ],
+  "got": [
+   "5E+2"
+  ]
+ },
+ {
+  "product_id": 2402,
+  "product": "Nebilong 5 Tablets",
+  "product_strength": "5 mg",
+  "title": "NEBILONG-H 5MG/12.5MG *30 TABS",
+  "price": 6450.0,
+  "pharmacy_id": 8,
+  "url": "https://medplusnig.com/product/nebilong-h-5mg125mg-30-tabs-lBodMN",
+  "in_comparison": false,
+  "want": [
+   "5"
+  ],
+  "got": [
+   "12.5",
+   "5"
+  ]
+ }
+]
