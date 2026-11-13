@@ -1,10 +1,122 @@
 # Progress
 
-Single state file for NaijaDrugWatch. Last updated **2026-11-12 05:45Z**.
+Single state file for NaijaDrugWatch. Last updated **2026-11-13**.
 
-## Handoff — state at close, 2026-11-12
+## Handoff — paused mid-finish, 2026-11-13
 
-Read this block only. Everything below it is history.
+Read this block only. Everything below is history.
+
+### What was decided, and why it matters more than any code in this file
+
+The project **stops**. It does not run forever. The plan is to finish it to a defined line, freeze a
+dated vintage, export the data out of Neon, and turn the schedule off. The reasoning, recorded so it
+is not re-litigated: a nightly pipeline is a standing promise, and one that runs unwatched on free
+tiers ends by publishing stale numbers with nobody's name on the failure.
+
+**Freeze requires an export.** Neon's free tier suspends idle projects. A frozen project whose only
+copy of the data lives in a suspended database has not been frozen, it has been lost.
+
+The five steps, in order, with what each unlocks:
+
+| # | step | state |
+|---|---|---|
+| 1 | strength guard in the matcher, and repair the wrong attachments | **done, 13 November** - 54 cleared, 0 contradictions, comparisons 45 to 43 |
+| 2 | human verification: 20 licence cards and 20 pack cards, then publish the disagreement rate | not started |
+| 3 | deploy dashboard to Streamlit Community Cloud, then the page to GitHub Pages, then link them | not started, needs the user's account twice |
+| 4 | the user polishes the dashboard with graphs and KPIs | not started, unblocked |
+| 5 | freeze: schedule off, vintage exported, `FROZEN.md` written | not started |
+
+### Phase 1, finished before the pause
+
+`scripts/match_listings.py` now carries the guard and a `--repair` mode. The repair ran once and
+cleared the product link on **54 listings across 22 products**. Nothing was deleted, no price
+rewritten, no view refreshed. I re-checked the database myself: 552 matched of 2,793 latest listings,
+258 price cells, **43** two-shop comparisons (was 45), and **0 contradictions** remaining under the
+strict check.
+
+The cost: 28 matched listings lost, against 27 predicted, because the guard's rule is slightly wider
+than the conservative check that sized the job. One known false refusal is `Augmentin 1g Tabs` against
+the `875mg+125mg` product, where 1,000 mg is the sum of the parts.
+
+Two consequences to remember. `mv_drug_price_index` was not refreshed, by instruction, so it still
+counts history rows that the repair detached; the next nightly run corrects it, or refresh it by hand.
+And the nightly matcher will now print roughly 57 refusals every night. That is the guard working, not
+a fault.
+
+### What was built on 2026-11-12 and 13, and is safe
+
+- **The page is a tribute.** Her portrait and dates in the masthead, a band between the prices and
+  the registration findings, an About page built only from `.agent/DORA-facts.md`, four images with
+  their licences recorded, and a build-time guard that refuses to render a date that is not sourced.
+  Pushed as `c6d239d`.
+- **A design study** in the purple palette with a self-hosted Archivo Black face, her photograph as a
+  high-opacity watermark, the word REGISTER bleeding across the base, and the Nigeria outline inlined
+  as a simplified SVG. Committed at `docs/mockups/v1/`. The working copy is `site/mockup/`, gitignored.
+- **The dashboard runs.** `streamlit run dashboard/app.py --server.port 8512`, with `DATABASE_URL`
+  exported first, because the app reads the environment and not `.env`. It shows 2,793 listings, 3
+  pharmacies, 10,940 registrations, 1,856 with a status, 161 suspicious, and five tabs.
+- **The verification desk** was rebuilt as a per-question checklist: 89 licence cards with five
+  questions, 45 pack cards with six, pass / fail / cannot tell, outcome computed. `site/verify/`.
+
+### Numbers as they stand, 13 November
+
+2,793 latest listings; 580 matched; 2,212 unmatched; 1,433 products; 10,925 registrations of which
+1,856 carry a status; 45 two-shop comparisons; 161 suspicious listings; 426 price-index rows.
+
+Measured the same week and still true: **27 matched listings carry a strength their product
+contradicts**, 7 of them inside comparison cells, across 6 of the 45. The worklist is
+`.agent/strength-contradictions-2026-11-12.json`. Until the guard lands, 6 comparisons cannot be
+published.
+
+### Uncommitted and untracked at pause
+
+- `scripts/match_listings.py` — modified by the in-flight builder. See above.
+- `.github/workflows/daily.yml` — carries the `publish` job for GitHub Pages. Held back on purpose:
+  Pages is not enabled, so pushing it would fail the nightly every night.
+- `scripts/crosscheck_pages.py` — works, never reviewed, first full pass cut short by a rate limit.
+- `.agent/eyeball-sheet.md` — superseded, do not use.
+
+### How to resume, in order
+
+```powershell
+# 1. the database answers, and the VPN is not in the way
+.venv\Scripts\python.exe -X utf8 scripts\dbq.py "select 1"
+
+# 2. what state did the matcher work leave behind?
+.venv\Scripts\python.exe -X utf8 scripts\dbq.py "select count(*) from v_latest_listings where product_id is not null"
+
+# 3. the dashboard, with the connection string in the environment
+$env:DATABASE_URL = ((Select-String -Path .env -Pattern '^DATABASE_URL=').Line).Substring(13).Trim()
+.venv\Scripts\python.exe -m streamlit run dashboard\app.py --server.port 8512
+
+# 4. the page and the desk, generated, not committed
+.venv\Scripts\python.exe -X utf8 scripts\build_site.py
+.venv\Scripts\python.exe -X utf8 scripts\build_verify_desk.py
+```
+
+### Open, in priority order
+
+1. **The strength guard**, unfinished. Nothing can be published until it lands.
+2. **The verification sample**, 40 cards, which turns "we compute" into "we checked".
+3. **Deployment**, dashboard first then page, or the button points at nothing.
+4. **The licence caveat.** The page still shows 88 licences not active without saying that a lapsed
+   licence is not a fake drug. One short line, deliberately left for the user's approval.
+5. **`mv_drug_price_index`** is an index of new prices per day, not of the market. Must not be
+   published as a market average without a relabel.
+6. **`v_pipeline_health`** cannot see a source that never ran. The gate works around it.
+
+### Unproven
+
+- Whether the repair pass ran, and what it cleared.
+- Whether the guard rejects anything it should not. `1 g` against `1000 mg` must pass.
+- Whether a two-ingredient brand under a one-ingredient product is caught. The mass comparison may
+  treat it as equal when the numbers happen to be present.
+- The full MedPlus sweep at 1,396 products has still never run end to end.
+- No human has checked a single licence card or pack card yet.
+- No axe run on either page.
+
+## Handoff — state at close, 2026-11-12 (historical)
+
 
 ### Where it stands
 
