@@ -2,9 +2,10 @@
 
     .venv\\Scripts\\python.exe -X utf8 scripts/build_site.py
 
-Writes `site/index.html` (one self-contained file: no external CSS, JS, font or image, so it renders
-with no network) and `site/data.json` (the same numbers, machine-readable). Both are gitignored: they
-are build output, not source.
+Writes `site/index.html`, `site/about.html` and `site/data.json`, and copies the four local images the
+tribute uses into `site/assets/dora/`. No external CSS, JS or font is fetched at all, so the page
+renders with no network; the only images are four files carried in the repository. `site/` is
+gitignored: it is build output, not source.
 
 WHY THE AUDIT IS THE POINT. A page assembled by a script can still lie: a query filtered by hand, a
 number copied from yesterday's log, a stale view. So this script does not trust its own first read. It
@@ -71,6 +72,168 @@ EXPECTED_SOURCES: dict[str, str] = {
 }
 
 STATE_LABEL = {"Lagos": "Lagos", "National": "Whole country"}
+
+
+# --------------------------------------------------------------------------- the tribute
+# The page carries Dora Akunyili as its identity because the prices on it are checked against the
+# register of the agency she led. Every biographical fact below is copied from `.agent/DORA-facts.md`,
+# which records where each one was read. Nothing on either page is written from memory.
+#
+# Her name, honours and dates, exactly as the National Library of Nigeria's own repository item gives
+# them (nigeriareposit.nln.gov.ng/items/973ac71e-ea15-4c85-ac11-07dfb5cb8a0c):
+#     "Dora Nkem Akunyili OFR (14 July 1954 - 7 June 2014)"
+# The two dates are separate constants and not one string, because of the guard in `dora_dates()`.
+DORA_NAME = "Dora Nkem Akunyili"
+DORA_HONOURS = "OFR"
+DORA_BORN: str | None = "14 July 1954"  # National Library of Nigeria repository, item 973ac71e
+DORA_DIED: str | None = "7 June 2014"   # National Library of Nigeria repository, item 973ac71e
+
+NLN_ITEM = ("https://nigeriareposit.nln.gov.ng/items/"
+            "973ac71e-ea15-4c85-ac11-07dfb5cb8a0c")
+PRINCETON_ITEM = ("https://web.archive.org/web/20250909000000/https://successfulsocieties."
+                  "princeton.edu/interviews/dora-akunyili")
+TIME_ITEM = ("https://web.archive.org/web/2016/https://content.time.com/time/magazine/"
+             "article/0,9171,1124244,00.html")
+
+# The one portrait the project holds, and the three photographs of a statue. Crops of one face, not a
+# gallery: the masthead, the band and the footer mark are three crops of this single photograph.
+PORTRAIT_FILE = "dora-portrait.jpg"
+BAND_FILE = "dora-band.jpg"
+MARK_FILE = "dora-mark.jpg"
+MONUMENT_FILE = "dora-monument.jpg"
+IMAGE_FILES = (PORTRAIT_FILE, BAND_FILE, MARK_FILE, MONUMENT_FILE)
+ASSET_SRC = Path("docs/assets/dora")
+
+CREDIT_PORTRAIT = {
+    "shows": "Portrait of Dora Akunyili",
+    "title": ("File:Prof. Dora Akunyili (Hon. Minister of Information Communication 2008 - 2010)"
+              ".jpg"),
+    "page": ("https://commons.wikimedia.org/wiki/File:Prof._Dora_Akunyili_(Hon._Minister_of_"
+             "Information_Communication_2008_-_2010).jpg"),
+    "author": "National Library of Nigeria",
+    "licence": "CC0 1.0 (public domain dedication)",
+    "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "change": "cropped and resized; the masthead, the band and the footer mark are three crops of it",
+}
+CREDIT_MONUMENT = {
+    "shows": "A memorial to Dora Akunyili at Ezinano, Agulu",
+    "title": "File:DoraAkunyili Monument at Ezinano Agulu.jpg",
+    "page": ("https://commons.wikimedia.org/wiki/"
+             "File:DoraAkunyili_Monument_at_Ezinano_Agulu.jpg"),
+    "author": "Chiinobis",
+    "licence": "CC BY-SA 4.0",
+    "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "change": "cropped and resized; this crop is offered under CC BY-SA 4.0 as well",
+}
+
+# Page weight is a gate, not a wish: the four images together must stay under this many bytes.
+IMAGE_BUDGET_BYTES = 400 * 1024
+
+# Two tints and one accent, taken from the one photograph rather than from taste. The two tints are
+# the deep plum of the shadow behind her headwrap (#4f1f2f, about a tenth of the photograph's pixels)
+# and the warm sand of the wall behind her (#dad0b7, about an eighth). The accent is the same plum at
+# link strength; the band is that plum taken down to a shadow, so the band reads as the same hue and
+# not as a second brand. Nothing here is red next to green: the price page must never colour a price.
+INK = "#1a1612"
+MUTED = "#4a423d"
+LINE = "#d7cfbe"
+PAPER = "#faf7f1"
+PANEL = "#f1ebdf"
+ACCENT = "#5f2a54"
+WARN = "#7a2e00"
+WARN_BG = "#fdf1e3"
+BAND_BG = "#2a1a20"
+BAND_TEXT = "#f7f0e6"
+BAND_ACCENT = "#e2b25c"
+
+PALETTE_CSS = f""":root{{--ink:{INK};--muted:{MUTED};--line:{LINE};--bg:{PAPER};--panel:{PANEL};
+--accent:{ACCENT};--warn:{WARN};--warn-bg:{WARN_BG};--band:{BAND_BG};--band-ink:{BAND_TEXT};
+--band-accent:{BAND_ACCENT}}}"""
+
+# Every text-on-surface pair the page actually uses, with the ratio WCAG 2.2 AA asks for (4.5:1 for
+# body text). Measured at build time and printed; a pair below the floor fails the build.
+CONTRAST_FLOOR = 4.5
+CONTRAST_PAIRS: list[tuple[str, str, str]] = [
+    ("band text on the band", BAND_TEXT, BAND_BG),
+    ("gold text on the band", BAND_ACCENT, BAND_BG),
+    ("body text on the page", INK, PAPER),
+    ("secondary text on the page", MUTED, PAPER),
+    ("secondary text on a panel", MUTED, PANEL),
+    ("body text on a panel", INK, PANEL),
+    ("links on the page", ACCENT, PAPER),
+    ("links on a panel", ACCENT, PANEL),
+    ("a warning on its own panel", WARN, WARN_BG),
+]
+
+
+class UnsetDate(RuntimeError):
+    """Raised when a date constant is None. A remembered date must never reach the page."""
+
+
+def dora_dates() -> str:
+    """Her dates, or a hard stop.
+
+    The guard is the whole point: if `DORA_BORN` or `DORA_DIED` is ever set to None the build stops
+    before it opens the database, instead of printing a date from memory. Wire it in at the top of
+    `main()`, not in the template, so no rendering path can skip it.
+    """
+    if not DORA_BORN or not DORA_DIED:
+        raise UnsetDate(
+            "her dates are unset (DORA_BORN=%r, DORA_DIED=%r): the page will not print a date from "
+            "memory. Fill both from the National Library of Nigeria item before building."
+            % (DORA_BORN, DORA_DIED)
+        )
+    return f"{DORA_BORN} \u2013 {DORA_DIED}"
+
+
+def _luminance(colour: str) -> float:
+    channels = [int(colour[i:i + 2], 16) / 255.0 for i in (1, 3, 5)]
+    linear = [c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4 for c in channels]
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+
+def contrast_ratio(front: str, back: str) -> float:
+    a, b = _luminance(front), _luminance(back)
+    high, low = max(a, b), min(a, b)
+    return (high + 0.05) / (low + 0.05)
+
+
+def measure_contrast() -> tuple[float, list[str]]:
+    """Every pair, measured. Returns the worst ratio and anything under the floor."""
+    worst = 99.0
+    problems: list[str] = []
+    for label, front, back in CONTRAST_PAIRS:
+        ratio = contrast_ratio(front, back)
+        worst = min(worst, ratio)
+        print(f"  contrast  {label:<30s} {ratio:5.2f}:1  ({front} on {back})")
+        if ratio < CONTRAST_FLOOR:
+            problems.append(f"{label}: {ratio:.2f}:1, below {CONTRAST_FLOOR}:1")
+    return worst, problems
+
+
+def publish_images() -> int:
+    """Copy the four repository images next to the pages and refuse an over-weight page.
+
+    The images live in `docs/assets/dora/` as source; `site/` is build output and gitignored, so the
+    published directory is filled here rather than committed.
+    """
+    out_dir = SITE / "assets" / "dora"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    missing = [str(ASSET_SRC / name) for name in IMAGE_FILES
+               if not (ASSET_SRC / name).exists()]
+    if missing:
+        raise RuntimeError("image missing from the repository: " + ", ".join(missing))
+    total = 0
+    for name in IMAGE_FILES:
+        data = (ASSET_SRC / name).read_bytes()
+        (out_dir / name).write_bytes(data)
+        total += len(data)
+        print(f"  image     {name:<20s} {len(data):>7,} bytes")
+    if total > IMAGE_BUDGET_BYTES:
+        raise RuntimeError(
+            f"images total {total:,} bytes, over the {IMAGE_BUDGET_BYTES:,}-byte page-weight gate"
+        )
+    return total
 
 
 # --------------------------------------------------------------------------- facts
@@ -401,14 +564,18 @@ CONSUMED = {"breakdown", "ledger"}
 
 
 # --------------------------------------------------------------------------- the page
-CSS = """
-:root{--ink:#1b1b1b;--muted:#484848;--line:#c8c8c8;--bg:#ffffff;--panel:#f3f3f1;
---accent:#0b4f6c;--warn:#7a2e00;--warn-bg:#fdf1e3}
+CSS = PALETTE_CSS + """
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);
 font:1rem/1.55 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
 .wrap{max-width:62rem;margin:0 auto;padding:1rem .75rem 3rem}
+/* Prose keeps a readable measure; tables are allowed the full width. */
+.wrap p,.wrap li{max-width:68ch}
+.wrap .tablewrap,.wrap table{max-width:none}
+.wrap>h2:first-child{margin-top:.9rem;padding-top:0;border-top:0}
+/* The header block now sits directly above the tribute band; no dead strip between them. */
+.wrap:has(> header){padding-bottom:.75rem}
 a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
 a:focus-visible,:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .skip{position:absolute;left:-9999px;top:0;background:var(--bg);padding:.6rem 1rem;z-index:10}
@@ -454,11 +621,59 @@ ol.limits{padding-left:1.15rem}
 ol.limits li{margin:.7rem 0}
 footer{margin-top:2.5rem;padding-top:1rem;border-top:2px solid var(--line);
 color:var(--muted);font-size:.9rem}
+/* ---- the tribute ------------------------------------------------------------------------------
+   Three crops of one photograph, not a gallery: a mark in the masthead, one wide band between the
+   price tables and the registration section, and a small mark in the footer. The band carries the
+   name and one line and no figures at all, so it cannot compete with the numbers above it. Text sits
+   on the flat tint rather than on the photograph, so its contrast is a measured number (see
+   CONTRAST_PAIRS) and not a hope. */
+.masthead{display:flex;gap:.9rem;align-items:flex-start}
+.masthead-mark{width:6.5rem;height:auto;flex:0 0 6.5rem;display:block;border-radius:3px;
+box-shadow:0 0 0 1px var(--line)}
+.masthead-text{min-width:0;flex:1 1 auto}
+.tribute-line{margin:.45rem 0 .5rem;font-size:.95rem}
+.tribute-line .name{font-weight:700}
+.band{background:var(--band);color:var(--band-ink);margin:0 0 2rem;padding:0}
+.band-inner{max-width:62rem;margin:0 auto;display:grid;grid-template-columns:20rem 1fr;
+align-items:stretch}
+.band-photo{margin:0;display:flex;overflow:hidden}
+.band-photo img{display:block;width:100%;height:100%;min-height:15rem;max-height:19rem;
+object-fit:cover;object-position:50% 30%}
+.band-text{padding:1.5rem 1.1rem 1.6rem;align-self:center}
+.band-name{margin:0;font-size:1.7rem;line-height:1.15;color:var(--band-ink)}
+.band-dates{margin:.3rem 0 0;font-size:.92rem;color:var(--band-ink)}
+.band-why{margin:.75rem 0 0;font-size:1rem;line-height:1.5;color:var(--band-ink);max-width:33rem}
+.band a{color:var(--band-accent)}
+.band a:focus-visible{outline-color:var(--band-accent)}
+.footer-mark{width:4rem;height:4rem;float:left;margin:0 .8rem .5rem 0;border-radius:3px;
+box-shadow:0 0 0 1px var(--line);display:block}
+.credits{clear:both;padding-top:.6rem}
+.credits p{margin:.4rem 0}
+/* ---- the About page ------------------------------------------------------------------------- */
+.subhead{font-size:.95rem;color:var(--muted);margin:.2rem 0 .6rem}
+figure.pull{margin:1.4rem 0;padding:.1rem 0 .1rem 1rem;border-left:4px solid var(--accent)}
+figure.pull blockquote{margin:0;font-size:1.15rem;line-height:1.45}
+figure.pull figcaption{margin-top:.5rem;font-size:.92rem;color:var(--muted)}
+figure.about-figure{margin:1.4rem 0;max-width:24rem}
+figure.about-figure img{display:block;width:100%;height:auto;border:1px solid var(--line);
+border-radius:4px}
+figure.about-figure figcaption{margin-top:.45rem;font-size:.88rem;color:var(--muted)}
+.opinion{background:var(--panel);border-left:4px solid var(--accent);padding:.7rem .9rem;
+margin:1rem 0;border-radius:0 4px 4px 0}
+.opinion .label{font-weight:700;display:block;margin-bottom:.25rem}
+@media (max-width:640px){
+ .band-inner{grid-template-columns:1fr}
+ .band-photo img{height:9rem;min-height:9rem;max-height:9rem;object-position:50% 26%}
+ .band-text{padding:1.1rem .9rem 1.2rem}
+ .band-name{font-size:1.4rem}
+}
 @media (max-width:420px){
  .wrap{padding:.75rem .6rem 2rem}
  h1{font-size:1.35rem}
  table{font-size:.86rem}
  th,td{padding:.35rem .4rem}
+ .masthead{gap:.7rem}
+ .masthead-mark{width:4.6rem;flex-basis:4.6rem}
 }
 """
 
@@ -559,11 +774,153 @@ def health_rows(health: dict[str, Any]) -> str:
     return "\n".join(out)
 
 
+def about_page(dates: str) -> str:
+    """The one biography page: sourced facts, each traceable to one of three URLs, and nothing else.
+
+    The prose is deliberately thin. It renders only what `.agent/DORA-facts.md` records, it does not
+    date the attack (TIME's own dating is not precise enough), it makes no claim either way about
+    criticism of her tenure, and it adds no honour beyond OFR. The one paragraph of opinion is
+    labelled as opinion.
+    """
+    portrait = CREDIT_PORTRAIT
+    monument = CREDIT_MONUMENT
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>About {DORA_NAME} {DORA_HONOURS}</title>
+<link rel="icon" href="data:,">
+<style>{CSS}</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<div class="wrap">
+<header>
+<p class="subhead"><a href="index.html">&larr; Medicine prices and registration status in Nigeria</a></p>
+<div class="masthead">
+<img class="masthead-mark" src="assets/dora/{PORTRAIT_FILE}" width="480" height="600"
+ alt="Portrait of Dora Akunyili">
+<div class="masthead-text">
+<h1>{DORA_NAME} {DORA_HONOURS}</h1>
+<p class="tribute-line">{dates}</p>
+</div>
+</div>
+</header>
+<main id="main">
+<p class="lede">This page is here because the prices on the other page are checked against the register
+of the agency she led. Everything below comes from the three sources listed at the foot of the page.
+Where those sources are silent, this page is silent too.</p>
+
+<h2 id="who">Who she was</h2>
+<p>Dora Nkem Akunyili OFR was born on 14 July 1954 and died on 7 June 2014. Both dates are as the
+National Library of Nigeria records them. Before NAFDAC she was a senior lecturer and consultant
+pharmacologist at the University of Nigeria, Nsukka.</p>
+
+<h2 id="nafdac">NAFDAC, 2001 to 2008</h2>
+<p>She was Director-General of the National Agency for Food and Drug Administration and Control from
+2001 to 2008. The Princeton profile of her puts her start in April 2001 and describes her service as
+nearly eight years.</p>
+
+<h2 id="after">Afterwards</h2>
+<p>In December 2008 she was appointed Minister of the Federal Ministry of Information and
+Communication. She died at a specialist cancer hospital in India on 7 June 2014, after a two-year
+battle with uterine cancer, and was laid to rest at Agulu in Anambra State.</p>
+
+<figure class="about-figure">
+<img src="assets/dora/{MONUMENT_FILE}" width="480" height="776"
+ alt="A memorial statue of Dora Akunyili">
+<figcaption>A memorial to her at Ezinano, Agulu. The name of the place and of what is shown are the
+photographer's, as given on Wikimedia Commons.</figcaption>
+</figure>
+
+<h2 id="words">In her words</h2>
+<figure class="pull">
+<blockquote><p>"The back windscreen was shattered&hellip; A bullet pierced through my head scarf and
+grazed my scalp."</p></blockquote>
+<figcaption>{DORA_NAME}, quoted in TIME, "Drug Warrior", 31 October 2005.</figcaption>
+</figure>
+<p>Those are her words describing an attack on the car she and her family were travelling in. This
+page does not give that attack a date: TIME places it "three years" before the article was published,
+which is not precise enough to print as a year.</p>
+
+<h2 id="sister">Her sister</h2>
+<p>TIME reports the next sentence in its own words, not in hers:</p>
+<figure class="pull">
+<blockquote><p>"Akunyili's sister Vivian, a diabetic, died in 1988, a victim of fake insulin."</p>
+</blockquote>
+<figcaption>TIME, "Drug Warrior", 31 October 2005. The sentence is TIME's; this page does not put it
+in her mouth.</figcaption>
+</figure>
+
+<h2 id="figure">A figure this page does not print</h2>
+<p>TIME reported that before she took over her post in 2001, "a staggering 80%" of the medicines sold
+were "deficient in one way or another". The report gives no method for that number, so it is quoted
+here only as TIME stated it.</p>
+<p>A widely repeated pair of numbers &mdash; a high share before her tenure and a much lower share
+after it &mdash; is not printed on this page, because nothing read for this page supports either
+number.</p>
+
+<h2 id="view">The project's view</h2>
+<div class="opinion">
+<p class="label">Opinion, labelled as opinion. Not a finding, and not sourced above.</p>
+<p>A price can only be checked against a register that somebody keeps, and a register that nobody can
+read protects nobody. This project can attach a licence status to only part of what it lists, and it
+prints that shortfall on the page rather than behind it. We think the shortfall is worth showing: a
+page that hides what it cannot read is worth less than one that says so.</p>
+</div>
+
+<h2 id="sources">Sources</h2>
+<ol class="limits">
+<li>The National Library of Nigeria's repository, item 973ac71e: her name and honours, both dates, the
+years as Director-General, where she died and where she was laid to rest.
+{link(NLN_ITEM, "nigeriareposit.nln.gov.ng")}</li>
+<li>Princeton, Innovations for Successful Societies, profile of Dora Akunyili, read through a Wayback
+snapshot dated 9 September 2025 because the live host answers this machine with a challenge: April
+2001, "nearly eight years", the December 2008 appointment, and the post at the University of Nigeria,
+Nsukka. {link(PRINCETON_ITEM, "the archived profile")}</li>
+<li>TIME, "Drug Warrior", by Michael Lemonick and Gilbert Da Costa, 31 October 2005, read through a
+Wayback replay: her own words on the attack, the sentence about her sister, and the 80% figure.
+{link(TIME_ITEM, "the archived article")}</li>
+</ol>
+<p class="note">Nothing beyond those three is claimed here. This page does not date the attack, it
+does not say whether her tenure was criticised or not, and it adds no honour beyond OFR.</p>
+
+<h2 id="images">The images on this page</h2>
+<div class="credits">
+<p><strong>1. The portrait</strong> in the masthead, and the mark in the footer. A crop of
+{link(portrait["page"], portrait["title"])} on Wikimedia Commons, credited to the
+{esc(portrait["author"])}, released under {link(portrait["licence_url"], "CC0 1.0")} (public domain
+dedication). Changes: {esc(portrait["change"])}. CC0 requires no attribution; it is given anyway.</p>
+<p><strong>2. The statue photograph</strong> above. A crop of
+{link(monument["page"], monument["title"])} on Wikimedia Commons, photographed by
+{esc(monument["author"])}, released under
+{link(monument["licence_url"], "CC BY-SA 4.0")}. Changes: {esc(monument["change"])}, so this crop
+carries the same licence and may be reused under it. Share-alike applies to the photograph, not to
+the price data on the other page, which is CC-BY-4.0.</p>
+</div>
+</main>
+<footer>
+<img class="footer-mark" src="assets/dora/{MARK_FILE}" width="220" height="220" alt="">
+<p><strong>{DORA_NAME} {DORA_HONOURS}</strong>, {dates}.
+<a href="index.html">Medicine prices and registration status in Nigeria</a>.</p>
+<p>This page is one file and three local images. No external stylesheet, script, font or image is
+fetched, so it works with no network. It is generated by <code>scripts/build_site.py</code> from
+constants that quote the National Library of Nigeria's record; if a date in that generator is ever
+unset, the build refuses to write either page instead of printing a date from memory.</p>
+</footer>
+</div>
+</body>
+</html>
+"""
+
+
 class Page:
     """Renders the document and records which facts it actually printed."""
 
-    def __init__(self, facts: dict[str, Any]) -> None:
+    def __init__(self, facts: dict[str, Any], dates: str) -> None:
         self.facts = facts
+        self.dates = dates
         self.used: set[str] = set()
 
     def f(self, key: str) -> Any:
@@ -626,6 +983,9 @@ class Page:
 <div class="wrap">
 <header>
 <h1>Medicine prices and registration status in Nigeria</h1>
+<p class="tribute-line"><span class="name">{DORA_NAME} {DORA_HONOURS}</span>, {self.dates},
+led NAFDAC from 2001 to 2008. The prices below are checked against the register her agency keeps.
+<a href="about.html">About her</a></p>
 <p class="lede">This page is built from a database that records what three online pharmacies asked for
 medicines on the day it was read, and what the NAFDAC register says about the registration behind each
 of those medicines. It is independent, it is not a shop, and it is not endorsed by NAFDAC.</p>
@@ -635,7 +995,23 @@ of those medicines. It is independent, it is not a shop, and it is not endorsed 
 {hours_text} before the page was built.</p>
 {banner}
 </header>
+</div>
+
+<section class="band" aria-label="A tribute to Dora Akunyili">
+<div class="band-inner">
+<figure class="band-photo">
+<img src="assets/dora/{BAND_FILE}" width="640" height="305" alt="">
+</figure>
+<div class="band-text">
+<p class="band-name"><strong>{DORA_NAME} {DORA_HONOURS}</strong></p>
+<p class="band-dates">{self.dates}</p>
+<p class="band-why">She led the agency whose register this page reads. Where the reading falls short,
+the page says so. <a href="about.html">About her</a></p>
+</div>
+</div>
+</section>
 <main id="main">
+<div class="wrap">
 
 <h2 id="prices">Prices</h2>
 <p>Each row below is one product, and the price shown is the lowest one quoted for it by the shops
@@ -692,7 +1068,9 @@ sideways inside its own box; the rest of the page does not move.</p>
 <p class="note">{len(single)} rows. Drugstore.ng is recorded as a single shop covering the whole
 country, so a Drugstore price can never pair with another shop's price in the same state and can
 never form a comparison. On a narrow screen this table scrolls sideways inside its own box.</p>
+</div>
 
+<div class="wrap">
 <h2 id="registration">Registration status of what is sold</h2>
 <div class="fact">
 <p><strong>{reg["flagged_listings"]} shop listings</strong> carry a registration that is not Active:
@@ -805,11 +1183,30 @@ the database a second time and compared each value against what it had printed. 
 failed to match, this page would not have been written and the build would have failed. The same
 numbers are in <a href="data.json">data.json</a>. The queries behind each figure are in the generator,
 and the views they read are in the repository, so a stranger can re-run the whole thing.</p>
+</div>
 </main>
+<div class="wrap">
 <footer>
+<img class="footer-mark" src="assets/dora/{MARK_FILE}" width="220" height="220" alt="">
+<p><strong>{DORA_NAME} {DORA_HONOURS}</strong>, {self.dates}.
+<a href="about.html">About her</a>.</p>
 <p>Built from a Postgres database by <code>scripts/build_site.py</code>. Prices in Nigerian naira
-(&#8358;). Times in UTC unless a Lagos date is named. This page is one file with no external
-stylesheets, scripts, fonts or images, so it works with no network.</p>
+(&#8358;). Times in UTC unless a Lagos date is named. The page is two files and four local images:
+no external stylesheet, script, font or image is fetched, so it works with no network.</p>
+<div class="credits">
+<p><strong>Images.</strong> The mark in this footer, the portrait in the masthead and the wide crop in
+the band are three crops of one photograph,
+<a href="{esc(CREDIT_PORTRAIT['page'])}">{esc(CREDIT_PORTRAIT['title'])}</a> on Wikimedia Commons,
+credited to the {esc(CREDIT_PORTRAIT['author'])} and released under
+<a href="{esc(CREDIT_PORTRAIT['licence_url'])}">CC0 1.0</a>, a public domain dedication. That licence
+requires no attribution; it is given here anyway, naming the file, the author and the change made to
+it. One further image, a photograph of a memorial to her, appears on the
+<a href="about.html">About page</a>, with its own credit beside it.</p>
+<p class="note">The CC0 file is a photograph from the National Library of Nigeria, the same
+institution whose repository holds the dates and the NAFDAC dates used on the About page. The
+photograph and the register data are different things: the photograph identifies the person the
+register is named for, and nothing on this page is drawn from it.</p>
+</div>
 </footer>
 </div>
 </body>
@@ -915,6 +1312,14 @@ def audit(conn: Any, printed_facts: dict[str, Any], used: set[str]
 
 # --------------------------------------------------------------------------- main
 def main() -> int:
+    # The date guard runs first, before the database is opened and before any page is rendered: a
+    # build with an unset date stops here rather than printing a date from memory.
+    try:
+        dates = dora_dates()
+    except UnsetDate as exc:
+        print(str(exc), file=sys.stderr)
+        return 3
+
     try:
         import psycopg
     except Exception as exc:  # noqa: BLE001
@@ -941,7 +1346,7 @@ def main() -> int:
         conn.execute("set statement_timeout = '120s'")
 
         facts = read_facts(conn)
-        page = Page(facts)
+        page = Page(facts, dates)
         document = page.build()
 
         checked, problems = audit(conn, facts, page.used)
@@ -956,9 +1361,28 @@ def main() -> int:
               file=sys.stderr)
         return 1
 
+    worst_contrast, contrast_problems = measure_contrast()
+    if contrast_problems:
+        print(f"contrast: {len(contrast_problems)} pair(s) below {CONTRAST_FLOOR}:1",
+              file=sys.stderr)
+        for problem in contrast_problems:
+            print("  " + problem, file=sys.stderr)
+        print("nothing written: text a reader cannot separate from its background is not published.",
+              file=sys.stderr)
+        return 1
+
     SITE.mkdir(parents=True, exist_ok=True)
+    try:
+        image_bytes = publish_images()
+    except RuntimeError as exc:
+        print(f"images: {exc}", file=sys.stderr)
+        print("nothing written.", file=sys.stderr)
+        return 1
+
     html_bytes = document.encode("utf-8")
     (SITE / "index.html").write_bytes(html_bytes)
+    about_bytes = about_page(dates).encode("utf-8")
+    (SITE / "about.html").write_bytes(about_bytes)
 
     payload = {
         "about": (
