@@ -948,6 +948,22 @@ table.keys td:first-child{font-family:ui-monospace,Consolas,monospace;white-spac
 font-weight:600}
 footer{margin-top:2.5rem;padding-top:1rem;border-top:2px solid var(--line);color:var(--muted);
 font-size:.9rem}
+/* The three steps and the "where you are" band. Both exist so that the first thing on the page is
+   what to do next, not what the page is. */
+.lede{font-size:1.05rem;margin:.2rem 0 .7rem;max-width:62ch}
+.steps{list-style:none;counter-reset:step;margin:.6rem 0 .4rem;padding:0;
+display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem}
+.steps li{border:2px solid var(--line);border-radius:6px;padding:.6rem .7rem;background:var(--panel);
+font-size:.95rem;line-height:1.4}
+.steps li strong{display:block;margin-bottom:.25rem}
+kbd{font:inherit;font-weight:700;background:var(--bg);border:1px solid var(--ink);border-radius:4px;
+padding:0 .32em;white-space:nowrap}
+.start{border-top:2px solid var(--line);border-bottom:2px solid var(--line);padding:.5rem 0 .35rem;
+margin:.8rem 0 0}
+.start .switcher{margin:.35rem 0}
+@media (max-width:640px){
+ .steps{grid-template-columns:1fr}
+}
 @media (max-width:430px){
  .wrap{padding:.75rem .6rem 2rem}
  h1{font-size:1.35rem}
@@ -1605,14 +1621,26 @@ JS = r"""
   }
 
   function renderHeader() {
-    var counts = outcomeTally(state.list);
-    var other = outcomeTally(state.list === 'licence' ? 'pack' : 'licence');
-    els.progress.innerHTML =
-      '<strong>' + esc(counts.total - counts.incomplete) + ' of ' + esc(counts.total) +
-      ' cards have an outcome</strong> \u00b7 pass ' + esc(counts.pass) + ' \u00b7 fail ' +
-      esc(counts.fail) + ' \u00b7 incomplete ' + esc(counts.incomplete) +
-      '<span class="note"> The other worklist: ' + esc(other.total - other.incomplete) + ' of ' +
-      esc(other.total) + ' answered.</span>';
+    var mine = sampleCounts(state.list);
+    var otherKind = state.list === 'licence' ? 'pack' : 'licence';
+    var other = sampleCounts(otherKind);
+    var here = state.list === 'licence' ? 'Licence' : 'Pack';
+    var there = otherKind === 'licence' ? 'licence' : 'pack';
+    // One sentence telling the person what is left and what to do next. The sample is the thing being
+    // counted, so it is the thing the line reports; the full list is the tally table down the page.
+    if (mine.drawn && mine.judged >= mine.drawn) {
+      els.progress.innerHTML = '<strong>' + here + ' sample: all ' + mine.drawn + ' done.</strong> ' +
+        (other.drawn && other.judged >= other.drawn
+          ? 'Both lists are finished. Scroll down to &ldquo;Take the answers out&rdquo;, press the ' +
+            'download button, and send me <code>verify-results.json</code>.'
+          : 'Next: click the <strong>' + there + '</strong> button just below and work through its ' +
+            other.drawn + ' cards the same way.');
+    } else {
+      els.progress.innerHTML = '<strong>' + here + ' sample: ' + mine.judged + ' of ' +
+        (mine.drawn || 0) + ' answered.</strong><span class="note"> pass ' + mine.pass + ' \u00b7 fail ' +
+        mine.fail + ' \u00b7 cannot tell ' + mine.cannot + '. The ' + there + ' list: ' + other.judged +
+        ' of ' + (other.drawn || 0) + ' done.</span>';
+    }
     els.tabLicence.textContent = 'Licence \u2014 ' + LISTS.licence.length + ' cards';
     els.tabPack.textContent = 'Pack \u2014 ' + LISTS.pack.length + ' cards';
     els.tabLicence.setAttribute('aria-pressed', state.list === 'licence' ? 'true' : 'false');
@@ -1669,9 +1697,11 @@ JS = r"""
     var entry = entryOf(item);
     var result = outcomeOf(item);
     state.focus = Math.min(Math.max(state.focus || 1, 1), item.questions.length);
-    els.position.innerHTML = '<span class="sr-only">Position. </span>Card ' + (index + 1) + ' of ' +
-      vis.length + ' in this filter (' + FILTER_LABEL[state.filter].toLowerCase() + ') \u00b7 ' +
-      (index + 1) + ' of ' + currentList().length + ' overall \u00b7 ' + outcomePill(result);
+    var rank = sampleIndexOf(item);
+    var where = rank >= 0 ? 'Sample card ' + (rank + 1) + ' of ' +
+      DATA.meta.sample.lists[item.kind].items.length : 'Not in the sample - practice only';
+    els.position.innerHTML = '<span class="sr-only">Position. </span>' + where + ' \u00b7 ' +
+      outcomePill(result);
     els.card.innerHTML = sampleBanner(item) +
       (item.kind === 'licence' ? licenceCard(item, entry) : packCard(item, entry));
     renderNote(item);
@@ -2057,59 +2087,34 @@ SHELL = """<!doctype html>
 <div class="wrap">
 <header>
 <h1>Verification desk</h1>
-<div class="banner" role="note">
-<p><strong>What this is.</strong> A human observation sheet. Each card is a short numbered
-checklist: open the sources, read them, and answer Pass, Fail or Cannot tell on each line. The
-card's outcome is worked out from your ticks - any Fail is a fail, every Pass is a pass, anything
-else is incomplete - and it is never asked for.</p>
-<p><strong>Keys:</strong> <strong>&uarr;</strong> and <strong>&darr;</strong> move between questions,
-<strong>p</strong> pass, <strong>f</strong> fail, <strong>u</strong> cannot tell, and each of those
-moves to the next line, then to the next card. <strong>o</strong> opens the sources,
-<strong>n</strong> the note, <strong>Esc</strong> leaves it, <strong>[</strong> and
-<strong>]</strong> change card. Nothing here needs a mouse.</p>
-</div>
-<section class="notice" aria-labelledby="how-heading">
-<h2 id="how-heading">How to read this page</h2>
-<ol>
-<li>Each card prints the claim we are making, the evidence we hold, and the pages to open.</li>
-<li>Open those pages and compare what they show with what we recorded.</li>
-<li>Answer Pass, Fail or Cannot tell on every line; nothing is pre-selected.</li>
-<li>&ldquo;Cannot tell&rdquo; is a real answer - it means the page did not settle the question - and
-it is not a failure.</li>
-<li>Only the cards marked &ldquo;In the sample&rdquo; count towards the reported number; the rest sit
-underneath so nothing is hidden.</li>
+<p class="lede">Twenty licence checks and twenty pack checks. About 45 minutes. Every answer is saved
+in this browser as you go, so you can stop and come back to it.</p>
+<ol class="steps">
+<li><strong>Open the pages</strong> Press <kbd>o</kbd>, or click the link on the card. The real page
+opens in a new tab.</li>
+<li><strong>Compare</strong> Does that page show what the card says we recorded? That is the whole
+question on the line.</li>
+<li><strong>Answer the line</strong> <kbd>p</kbd> pass, <kbd>f</kbd> fail, <kbd>u</kbd> cannot tell.
+It moves you to the next line by itself.</li>
 </ol>
-</section>
-<p class="stamp note">Built __GENERATED__ from the project database. The newest price was read at
-__PRICES_AS_OF__ and the register at __REGISTER_AS_OF__. The export's <code>data_as_of</code> is the
-older of those two, so an export can never look fresher than its stalest source. There are
-__LISTINGS__ shop listings in the database at that reading.</p>
-<p class="note">Register coverage, same breath: a status exists for <strong>__STATUS_READ__ of
-__REGS__</strong> registrations (__COVERAGE__%). The rest have never had their detail page read, so
-a card whose status reads &ldquo;not read&rdquo; is a gap in our reading, not a finding about the
-medicine.</p>
+<p class="hint">Cannot tell is a real answer - the page did not settle the question. It is not a
+failure, and it is not counted against the project.</p>
+<p id="storage-warning" class="banner" role="note" hidden></p>
 <p class="notice" id="v1-notice" hidden>Older single-verdict answers from the previous version of
 this page are still stored in this browser. They are <strong>not counted</strong> here and will not
 appear in the export: this version records one answer per question, and an old one-verdict-per-card
 record cannot be turned into one without inventing answers.</p>
-<p id="storage-warning" class="banner" role="note" hidden></p>
 </header>
 <main id="main">
-<h2>Which worklist</h2>
+<section class="start" aria-label="Where you are">
+<p id="progress" class="pos"></p>
 <div class="switcher" role="group" aria-label="Which worklist">
 <button type="button" id="tab-licence" aria-pressed="true">Licence</button>
 <button type="button" id="tab-pack" aria-pressed="false">Pack</button>
 </div>
-<p id="progress" class="pos"></p>
-<div class="filters" id="filters" role="group" aria-label="Show only">
-<button type="button" data-filter="all" aria-pressed="true">All</button>
-<button type="button" data-filter="open" aria-pressed="false">Open</button>
-<button type="button" data-filter="fail" aria-pressed="false">Fail</button>
-</div>
-<p id="live" class="sr-only" role="status" aria-live="polite"></p>
 <p id="position" class="pos"></p>
-<div id="tally"></div>
-<div id="sample-report" class="report" role="region" aria-label="What the sample says so far"></div>
+</section>
+<p id="live" class="sr-only" role="status" aria-live="polite"></p>
 <div id="card"></div>
 
 <section aria-labelledby="note-heading">
@@ -2120,6 +2125,19 @@ record cannot be turned into one without inventing answers.</p>
 so here rather than guessing what it says.</p>
 <p><button type="button" id="open-note">Put the cursor in the note (n)</button>
 <button type="button" id="clear-card">Clear every answer on this card (Backspace)</button></p>
+</section>
+
+<section aria-labelledby="more-heading">
+<h2 id="more-heading">Everything else</h2>
+<p class="hint">Nothing here is needed to work through the cards. It is where the filters, the running
+result and the per-question tally live, for when you want them.</p>
+<div class="filters" id="filters" role="group" aria-label="Show only">
+<button type="button" data-filter="all" aria-pressed="true">All</button>
+<button type="button" data-filter="open" aria-pressed="false">Open</button>
+<button type="button" data-filter="fail" aria-pressed="false">Fail</button>
+</div>
+<div id="tally"></div>
+<div id="sample-report" class="report" role="region" aria-label="What the sample says so far"></div>
 </section>
 
 <section aria-labelledby="export-heading">
@@ -2189,6 +2207,21 @@ file; moving them means exporting.</li>
 <p class="note">The strength warning is a heuristic: mass units only (mg, mcg, g, iu, %), grams
 normalised to milligrams. It ignores volumes and says nothing when one side states no strength. Do
 not read a clean card as proof that two medicines are the same.</p>
+</section>
+
+<section aria-labelledby="origin-heading">
+<h2 id="origin-heading">Where these numbers come from</h2>
+<p class="stamp note">Built __GENERATED__ from the project database. The newest price was read at
+__PRICES_AS_OF__ and the register at __REGISTER_AS_OF__. The export's <code>data_as_of</code> is the
+older of those two, so an export can never look fresher than its stalest source. There are
+__LISTINGS__ shop listings in the database at that reading.</p>
+<p class="note">Register coverage, same breath: a status exists for <strong>__STATUS_READ__ of
+__REGS__</strong> registrations (__COVERAGE__%). The rest have never had their detail page read, so
+a card whose status reads &ldquo;not read&rdquo; is a gap in our reading, not a finding about the
+medicine.</p>
+<p class="hint">Only the cards marked &ldquo;In the sample&rdquo; count towards the reported number.
+The rest of each list sits underneath the sample so that nothing is hidden, and answering them is
+useful but does not change the number.</p>
 </section>
 </main>
 <footer>
