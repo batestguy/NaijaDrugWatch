@@ -1,0 +1,8 @@
+{
+  "frozen_on": "2026-11-16",
+  "frozen_at_utc": "2026-11-16T01:59:52+00:00",
+  "data_through": "2026-11-15",
+  "why": "Collection stopped by choice, not by failure. Between 12 and 15 November only 5 to 42 prices changed per night against 2,800 on the shelf, and the week-over-week view had produced three products. Continuing would have cost about 68 minutes a night to record that nothing happened.",
+  "source_of_frozen_at_utc": "the export timestamp in vintage/2026-11-16/MANIFEST.json",
+  "schedule": "the `daily` workflow (id 410978489) is disabled by hand in GitHub; no run will start"
+}

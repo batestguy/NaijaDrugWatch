@@ -57,6 +57,39 @@ SITE = Path("site")
 # change the view, and the page says which threshold it applied.
 STALE_HOURS = 48
 
+# Is this repository a frozen vintage? Read from `freeze.json`, never assumed.
+# WHY A FILE. The dates this page prints must come from a record rather than from memory, which is the
+# same rule the tribute dates follow. The second reason matters more: a frozen page that keeps measuring
+# freshness against the wall clock starts reporting every source as stale a couple of days after the
+# last scrape, and that reads as a pipeline failure when it is a decision. With this file present,
+# freshness is measured to the freeze instead, so the panel stays a true statement about the vintage.
+# Delete the file and the page goes back to describing a live pipeline.
+FREEZE_FILE = Path(__file__).resolve().parent.parent / "freeze.json"
+
+
+def load_freeze() -> dict[str, Any] | None:
+    try:
+        return json.loads(FREEZE_FILE.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return None
+
+
+FROZEN = load_freeze()
+
+
+def freeze_reference() -> datetime | None:
+    """The moment collection stopped, or None while it is still running."""
+    if not FROZEN:
+        return None
+    return datetime.fromisoformat(str(FROZEN["frozen_at_utc"]))
+
+
+def human_date(value: str) -> str:
+    """2026-11-16 -> 16 November 2026, without a platform-dependent %-d."""
+    parsed = datetime.strptime(str(value), "%Y-%m-%d")
+    return f"{parsed.day} {parsed.strftime('%B %Y')}"
+
+
 # The sources the nightly workflow is supposed to write a `scrape_runs` row for, with what each one
 # does in plain words. A source in this dict with no row in `scrape_runs` is printed as "never run":
 # absence is the finding, not a blank cell. `expand_catalogue` is deliberately absent - it is a
@@ -460,9 +493,15 @@ from scrape_runs
 
 
 def derive_health(rows: list[tuple], ledger: list[tuple],
-                  stale_hours: float = STALE_HOURS) -> dict[str, Any]:
+                  stale_hours: float = STALE_HOURS,
+                  reference: datetime | None = None) -> dict[str, Any]:
     seen = {}
     for source, last_ok, ok_runs, failed_runs, runs, hours in rows:
+        # Frozen vintage: measure the gap to the moment collection stopped, not to now. Otherwise every
+        # source crosses `stale_hours` a couple of days later and the page accuses a working pipeline of
+        # having failed.
+        if reference is not None and last_ok is not None:
+            hours = (reference - last_ok).total_seconds() / 3600.0
         seen[source] = {
             "source": source,
             "last_success_utc": iso(last_ok),
@@ -555,7 +594,15 @@ def read_facts(conn: Any) -> dict[str, Any]:
     # they are derived here instead of in a Spec - and still audited, because the compose functions
     # run again on the fresh read.
     facts["registration"] = derive_registration(facts["registration"], facts["breakdown"])
-    facts["health"] = derive_health(facts["health"], facts["ledger"])
+    reference = freeze_reference()
+    facts["health"] = derive_health(facts["health"], facts["ledger"], reference=reference)
+    if reference is not None:
+        newest = facts["overview"].get("newest_scrape_utc")
+        if newest:
+            # `iso()` renders timestamps for the page in "YYYY-MM-DD HH:MM UTC", so parse that shape
+            # rather than inventing a second format. A change to `iso()` fails here, loudly.
+            moments = datetime.strptime(str(newest), "%Y-%m-%d %H:%M UTC").replace(tzinfo=timezone.utc)
+            facts["overview"]["hours_since_newest_scrape"] = (reference - moments).total_seconds() / 3600.0
     return facts
 
 
@@ -941,6 +988,29 @@ class Page:
         shops = overview["shops_in_a_comparison"]
         shops_text = "not known" if shops is None else str(shops)
 
+        if FROZEN:
+            stamp = (
+                '<p class="stamp note">A frozen snapshot. Collection stopped on '
+                f'{esc(human_date(FROZEN["frozen_on"]))}, and the newest price here was recorded on '
+                f'{esc(human_date(str(overview["lagos_newest_date"])))} in Lagos. Every figure below is '
+                'stated as it stood at the freeze, and the freshness panel measures each source to that '
+                'moment rather than to today.</p>'
+            )
+            health_note = (
+                f' Because collection stopped on {esc(human_date(FROZEN["frozen_on"]))}, every age '
+                'below is measured to that moment, not to the day you are reading this.'
+            )
+            age_header = "Age at freeze"
+        else:
+            stamp = (
+                f'<p class="stamp note">Read from the database at {esc(overview["database_now_utc"])} '
+                f'({esc(overview["lagos_today"])} in Lagos). The newest price on the page was recorded '
+                f'at {esc(overview["newest_scrape_utc"])} ({esc(overview["lagos_newest_date"])} in '
+                f'Lagos), which is {hours_text} before the page was built.</p>'
+            )
+            health_note = ""
+            age_header = "Age"
+
         not_reporting = health["nightly_not_reporting"]
         if not_reporting:
             banner = (
@@ -989,10 +1059,7 @@ led NAFDAC from 2001 to 2008. The prices below are checked against the register 
 <p class="lede">This page is built from a database that records what three online pharmacies asked for
 medicines on the day it was read, and what the NAFDAC register says about the registration behind each
 of those medicines. It is independent, it is not a shop, and it is not endorsed by NAFDAC.</p>
-<p class="stamp note">Read from the database at {esc(overview["database_now_utc"])}
-({esc(overview["lagos_today"])} in Lagos). The newest price on the page was recorded at
-{esc(overview["newest_scrape_utc"])} ({esc(overview["lagos_newest_date"])} in Lagos), which is
-{hours_text} before the page was built.</p>
+{stamp}
 {banner}
 </header>
 </div>
@@ -1114,14 +1181,14 @@ same thing as a person having confirmed the record.</p>
 <p>This panel is about the machinery, not the medicines, and it says what did not happen as loudly as
 what did. A source with no row in the run log at all is printed as <strong>never run</strong> - zero
 rows is not "fine". A source is called <strong>stale</strong> after
-{health["stale_hours_threshold"]:g} hours without a successful run.</p>
+{health["stale_hours_threshold"]:g} hours without a successful run.{health_note}</p>
 <p class="tablelabel">Last successful run of each source, as the run log records it (times UTC)</p>
 <div class="tablewrap" role="region" aria-labelledby="health" tabindex="0">
 <table>
 <caption>One source per row.</caption>
 <thead><tr>
 <th scope="col">Source</th><th scope="col">Status</th>
-<th scope="col">Last success</th><th scope="col">Age</th><th scope="col">What it does</th>
+<th scope="col">Last success</th><th scope="col">{age_header}</th><th scope="col">What it does</th>
 </tr></thead>
 <tbody>
 {health_rows(health)}
