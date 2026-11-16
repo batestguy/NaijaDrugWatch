@@ -1,0 +1,225 @@
+{
+  "seed": 20261114,
+  "build_date": "2026-11-14",
+  "built_utc": "2026-11-14 11:56 UTC",
+  "file": ".agent/verify-sample-2026-11-14.json",
+  "rule": "Simple random sample without replacement, drawn separately per list from random.Random(seed + stream) on sorted item ids, before any card was judged.",
+  "lists": {
+    "licence": {
+      "asked": 20,
+      "drawn": 20,
+      "shortfall": 0,
+      "shortfall_note": "",
+      "items": [
+        {
+          "id": "licence-150",
+          "name": "Carvedilol",
+          "label": "Carvedilol · 6.25 mg · A11-0682"
+        },
+        {
+          "id": "licence-21",
+          "name": "Albendazole",
+          "label": "Albendazole · 100 mg/5 ml · A4-3157"
+        },
+        {
+          "id": "licence-2232",
+          "name": "Libre Tizanidine Tablets",
+          "label": "Libre Tizanidine Tablets · 2 mg · C4-0141"
+        },
+        {
+          "id": "licence-2243",
+          "name": "Emzor Vitamin E Capsules",
+          "label": "Emzor Vitamin E Capsules · 1000 mg · A4-8322"
+        },
+        {
+          "id": "licence-2302",
+          "name": "Uniflox Ciprofloxacin Injection",
+          "label": "Uniflox Ciprofloxacin Injection · 200 mg/100 mL · 04-1482"
+        },
+        {
+          "id": "licence-231",
+          "name": "Clindamycin",
+          "label": "Clindamycin · 300 mg · C4-1764"
+        },
+        {
+          "id": "licence-2330",
+          "name": "Krishat 1000 Cod Liver Oil Capsules",
+          "label": "Krishat 1000 Cod Liver Oil Capsules · 1000 mg · A11-100243"
+        },
+        {
+          "id": "licence-2438",
+          "name": "Rosuvastatin Tablets 40 mg",
+          "label": "Rosuvastatin Tablets 40 mg · 40 mg · C4-1316"
+        },
+        {
+          "id": "licence-2454",
+          "name": "Postpill Tablets",
+          "label": "Postpill Tablets · 1.5 mg · B4-2176"
+        },
+        {
+          "id": "licence-2485",
+          "name": "Ramipril Tablets",
+          "label": "Ramipril Tablets · 10 mg · B4-0905"
+        },
+        {
+          "id": "licence-2489",
+          "name": "Swidon Tablets",
+          "label": "Swidon Tablets · 5 mg · 04-2133"
+        },
+        {
+          "id": "licence-2493",
+          "name": "Noristerat",
+          "label": "Noristerat · 200 mg/mL · 04-5715"
+        },
+        {
+          "id": "licence-279",
+          "name": "Dexamethasone",
+          "label": "Dexamethasone · 0.1% · B4-8458"
+        },
+        {
+          "id": "licence-437",
+          "name": "Glibenclamide",
+          "label": "Glibenclamide · 5 mg · B4-8197"
+        },
+        {
+          "id": "licence-44",
+          "name": "Amitriptyline",
+          "label": "Amitriptyline · 25 mg · A11-0885"
+        },
+        {
+          "id": "licence-471",
+          "name": "Hydrochlorothiazide",
+          "label": "Hydrochlorothiazide · 25 mg · C4-1864"
+        },
+        {
+          "id": "licence-490",
+          "name": "Ibuprofen",
+          "label": "Ibuprofen · 100 mg/5 ml · A11-0117"
+        },
+        {
+          "id": "licence-577",
+          "name": "Levonorgestrel",
+          "label": "Levonorgestrel · 0.75 mg · B4-8495"
+        },
+        {
+          "id": "licence-591",
+          "name": "Lisinopril",
+          "label": "Lisinopril · 5 mg · A11-100187"
+        },
+        {
+          "id": "licence-794",
+          "name": "Pilocarpine",
+          "label": "Pilocarpine · 4% · 04-6269"
+        }
+      ]
+    },
+    "pack": {
+      "asked": 20,
+      "drawn": 20,
+      "shortfall": 0,
+      "shortfall_note": "",
+      "items": [
+        {
+          "id": "pack-1038-Lagos",
+          "name": "Vitamin B Complex",
+          "label": "Vitamin B Complex · strength not recorded · tab-cap · in Lagos"
+        },
+        {
+          "id": "pack-1049-Lagos",
+          "name": "Vitamin C",
+          "label": "Vitamin C · 500 mg · tab-cap · in Lagos"
+        },
+        {
+          "id": "pack-15-Lagos",
+          "name": "Aciclovir",
+          "label": "Aciclovir · 400 mg · tab-cap · in Lagos"
+        },
+        {
+          "id": "pack-189-Lagos",
+          "name": "Chloramphenicol",
+          "label": "Chloramphenicol · 1% · opht oint · in Lagos"
+        },
+        {
+          "id": "pack-2177-Lagos",
+          "name": "Bisoprolol 10 mg Tablet",
+          "label": "Bisoprolol 10 mg Tablet · 10 mg · Tablet · in Lagos"
+        },
+        {
+          "id": "pack-2218-Lagos",
+          "name": "Aprovasc 300/10 Tablet",
+          "label": "Aprovasc 300/10 Tablet · 10 mg; 300 mg · Tablet · in Lagos"
+        },
+        {
+          "id": "pack-2219-Lagos",
+          "name": "Tadalis 20",
+          "label": "Tadalis 20 · 20 mg · Tablet · in Lagos"
+        },
+        {
+          "id": "pack-2227-Lagos",
+          "name": "Diflucan 50 mg Capsules",
+          "label": "Diflucan 50 mg Capsules · 50 mg · Capsule · in Lagos"
+        },
+        {
+          "id": "pack-2247-Lagos",
+          "name": "Galvus 50 mg Tablets",
+          "label": "Galvus 50 mg Tablets · 50 mg · Tablet · in Lagos"
+        },
+        {
+          "id": "pack-2267-Lagos",
+          "name": "Duphaston Tablets",
+          "label": "Duphaston Tablets · 10 mg · Tablet · in Lagos"
+        },
+        {
+          "id": "pack-23-Lagos",
+          "name": "Albendazole",
+          "label": "Albendazole · 200 mg · tab-cap · in Lagos"
+        },
+        {
+          "id": "pack-2349-Lagos",
+          "name": "Doxycap Capsules",
+          "label": "Doxycap Capsules · 100 mg · Capsule · in Lagos"
+        },
+        {
+          "id": "pack-2382-Lagos",
+          "name": "Flotac 75 mg Capsules",
+          "label": "Flotac 75 mg Capsules · 75 mg · Capsule · in Lagos"
+        },
+        {
+          "id": "pack-2419-Lagos",
+          "name": "Diovan 80 mg Tablets",
+          "label": "Diovan 80 mg Tablets · 80 mg · Tablet · in Lagos"
+        },
+        {
+          "id": "pack-2472-Lagos",
+          "name": "Dalacin C 150 mg Capsules",
+          "label": "Dalacin C 150 mg Capsules · 150 mg · Capsule · in Lagos"
+        },
+        {
+          "id": "pack-2504-Lagos",
+          "name": "Concor 2.5 mg Tablet",
+          "label": "Concor 2.5 mg Tablet · 2.5 mg · Tablet · in Lagos"
+        },
+        {
+          "id": "pack-453-Lagos",
+          "name": "Griseofulvin",
+          "label": "Griseofulvin · 500 mg · tab-cap · in Lagos"
+        },
+        {
+          "id": "pack-46-Lagos",
+          "name": "Amlodipine",
+          "label": "Amlodipine · 5 mg · tab-cap · in Lagos"
+        },
+        {
+          "id": "pack-600-Lagos",
+          "name": "Loratadine",
+          "label": "Loratadine · 10 mg · tab-cap · in Lagos"
+        },
+        {
+          "id": "pack-635-Lagos",
+          "name": "Methyldopa",
+          "label": "Methyldopa · 250 mg · tab-cap · in Lagos"
+        }
+      ]
+    }
+  }
+}

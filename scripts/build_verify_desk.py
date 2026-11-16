@@ -61,6 +61,7 @@ from __future__ import annotations
 
 import html
 import json
+import random
 import re
 import sys
 from datetime import date, datetime, timezone
@@ -92,6 +93,22 @@ QUESTIONS = {"licence": LICENCE_QUESTIONS, "pack": PACK_QUESTIONS}
 
 # The three answers, exactly as they are stored and exported.
 ANSWERS = ("pass", "fail", "cannot")
+
+# The sampling rule from `.agent/verify-preregistration-2026-11-14.md`: 20 items per list, simple
+# random without replacement, drawn from a seeded generator, the seed recorded. One constant, so the
+# seed can be read and reported. Changing it changes which twenty a reader is asked to judge, and the
+# pre-registration says such a change is published beside the result, never made quietly.
+SAMPLE_SEED = 20261114
+SAMPLE_SIZE = 20
+# The date in these two filenames is the VINTAGE the sample was drawn from, not the day the sampling
+# rule was written. It moved 2026-11-14 -> 2026-11-16 because the desk is now built from the frozen
+# 16 November vintage, so the population the sample is drawn from changed (89 -> 87 licence cards,
+# 45 -> 44 pack cards). The SEED is unchanged at 20261114: the pre-registered rule still decides who
+# is in the sample. No card had been judged when this moved, so no verdict was discarded.
+SAMPLE_FILE = Path(".agent") / "verify-sample-2026-11-16.json"
+# The fixture path writes its own sample beside the real one, so a `--fixture` run can never overwrite
+# the selection a person is working through. Named in the report and on the page's fixture meta.
+SAMPLE_FIXTURE_FILE = Path(".agent") / "verify-sample-2026-11-16.fixture.json"
 
 HEURISTIC_SENTENCE = (
     "The strength comparison is a heuristic that reads mass units only (mg, mcg, g, iu, %) and "
@@ -722,6 +739,93 @@ def distinct_shops(rows: list[dict[str, Any]]) -> int:
     return len({row["shop"] for row in rows})
 
 
+# --------------------------------------------------------------------------- the drawn sample
+def sample_label(item: dict[str, Any]) -> str:
+    """A stable, human-readable name for one chosen item, built from the item's own fields."""
+    if item["kind"] == "licence":
+        parts = (item["name"] or "name not recorded",
+                 item["strength"] or "strength not recorded",
+                 item["nrn"] or "no registration number")
+    else:
+        parts = (item["name"] or "name not recorded",
+                 item["strength"] or "strength not recorded",
+                 item["form"] or "form not recorded",
+                 f'in {item["state"]}')
+    return " \u00b7 ".join(parts)
+
+
+def draw_sample(items: list[dict[str, Any]], kind: str) -> list[str]:
+    """Simple random sample without replacement, on ids, from a generator seeded by one constant.
+
+    The ids are sorted before the draw, so PostgreSQL's row order, a dict's insertion order or a
+    set's iteration order cannot move the sample. `random.Random` is used rather than the global
+    generator, and the chosen ids come back sorted, so the artifact is diffable as well as
+    reproducible: the same data and the same seed give the same twenty on every machine.
+    """
+    ids = sorted(item["id"] for item in items)
+    if len(ids) <= SAMPLE_SIZE:
+        return ids
+    rng = random.Random(SAMPLE_SEED + {"licence": 0, "pack": 1}[kind])
+    return sorted(rng.sample(ids, SAMPLE_SIZE))
+
+
+def sample_payload(items: dict[str, list[dict[str, Any]]], meta: dict[str, Any],
+                   path: Path) -> dict[str, Any]:
+    """The selection, written out at build time, before any verdict exists.
+
+    `shortfall` is the honest half: a worklist of fewer than twenty takes all of them, and says so
+    on the page and here, instead of being reported as a sample of twenty.
+    """
+    lists: dict[str, Any] = {}
+    for kind in ("licence", "pack"):
+        by_id = {item["id"]: item for item in items[kind]}
+        chosen = draw_sample(items[kind], kind)
+        drawn = len(chosen)
+        shortfall = max(0, SAMPLE_SIZE - drawn)
+        note = ""
+        if shortfall:
+            note = (
+                f"The {kind} worklist holds {drawn} item{'' if drawn == 1 else 's'}, fewer than "
+                f"the {SAMPLE_SIZE} the pre-registration asks for. All {drawn} are taken, and the "
+                f"shortfall of {shortfall} is reported as a failure of the planned sample size, "
+                f"not papered over."
+            )
+        lists[kind] = {
+            "asked": SAMPLE_SIZE,
+            "drawn": drawn,
+            "shortfall": shortfall,
+            "shortfall_note": note,
+            "items": [{"id": chosen_id,
+                       "name": by_id[chosen_id]["name"],
+                       "label": sample_label(by_id[chosen_id])} for chosen_id in chosen],
+        }
+    return {
+        "seed": SAMPLE_SEED,
+        "build_date": meta["lagos_today"],
+        "built_utc": meta["built_utc"],
+        "file": path.as_posix(),
+        "rule": ("Simple random sample without replacement, drawn separately per list from "
+                 "random.Random(seed + stream) on sorted item ids, before any card was judged."),
+        "lists": lists,
+    }
+
+
+def write_sample(path: Path, sample: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes((json.dumps(sample, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+
+
+def verify_written_sample(path: Path, sample: dict[str, Any]) -> list[str]:
+    """Read the artifact back. A selection that is written but cannot be read is not an artifact."""
+    try:
+        back = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:  # noqa: BLE001
+        return [f"cannot read back {path.as_posix()}: {type(exc).__name__}: {exc}"]
+    if back != sample:
+        return [f"{path.as_posix()} does not match the sample that was drawn"]
+    return []
+
+
 # --------------------------------------------------------------------------- the page
 CSS = """
 :root{--ink:#1b1b1b;--muted:#484848;--line:#b9b9b9;--bg:#ffffff;--panel:#f3f3f1;
@@ -767,6 +871,22 @@ border-radius:3px;font-weight:600;white-space:nowrap}
 .pill-fail{border-color:var(--warn);color:var(--warn);background:var(--warn-bg)}
 .pill-cannot{border-color:#5b5b5b;color:var(--muted);background:var(--panel)}
 .pill-blank{border-color:var(--line);color:var(--muted);background:var(--bg)}
+.sample-head{border:3px solid var(--accent);border-radius:5px;padding:.6rem .85rem;margin:.9rem 0;
+background:#eaf2f6}
+.sample-head h2{font-size:1.05rem;margin:0 0 .2rem}
+.sample-head p{margin:.2rem 0}
+.sample-head.outside{border-color:#5b5b5b;background:var(--panel)}
+.pill-sample{border-color:var(--accent);color:#083b50;background:#d6e7ef}
+.pill-outside{border-color:#5b5b5b;color:#3c3c3c;background:#e4e4e1}
+.report{border:2px solid var(--ink);border-radius:6px;padding:.8rem 1rem;margin:1.2rem 0;
+background:var(--bg)}
+.report h2{font-size:1.1rem;margin:.2rem 0 .4rem}
+.report h3{font-size:1rem;margin:.9rem 0 .3rem}
+.report .rule{color:var(--muted);font-size:.94rem}
+.report caption{text-align:left;padding:.45rem .6rem;background:var(--panel);color:var(--muted);
+border-bottom:1px solid var(--line);font-size:.9rem}
+.report td.num,.report th.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.ci{font-variant-numeric:tabular-nums}
 .flags{background:var(--warn-bg);border:3px solid var(--warn);border-radius:5px;
 padding:.7rem .85rem;margin:.9rem 0}
 .flags h3{margin:.1rem 0 .4rem;color:var(--warn)}
@@ -1047,6 +1167,40 @@ JS = r"""
   // ------------------------------------------------------------------ the lists
   function currentList() { return LISTS[state.list]; }
 
+  // The sample in DATA was drawn and written before any card was judged. The page only marks it: it
+  // never re-draws, never substitutes, and never reorders around an answer.
+  function sampleOf(kind) {
+    var all = DATA.meta && DATA.meta.sample;
+    return (all && all.lists && all.lists[kind]) || null;
+  }
+
+  function sampleRank(kind) {
+    var ranks = {};
+    var s = sampleOf(kind);
+    if (!s) { return ranks; }
+    s.items.forEach(function (entry, index) { ranks[entry.id] = index; });
+    return ranks;
+  }
+
+  function sampleIndexOf(item) {
+    var ranks = sampleRank(item.kind);
+    return Object.prototype.hasOwnProperty.call(ranks, item.id) ? ranks[item.id] : -1;
+  }
+
+  // Sample cards first, in the order of the artifact, then everything else: the full worklist stays
+  // reachable underneath, which is why no flagged item can be hidden by the draw.
+  function ordered(list) {
+    var ranks = sampleRank(state.list);
+    var inside = [];
+    var outside = [];
+    list.forEach(function (item) {
+      if (Object.prototype.hasOwnProperty.call(ranks, item.id)) { inside.push(item); }
+      else { outside.push(item); }
+    });
+    inside.sort(function (a, b) { return ranks[a.id] - ranks[b.id]; });
+    return inside.concat(outside);
+  }
+
   function passes(item, filter) {
     var outcome = outcomeOf(item).outcome;
     if (filter === 'open') { return outcome === 'incomplete'; }
@@ -1055,7 +1209,7 @@ JS = r"""
   }
 
   function visible() {
-    return currentList().filter(function (item) { return passes(item, state.filter); });
+    return ordered(currentList().filter(function (item) { return passes(item, state.filter); }));
   }
 
   function indexOfCurrent(list) {
@@ -1353,6 +1507,103 @@ JS = r"""
       '<th scope="col">Not answered</th></tr></thead><tbody>' + body + '</tbody></table></div>';
   }
 
+  // ------------------------------------------------------------------ the reported number
+  // Wilson score interval at 95%: 20 cards cannot support a bare proportion, so every proportion is
+  // printed with its interval. z is the two-sided 95% normal quantile. Nothing here is a headline
+  // rate - it counts the ticked sample and states its own denominator.
+  function wilsonBounds(k, n) {
+    if (!n) { return null; }
+    var z = 1.959964;
+    var p = k / n;
+    var denom = 1 + (z * z) / n;
+    var centre = (p + (z * z) / (2 * n)) / denom;
+    var half = (z / denom) * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n));
+    return { low: Math.max(0, centre - half), high: Math.min(1, centre + half) };
+  }
+
+  function share(k, n) {
+    if (!n) { return 'nothing judged yet, so no proportion'; }
+    var w = wilsonBounds(k, n);
+    return k + ' of ' + n + ' = ' + ((100 * k) / n).toFixed(1) + '% (95% Wilson ' +
+      (100 * w.low).toFixed(1) + '% to ' + (100 * w.high).toFixed(1) + '%)';
+  }
+
+  // Counts over the drawn sample only: a card is judged when every line is answered, fails if any
+  // line failed, is a pass when every line passed, and is cannot-tell otherwise.
+  function sampleCounts(kind) {
+    var s = sampleOf(kind);
+    var counts = { drawn: 0, open: 0, pass: 0, fail: 0, cannot: 0, judged: 0, denominator: 0 };
+    if (!s) { return counts; }
+    counts.drawn = s.items.length;
+    s.items.forEach(function (entry) {
+      var item = BY_ID[entry.id];
+      if (!item) { counts.open += 1; return; }
+      var result = outcomeOf(item);
+      if (result.failLines.length) { counts.fail += 1; return; }
+      if (result.missing.length) { counts.open += 1; return; }
+      if (!result.cannot.length) { counts.pass += 1; return; }
+      counts.cannot += 1;
+    });
+    counts.judged = counts.pass + counts.fail + counts.cannot;
+    counts.denominator = counts.judged - counts.cannot;
+    return counts;
+  }
+
+  function reportRow(label, value) {
+    return '<tr><th scope="row">' + esc(label) + '</th><td class="ci">' + esc(value) + '</td></tr>';
+  }
+
+  function reportBlock(kind) {
+    var s = sampleOf(kind);
+    if (!s) { return ''; }
+    var c = sampleCounts(kind);
+    var title = kind === 'licence' ? 'Licence findings' : 'Pack comparisons';
+    var shortNote = s.shortfall_note
+      ? '<p class="rule">' + esc(s.shortfall_note) + '</p>' : '';
+    return '<h3>' + esc(title) + ': sample of ' + esc(s.drawn) + ', ' + esc(s.asked) +
+      ' asked for</h3>' + shortNote +
+      '<div class="tablewrap" role="region" aria-label="Reported numbers for the ' + esc(kind) +
+      ' sample" tabindex="0"><table><caption>Sample only, from the cards ticked in this browser. ' +
+      'Seed ' + esc(DATA.meta.sample.seed) + '; selection in ' + esc(DATA.meta.sample.file) +
+      '.</caption><tbody>' +
+      reportRow('Judged - every line answered', c.judged + ' of ' + c.drawn) +
+      reportRow('Passed', String(c.pass)) +
+      reportRow('Failed', String(c.fail)) +
+      reportRow('Could not be told', String(c.cannot)) +
+      reportRow('Not yet judged', String(c.open)) +
+      reportRow('Denominator - judged minus cannot tell', String(c.denominator)) +
+      reportRow('Pass share', share(c.pass, c.denominator)) +
+      reportRow('Fail share', share(c.fail, c.denominator)) +
+      '</tbody></table></div>';
+  }
+
+  function renderSampleReport() {
+    if (!els.report || !DATA.meta || !DATA.meta.sample) { return; }
+    els.report.innerHTML = '<h2 id="report-heading">What the sample says so far</h2>' +
+      '<p class="rule">This measures whether our own claims hold, and nothing else. It says nothing ' +
+      'about all listings, and it is not a statement about Nigerian drug prices in general. The ' +
+      'denominator is the number judged minus the number that could not be told, so a card nobody ' +
+      'can settle never pads the rate.</p>' +
+      reportBlock('licence') + reportBlock('pack');
+  }
+
+  function sampleBanner(item) {
+    var s = sampleOf(item.kind);
+    if (!s) { return ''; }
+    var index = sampleIndexOf(item);
+    if (index >= 0) {
+      return '<div class="sample-head"><h2><span class="pill pill-sample">In the sample</span> ' +
+        'Sample card ' + (index + 1) + ' of ' + esc(s.drawn) + '</h2>' +
+        '<p class="note">One of the cards drawn with seed ' + esc(DATA.meta.sample.seed) +
+        ' before any card was judged. It is never swapped for a friendlier one: if it cannot be ' +
+        'judged it stays in the sample and is recorded as cannot tell.</p></div>';
+    }
+    return '<div class="sample-head outside"><h2><span class="pill pill-outside">Outside the ' +
+      'sample</span> Not one of the drawn cards</h2><p class="note">Every flagged item stays ' +
+      'reachable here so nothing is hidden, but the reported number counts the sample only. ' +
+      'Answers on this card are still saved.</p></div>';
+  }
+
   function renderHeader() {
     var counts = outcomeTally(state.list);
     var other = outcomeTally(state.list === 'licence' ? 'pack' : 'licence');
@@ -1367,6 +1618,7 @@ JS = r"""
     els.tabLicence.setAttribute('aria-pressed', state.list === 'licence' ? 'true' : 'false');
     els.tabPack.setAttribute('aria-pressed', state.list === 'pack' ? 'true' : 'false');
     els.tally.innerHTML = tallyTable(state.list);
+    renderSampleReport();
   }
 
   function renderFilters() {
@@ -1420,7 +1672,8 @@ JS = r"""
     els.position.innerHTML = '<span class="sr-only">Position. </span>Card ' + (index + 1) + ' of ' +
       vis.length + ' in this filter (' + FILTER_LABEL[state.filter].toLowerCase() + ') \u00b7 ' +
       (index + 1) + ' of ' + currentList().length + ' overall \u00b7 ' + outcomePill(result);
-    els.card.innerHTML = item.kind === 'licence' ? licenceCard(item, entry) : packCard(item, entry);
+    els.card.innerHTML = sampleBanner(item) +
+      (item.kind === 'licence' ? licenceCard(item, entry) : packCard(item, entry));
     renderNote(item);
     markFocused();
     if (wantFocus) { focusLine(state.focus, false); }
@@ -1711,6 +1964,7 @@ JS = r"""
     els.progress = $('progress');
     els.filters = $('filters');
     els.tally = $('tally');
+    els.report = $('sample-report');
     els.live = $('live');
     els.tabLicence = $('tab-licence');
     els.tabPack = $('tab-pack');
@@ -1814,6 +2068,18 @@ moves to the next line, then to the next card. <strong>o</strong> opens the sour
 <strong>n</strong> the note, <strong>Esc</strong> leaves it, <strong>[</strong> and
 <strong>]</strong> change card. Nothing here needs a mouse.</p>
 </div>
+<section class="notice" aria-labelledby="how-heading">
+<h2 id="how-heading">How to read this page</h2>
+<ol>
+<li>Each card prints the claim we are making, the evidence we hold, and the pages to open.</li>
+<li>Open those pages and compare what they show with what we recorded.</li>
+<li>Answer Pass, Fail or Cannot tell on every line; nothing is pre-selected.</li>
+<li>&ldquo;Cannot tell&rdquo; is a real answer - it means the page did not settle the question - and
+it is not a failure.</li>
+<li>Only the cards marked &ldquo;In the sample&rdquo; count towards the reported number; the rest sit
+underneath so nothing is hidden.</li>
+</ol>
+</section>
 <p class="stamp note">Built __GENERATED__ from the project database. The newest price was read at
 __PRICES_AS_OF__ and the register at __REGISTER_AS_OF__. The export's <code>data_as_of</code> is the
 older of those two, so an export can never look fresher than its stalest source. There are
@@ -1843,6 +2109,7 @@ record cannot be turned into one without inventing answers.</p>
 <p id="live" class="sr-only" role="status" aria-live="polite"></p>
 <p id="position" class="pos"></p>
 <div id="tally"></div>
+<div id="sample-report" class="report" role="region" aria-label="What the sample says so far"></div>
 <div id="card"></div>
 
 <section aria-labelledby="note-heading">
@@ -1980,7 +2247,9 @@ def render_document(items: dict[str, list[dict[str, Any]]], meta: dict[str, Any]
 
 # --------------------------------------------------------------------------- the self-check
 def self_check(document: str, items: dict[str, list[dict[str, Any]]],
-               expected: dict[str, int], lagos_today: date) -> tuple[int, list[str]]:
+               expected: dict[str, int], lagos_today: date,
+               sample: dict[str, Any] | None = None,
+               sample_path: Path | None = None) -> tuple[int, list[str]]:
     """Prove the file the way the brief says to prove it. Returns (checks, problems).
 
     Each check is something that would silently break the desk: a data block the browser cannot
@@ -2107,6 +2376,40 @@ def self_check(document: str, items: dict[str, list[dict[str, Any]]],
     if "mass units only" not in document:
         problems.append("the strength heuristic is not labelled on the page")
 
+    # The drawn sample: fixed before judging, exactly one per list, present in the embedded data, and
+    # reproducible from the seed. A selection that can drift between builds is not a sample, and a
+    # sample the page does not carry is not the sample a person is working through.
+    if sample is not None:
+        for kind in ("licence", "pack"):
+            checks += 1
+            entry = sample["lists"][kind]
+            wanted = min(SAMPLE_SIZE, len(items[kind]))
+            if entry["drawn"] != wanted:
+                problems.append(f"{kind}: {entry['drawn']} drawn, {wanted} expected from a "
+                                f"worklist of {len(items[kind])}")
+            checks += 1
+            if len(entry["items"]) != entry["drawn"]:
+                problems.append(f"{kind}: the sample says {entry['drawn']} drawn but lists "
+                                f"{len(entry['items'])}")
+            checks += 1
+            if entry["shortfall"] != max(0, SAMPLE_SIZE - entry["drawn"]):
+                problems.append(f"{kind}: the shortfall does not match the number drawn")
+            checks += 1
+            chosen = [unit["id"] for unit in entry["items"]]
+            if len(set(chosen)) != len(chosen):
+                problems.append(f"{kind}: the sample lists the same id twice")
+            checks += 1
+            known = {item["id"] for item in items[kind]}
+            unknown = [one_id for one_id in chosen if one_id not in known]
+            if unknown:
+                problems.append(f"{kind}: the sample names {len(unknown)} id(s) not in the worklist")
+            checks += 1
+            if draw_sample(items[kind], kind) != chosen:
+                problems.append(f"{kind}: drawing again from the same seed gives a different sample")
+        checks += 1
+        if payload["meta"].get("sample") != sample:
+            problems.append("the sample embedded in the page is not the sample that was drawn")
+
     # No reference to the network outside the data block. This is the property `file://` cares about:
     # a stylesheet, script, font or image at another address would be a request, and on a double-click
     # it would fail silently.
@@ -2174,8 +2477,11 @@ def write_fixture(path: Path) -> int:
         "heuristic": HEURISTIC_SENTENCE,
         "how_built": "scripts/build_verify_desk.py --fixture, synthetic rows, not project data",
     }
+    sample = sample_payload(items, meta, SAMPLE_FIXTURE_FILE)
+    meta["sample"] = sample
     document = render_document(items, meta)
-    checks, problems = self_check(document, items, {"licence": 1, "pack": 1}, today)
+    checks, problems = self_check(document, items, {"licence": 1, "pack": 1}, today,
+                                  sample=sample)
 
     licence_flags = [flag for flag in items["licence"][0]["flags"]]
     pack_line5 = items["pack"][0]["questions"][4]["auto"]
@@ -2199,6 +2505,15 @@ def write_fixture(path: Path) -> int:
 
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(document.encode("utf-8"))
+    write_sample(SAMPLE_FIXTURE_FILE, sample)
+    back = verify_written_sample(SAMPLE_FIXTURE_FILE, sample)
+    if back:
+        for problem in back:
+            print("  failed:", problem, file=sys.stderr)
+        return 1
+    print(f"fixture: sample drawn - {sample['lists']['licence']['drawn']} licence, "
+          f"{sample['lists']['pack']['drawn']} pack, seed {sample['seed']}, "
+          f"written {SAMPLE_FIXTURE_FILE.as_posix()} and read back")
     print(f"fixture: wrote {path.as_posix()} ({len(document.encode('utf-8')):,} bytes)")
     print("fixture: licence card flag -> "
           + next(flag["detail"] for flag in licence_flags if flag["kind"] == "strength_mismatch"))
@@ -2287,8 +2602,10 @@ def main() -> int:
         ),
     }
 
+    sample = sample_payload(items, meta, SAMPLE_FILE)
+    meta["sample"] = sample
     document = render_document(items, meta)
-    checks, problems = self_check(document, items, expected, lagos_today)
+    checks, problems = self_check(document, items, expected, lagos_today, sample=sample)
 
     if problems:
         print(f"{checks} checks, {len(problems)} failed", file=sys.stderr)
@@ -2300,6 +2617,12 @@ def main() -> int:
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_bytes(document.encode("utf-8"))
+    write_sample(SAMPLE_FILE, sample)
+    back = verify_written_sample(SAMPLE_FILE, sample)
+    if back:
+        for problem in back:
+            print("  failed:", problem, file=sys.stderr)
+        return 1
 
     strength_licence = sum(1 for item in items["licence"] if item["flags"])
     strength_pack = sum(1 for item in items["pack"]
@@ -2317,6 +2640,13 @@ def main() -> int:
           f"a strength disagreement; {same_shop_pack} pack cards have both rows from one shop")
     print(f"data as of: {meta['data_as_of']} (prices {meta['prices_as_of']}, "
           f"register {meta['register_as_of']})")
+    print(f"sample drawn: {sample['lists']['licence']['drawn']} of "
+          f"{len(items['licence'])} licence cards, {sample['lists']['pack']['drawn']} of "
+          f"{len(items['pack'])} pack cards, seed {sample['seed']}, written to "
+          f"{SAMPLE_FILE.as_posix()} and read back")
+    if sample["lists"]["licence"]["shortfall"] or sample["lists"]["pack"]["shortfall"]:
+        print("SAMPLE SHORTFALL: a worklist holds fewer than the 20 the pre-registration asks for; "
+              "the page states it and the shortfall is reported, not hidden")
     print(f"{checks:,} checks passed, 0 failed")
     return 0
 

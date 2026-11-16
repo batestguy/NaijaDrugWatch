@@ -1,0 +1,35 @@
+{
+  "seed": 20261114,
+  "build_date": "2026-11-12",
+  "built_utc": "2026-11-12 06:00 UTC",
+  "file": ".agent/verify-sample-2026-11-14.fixture.json",
+  "rule": "Simple random sample without replacement, drawn separately per list from random.Random(seed + stream) on sorted item ids, before any card was judged.",
+  "lists": {
+    "licence": {
+      "asked": 20,
+      "drawn": 1,
+      "shortfall": 19,
+      "shortfall_note": "The licence worklist holds 1 item, fewer than the 20 the pre-registration asks for. All 1 are taken, and the shortfall of 19 is reported as a failure of the planned sample size, not papered over.",
+      "items": [
+        {
+          "id": "licence-900001",
+          "name": "Fixture Medicine",
+          "label": "Fixture Medicine · 400 mg · 04-9999"
+        }
+      ]
+    },
+    "pack": {
+      "asked": 20,
+      "drawn": 1,
+      "shortfall": 19,
+      "shortfall_note": "The pack worklist holds 1 item, fewer than the 20 the pre-registration asks for. All 1 are taken, and the shortfall of 19 is reported as a failure of the planned sample size, not papered over.",
+      "items": [
+        {
+          "id": "pack-900002-Lagos",
+          "name": "Fixture Medicine",
+          "label": "Fixture Medicine · 400 mg · Tablet · in Lagos"
+        }
+      ]
+    }
+  }
+}
