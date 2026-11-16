@@ -1172,10 +1172,10 @@ tally.</p>
 listings that carry a product. The {overview["unmatched_listings"]} listings without a product are not
 in any of the rows above and do not appear in the price tables: a price nobody can name is not a price
 anybody can use.</p>
-<p><strong>No listing on this page has been compared by hand against a rendered NAFDAC record.</strong>
-The status comes from a scraped page and nothing here has been eyeballed by a person. Treat
-<em>not active</em> as "the register we hold says not active", which is a real finding and not the
-same thing as a person having confirmed the record.</p>
+<p><strong>What a status means here.</strong> It is what the NAFDAC register said when it was read,
+not a ruling on the medicine: <em>not active</em> records a lapsed or inactive registration, and is not
+evidence that the medicine is fake or illegal. How far these records have been checked against the live
+register, and what that check can and cannot prove, is written out in the project README.</p>
 
 <h2 id="health">Pipeline health</h2>
 <p>This panel is about the machinery, not the medicines, and it says what did not happen as loudly as
