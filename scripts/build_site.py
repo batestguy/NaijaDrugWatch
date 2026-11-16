@@ -426,7 +426,8 @@ CELL_COLUMNS = """
     cheapest_pack_stock_confirmed,
     registration_status,
     registration_flagged,
-    cheapest_pack_url
+    cheapest_pack_url,
+    (select l.pack_unit from v_latest_listings l where l.url = cheapest_pack_url) as pack_unit
 """
 
 # Named in the brief and required to be stated exactly. It is a caption, not a claim about the
@@ -451,7 +452,7 @@ order by canonical_name, state, cheapest_pack_price, cheapest_pack_pharmacy, pro
 def derive_cells(rows: list[tuple]) -> list[dict[str, Any]]:
     out = []
     for (name, state, shop, price, unit_price, pack_size, shops, confirmed, stock_confirmed,
-         status, flagged, url) in rows:
+         status, flagged, url, pack_unit) in rows:
         out.append({
             "product": name,
             "state": state,
@@ -460,6 +461,7 @@ def derive_cells(rows: list[tuple]) -> list[dict[str, Any]]:
             "price_ngn": money(price),
             "unit_price_ngn": money(unit_price),
             "pack_size": pack_size,
+            "pack_unit": pack_unit,
             "shops_quoting": int(shops),
             "shops_confirmed_in_stock": int(confirmed),
             "stock_confirmed": None if stock_confirmed is None else bool(stock_confirmed),
@@ -618,8 +620,10 @@ body{margin:0;background:var(--bg);color:var(--ink);
 font:1rem/1.55 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
 .wrap{max-width:62rem;margin:0 auto;padding:1rem .75rem 3rem}
 /* Prose keeps a readable measure; tables are allowed the full width. */
-.wrap p,.wrap li{max-width:68ch}
-.wrap .tablewrap,.wrap table{max-width:none}
+.wrap p,.wrap li{max-width:68ch}.wrap .tablewrap,.wrap table{max-width:none}
+/* The unit a price is per, printed beside the money. Smaller and muted so the number stays the loud
+   thing while the unit cannot be lost. */
+.unit{font-size:.86em;color:var(--muted);white-space:nowrap}
 .wrap>h2:first-child{margin-top:.9rem;padding-top:0;border-top:0}
 /* The header block now sits directly above the tribute band; no dead strip between them. */
 .wrap:has(> header){padding-bottom:.75rem}
@@ -746,6 +750,27 @@ def link(url: Any, text: str) -> str:
     return f'<a href="{esc(url)}" rel="nofollow noopener">{esc(text)}</a>'
 
 
+UNIT_WORD = {"tab": "tablet", "cap": "capsule", "ml": "ml", "g": "g", "mcg": "mcg", "iu": "iu"}
+
+
+def unit_price_cell(row: dict[str, Any]) -> str:
+    """A unit price without its unit is not a number a reader can use.
+
+    WHY THIS EXISTS. One row on the comparison table is a 100 ml syrup recorded with pack size 100 and
+    pack unit `ml`, so its unit price is per millilitre. Under a column headed "per pack unit" it read
+    as a per-tablet price and sat directly above a per-tablet row, which looks like a 5x saving and is
+    not one. The unit is printed beside the money wherever we recorded one; where none was recorded the
+    money is left unannotated rather than implied.
+    """
+    value = row["unit_price_ngn"]
+    if value is None:
+        return naira(None)
+    unit = UNIT_WORD.get(str(row.get("pack_unit") or "").strip().lower())
+    if unit:
+        return f'{naira(value)}<span class="unit"> per {esc(unit)}</span>'
+    return naira(value)
+
+
 def stock_cell(row: dict[str, Any]) -> str:
     if row["stock_confirmed"] is True:
         return tag("confirmed", "ok")
@@ -774,7 +799,7 @@ def price_rows(rows: list[dict[str, Any]], with_state: bool) -> str:
             f'<td class="num">{naira(row["price_ngn"])}</td>',
             f'<td>{stock_cell(row)}</td>',
             f'<td>{licence_cell(row)}</td>',
-            f'<td class="num">{naira(row["unit_price_ngn"])}</td>',
+            f'<td class="num">{unit_price_cell(row)}</td>',
         ]
         body.append("<tr>" + "".join(cells) + "</tr>")
     return "\n".join(body)
@@ -1105,7 +1130,7 @@ status of the product's registration: <strong>active</strong>, <strong>not activ
 <thead><tr>
 <th scope="col">Product</th><th scope="col">Shop with the lower price</th>
 <th scope="col">Price</th><th scope="col">Stock</th><th scope="col">Registration</th>
-<th scope="col">Price per pack unit</th>
+<th scope="col">Price per unit</th>
 </tr></thead>
 <tbody>
 {price_rows(comparison, with_state=False)}
@@ -1114,9 +1139,11 @@ status of the product's registration: <strong>active</strong>, <strong>not activ
 </div>
 <p class="note">{len(comparison)} rows. Every one comes from two shops quoting the same product; the
 largest number of shops quoting a single product here is
-{shops_text}. Price per pack unit is shown only where the pack size could be
-read from the page, and is blank where it could not. On a narrow screen the table scrolls
-sideways inside its own box; the rest of the page does not move.</p>
+{shops_text}. A unit price is shown only where the pack size could be read from the page, and it
+carries the unit it is priced in - per tablet, per capsule or per millilitre - because one row here is
+a 100 ml syrup priced per millilitre and would otherwise read as a per-tablet price beside a
+per-tablet row. Where no unit was recorded the money is left without one. On a narrow screen the table
+scrolls sideways inside its own box; the rest of the page does not move.</p>
 
 <h3 id="single">One shop only</h3>
 <p class="tablelabel">Single-shop prices: one shop's price for one product, not a comparison</p>
