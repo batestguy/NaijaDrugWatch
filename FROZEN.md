@@ -133,7 +133,14 @@ Fixing any of them means a new vintage, which is the rule this record exists to 
   definition-of-done items are therefore unmet. The job that would publish the page to GitHub Pages is
   committed, but Pages was never enabled in the repository settings, so it has never run and would
   fail if the schedule were switched back on before Pages is turned on.
-- **No accessibility audit** (axe) has been run on either page.
+- **The accessibility audit has now been run, after the freeze.** axe-core 4.10.2, WCAG 2.0/2.1/2.2 A
+  and AA. The public page and the About page: **0 violations** (44 and 29 rules passing). The
+  verification desk: 3 violations, all from one cause — each question was an `<li>` carrying
+  `role="group"`, which overrides `listitem` and left the parent list without list children — plus two
+  landmarks both named "Keys". Fixed; re-run gives **0 violations** on both lists and at 400 px. One
+  rule stays *incomplete* rather than failing: `color-contrast` on 13 cells whose background is
+  obscured by a scroll container, so those colours were checked by hand (worst pairing 7.22:1 against
+  a 4.5 requirement). The dashboard has not been audited since 8 November and is not deployed.
 - The dump has been proven readable by `pg_restore --list`, but **never restored into a scratch
   database**, so restorability is proven to the level of listing, not to the level of a working copy.
 - Reproduction: the generated pages are not byte-identical between runs because they embed the build
