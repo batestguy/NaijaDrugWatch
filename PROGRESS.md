@@ -2,6 +2,43 @@
 
 Single state file for NaijaDrugWatch. Last updated **2026-11-16**.
 
+## Next task — prove the export restores, and make that proof live in the repo
+
+**Why this is first.** The frozen vintage exists in two places: the Neon database and `vintage/2026-11-16/`.
+The export has been proven *readable* — `pg_restore --list` reads it, every CSV row count matches the
+database, and the pharmacies table comes out with the right rows. It has **never been restored into a
+working database**. Until it has, "frozen" means "there is a copy", not "the copy works", and Neon's
+free tier suspends idle projects, so the database copy is the one that can quietly disappear.
+
+**What to do, in this order.**
+
+1. **Restore it once by hand** and record the transcript. Docker is installed on this machine (29.6.2)
+   and the engine is stopped, so it needs Docker Desktop started. Postgres 17 in a container: ~150 MB
+   download, nothing installed, deleted afterwards. `pg_dump` 18.6 wrote the archive from a 17.12
+   server; restore into 17.
+2. **Turn that into `scripts/verify_restore.py`** — one command that spins up the database, creates
+   `pg_trgm`, `pgvector` and `unaccent`, restores the dump, applies `schema/003`–`008`, refreshes
+   `mv_drug_price_index`, then compares against the vintage: row count and a checksum per table, the
+   2,800 listings / 559 matched / 44 comparisons / 154 suspicious figures, and the 428 index rows.
+   Non-zero exit on any difference.
+3. **Run it in CI** as a new workflow with a `postgres:17` service container. This repo has one
+   workflow and no tests at all; a restore test that fails when the export breaks is the first
+   automated verification the project would have, and it costs nothing on a public repo.
+
+**The blocker to solve in step 3, which nobody has yet.** The export is gitignored — 12 MB against a
+5 MB rule — so CI cannot read it from the repository. The job therefore needs the export published
+first: a release asset, or the Hugging Face dataset upload that was already on the list. Decide which,
+because the CI test cannot exist without it.
+
+**Not to be done here.** Do not restore into MySQL. It is installed and running on this machine, but
+the archive is PostgreSQL-only and the schema depends on pgvector, `pg_trgm`, `unaccent` and a
+materialised view; a MySQL restore would prove something about a different database built differently,
+which is worse than no test.
+
+**Definition of done.** A recorded restore transcript in `.agent/`, `scripts/verify_restore.py`
+committed and re-runnable, a CI job that goes red when the export no longer restores, and the
+"never restored" line in `FROZEN.md` replaced with the date and the numbers it produced.
+
 ## Frozen — 2026-11-16
 
 **The project stopped collecting today.** The schedule is disabled, the vintage is exported, and both

@@ -141,8 +141,10 @@ Fixing any of them means a new vintage, which is the rule this record exists to 
   rule stays *incomplete* rather than failing: `color-contrast` on 13 cells whose background is
   obscured by a scroll container, so those colours were checked by hand (worst pairing 7.22:1 against
   a 4.5 requirement). The dashboard has not been audited since 8 November and is not deployed.
-- The dump has been proven readable by `pg_restore --list`, but **never restored into a scratch
+- The dump has been proven readable by `pg_restore --list`, but **never restored into a working
   database**, so restorability is proven to the level of listing, not to the level of a working copy.
+  **This is the next task, written out in `PROGRESS.md`**: restore once by hand, then make it a
+  committed script and a CI job so the proof can be re-run by anyone.
 - Reproduction: the generated pages are not byte-identical between runs because they embed the build
   time to the minute. The sampled ids are stable across builds; the page hash is not.
 
