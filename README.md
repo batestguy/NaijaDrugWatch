@@ -4,28 +4,30 @@ An open, daily-refreshed database that joins **NAFDAC drug registration status**
 Nigerian pharmacy prices** — so a patient, pharmacist or researcher can answer: *is this drug
 genuine, is it in stock, and where is it cheapest?*
 
-**Status: it runs itself, and it has not been checked by eye.** The pipeline completes end to end and
-the daily schedule has fired by itself for three nights running: three nights found the day missing
-and ran the whole pipeline (1 h 33 m, 1 h 31 m, 1 h 49 m), and five later fires found the day already
-done and stood down in seconds. What is **not** established: seven consecutive green days, any
-comparison checked against a live pharmacy page, and any lapsed registration compared against a
-rendered NAFDAC record. So **do not cite this as a price source yet** — and read
-[`PROGRESS.md`](PROGRESS.md) before quoting any number here.
+**Status: frozen on 16 November 2026, and only a small part of it has been checked by eye.** The
+schedule is disabled and the data is a dated vintage, not a live service. Before the freeze the
+nightly job ran green on all six sources for seven consecutive days. Afterwards, 20 sampled register
+records were re-read against the live register and all 20 matched on every field, and all 44
+comparisons were re-read once — but through the same channels the scrapers use. That proves the pages
+have not drifted; it cannot prove the parsers read them correctly. Per-line judgements exist for 18 of
+20 licence cards and 3 of 20 pack cards. So **do not cite this as a price source**. Start with
+[`FROZEN.md`](FROZEN.md), then [`PROGRESS.md`](PROGRESS.md); the numbers below are the frozen vintage's.
 
-Every figure below is as of **2026-11-12** and moves on every scrape. Current state and row counts
-live in [`PROGRESS.md`](PROGRESS.md), which is the single state file for this repo.
+Every figure below is as of **2026-11-15**, the last collection, and does not move again.
 
-## What the data currently says
+## What the data says
 
 | Object | Value | Meaning |
 |---|---|---|
-| `pharmacy_listings` (latest per URL) | 2,792 | three pharmacies, all Lagos except Drugstore.ng |
-| …matched to a product | 580 | 2,212 are unmatched: no product to attach them to |
-| `nafdac_registrations` | 10,925 | the Greenbook index |
-| …with a status scraped | 1,856 | **17% of the register** — still the restricted scope, not the full sweep |
-| `v_cheapest_per_product_state` | 262 cells, **45 comparisons** | only 45 are genuine two-pharmacy comparisons |
-| `v_suspicious_listings` | 163 | matched to a registration that is not Active, or has expired |
-| `mv_drug_price_index` | 426 rows | refreshed by the pipeline, never by hand |
+| `pharmacy_listings` (latest per URL) | 2,800 | three pharmacies, all Lagos except Drugstore.ng |
+| …matched to a product | 559 | 2,241 are unmatched: no product to attach them to |
+| `products` | 1,433 | of which **335** are cited by a live price; 1,097 never are |
+| `nafdac_registrations` | 10,967 | the Greenbook index |
+| …with a status scraped | 1,856 | **16.9% of the register** — the restricted scope, not the full sweep |
+| `v_cheapest_per_product_state` | 261 cells, **44 comparisons** | only 44 are genuine two-pharmacy comparisons |
+| `v_suspicious_listings` | 154 (86 products) | matched to a registration that is not Active, or has expired |
+| `mv_drug_price_index` | 428 rows | refreshed by the pipeline, never by hand |
+| price change over 7 days | 3 products | the feature works; the market was quiet |
 
 
 **A "cheapest" cell is only a comparison when `is_comparison` is true** — two or more independent
@@ -59,7 +61,11 @@ PROGRESS.md         single state file — read this before anything else
 
 ## How it runs
 
-`.github/workflows/daily.yml`, one job, at **03:00 UTC (04:00 Lagos)**:
+**It no longer runs.** The `daily` workflow is disabled by hand (id 410978489); `gh workflow enable
+410978489` would switch it back on, and the first night would find the day missing and run the whole
+pipeline. The freeze record is [`FROZEN.md`](FROZEN.md).
+
+`.github/workflows/daily.yml`, one job, at **03:00 UTC (04:00 Lagos)** while it was live:
 
 ```
 nafdac_index → nafdac_details → link_product_nrn → healthplus → medplus → drugstore
@@ -161,7 +167,15 @@ publicly published NAFDAC Greenbook. Specifically:
   stock can change before purchase.
 - **`unit_price` is unknown for roughly half of the listings.** Pack sizes are parsed from titles, and
   many titles state a count with no unit (`* 10 STRIPS`). The parser returns NULL rather than guessing,
-  which is why `best_unit_*` is NULL so often.
+  which is why `best_unit_*` is NULL so often. Two consequences are live in the published tables: 18 of
+  the 88 listings behind a comparison row carry a pack count with no unit recorded, and **one published
+  unit price is per millilitre** — the Vitamin B Complex syrup is stored with pack size 100 and no unit,
+  so its ₦12.50 "per pack unit" is per millilitre and sits directly above a ₦2.30-per-tablet row. Of the
+  30 comparison rows carrying a unit price, 26 are tablets, 3 capsules and 1 is millilitres.
+- **Two product names appear twice each on the comparison table**, at very different prices, because
+  they are different products: Amlodipine 5 mg (₦950) and 10 mg (₦400); a Vitamin B Complex 100 ml
+  syrup (₦1,250) and a 1,000-tablet pack (₦2,300). Both are correct as separate rows and both will be
+  read by a stranger as a price cut.
 - **Registration coverage is 17%.** Status and expiry exist for 1,856 of 10,925 registrations — the
   scope matching the catalogue we price, not the register. A product with no status has *unknown*
   status, which `v_suspicious_listings` does not treat as suspicious, so the 163 rows it returns are
@@ -169,7 +183,17 @@ publicly published NAFDAC Greenbook. Specifically:
 - **Drugstore.ng carries a single national price**, not a per-state one, and is registered with
   `state = 'National'`. It can never create a comparison. Its product pages name one seller each.
 - **The scheduler has no retries.** A transient failure loses that day's run.
-- **No human has yet checked a comparison against a live pharmacy page**, and no suspicious listing has
-  been compared against a rendered NAFDAC record. Both are required before any "cheapest" claim is
-  published.
+- **What has been checked against the live sources, and what that check can prove.** On 16 November
+  2026, before the vintage was frozen, the register pages behind the 20 sampled licence records were
+  re-read from the live Greenbook and all 20 matched on status, expiry, approval
+  date, name and strength; 18 of those 20 were also answered line by line by a person against the live
+  page. The pages behind all 44 comparison rows were re-read the same day — 88 page reads, no
+  differences — **but through the same channels the scrapers use**: HealthPlus refused its independent
+  storefront JSON endpoint with repeated `429 local_rate_limited` over more than an hour of attempts,
+  so the fallback was the catalogue feed `scrapers/healthplus.py` itself reads, and MedPlus has no
+  second server-side source at all. That check therefore shows a page has not drifted since collection.
+  It cannot show that the parser read the page correctly. The author also reviewed all 44 comparisons
+  informally and reported no disagreement; 3 of the 20 scored pack cards carry recorded per-line
+  answers and the other 17 were not marked, so the recorded pack sample is 3 cards and is not
+  presented as 20.
 - Registration status reflects the last successful scrape of the Greenbook, not NAFDAC's live state.

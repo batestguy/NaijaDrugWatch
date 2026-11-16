@@ -38,6 +38,38 @@ list says a lapsed or inactive registration "is not evidence that the medicine i
 and this project has not inspected, tested or bought any product". Nothing to add; the open item was
 stale.
 
+### What was checked against the live sources, 16 November
+
+This matters more than any number here, so it is recorded with its limits rather than as a result.
+
+| what | how | outcome | what it can prove |
+|---|---|---|---|
+| 20 sampled licence records | pages fetched again; all six fields compared | **20 of 20 matched** | the records have not changed since collection |
+| 18 of those 20 | a person ticked each line against the live page | 18 of 18 pass, 0 fail, 0 cannot tell | a person read these and agreed |
+| all 44 comparisons (88 pages) | both shops re-read and compared with the stored price | **88 reads, 0 differences** | the pages have not drifted |
+| the author's own review | all 44 comparisons looked at informally; the 17 unmarked pack cards were **not** recorded line by line | no disagreement reported | the author's claim, not a scored sample |
+
+**The limit, stated plainly:** the 88 page reads went through the same channels the scrapers use.
+HealthPlus refused its independent storefront endpoint with `429 local_rate_limited` throughout, so
+the fallback was the catalogue feed the scraper itself reads; MedPlus has no second server-side
+source. The check shows the pages did not drift. It cannot show the parsers read them correctly, and
+it is not a human verification.
+
+**The scored sample is therefore 18 of 20 licence cards and 3 of 20 pack cards.** The other 17 pack
+cards were reviewed by the author but carry no recorded answers, and the report says so rather than
+counting them.
+
+### Defects found by that check, not fixed
+
+1. **One published unit price is per millilitre.** The Vitamin B Complex syrup, product 1037, is stored
+   with pack size 100 and no unit, so it publishes ₦12.50 "per pack unit" directly above a
+   ₦2.30-per-tablet row. Of 30 comparison rows with a unit price: 26 tablets, 3 capsules, 1 millilitre.
+2. **Two names appear twice at very different prices** — Amlodipine 5 mg ₦950 and 10 mg ₦400; Vitamin B
+   Complex syrup ₦1,250 and a 1,000-tablet pack ₦2,300. Correct as separate products, misleading as rows.
+3. **18 of the 88 comparison listings carry a pack count with no unit recorded.**
+
+Left in place because the vintage is frozen: fixing them means a new vintage, which is the rule.
+
 ## Handoff — paused mid-finish, 2026-11-13
 
 Read this block only. Everything below is history.

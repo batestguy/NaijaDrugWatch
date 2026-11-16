@@ -67,6 +67,36 @@ the source.
   clock. Proven by falsification rather than assumed: the same row reports `stale` at 127.5 hours
   against the wall clock and `reporting` at 13.5 hours against the freeze.
 
+## Checked after the freeze — and what the check can prove
+
+Run on 16 November, after collection stopped, against the live sources. Recorded here because it is
+the only evidence about whether the numbers are right, and because its limits are easy to overstate.
+
+| what | how | outcome |
+|---|---|---|
+| 20 sampled licence records | pages re-read; status, expiry, approval, name, strength, number compared | **20 of 20 matched**, no nulls |
+| 18 of those 20 | a person answered all five lines against the live page | 18 pass, 0 fail, 0 cannot tell |
+| 44 comparisons, 88 pages | every shop page re-read and compared with the stored price | **88 reads, 0 differences** |
+| author's own review | all 44 comparisons looked at; 17 pack cards reviewed but **not** recorded line by line | no disagreement reported |
+
+**The limit.** The 88 page reads went through the same channels the scrapers use. HealthPlus refused
+its independent storefront JSON endpoint with `429 local_rate_limited` throughout, so the fallback was
+the catalogue feed `scrapers/healthplus.py` itself reads, and MedPlus has no second server-side source.
+The check shows the pages did not drift between collection and re-read. It cannot show the parsers read
+them correctly, and it is not a human verification. The scored sample is **18 of 20 licence cards and
+3 of 20 pack cards**; the other 17 were reviewed but carry no recorded answers and are not counted.
+
+## Defects that check found, deliberately not fixed
+
+1. **One published unit price is per millilitre.** The Vitamin B Complex syrup (product 1037) carries
+   pack size 100 with no unit, so it publishes ₦12.50 "per pack unit" directly above a
+   ₦2.30-per-tablet row. Of 30 comparison rows with a unit price: 26 tablets, 3 capsules, 1 millilitre.
+2. **Two names appear twice at very different prices** — Amlodipine 5 mg ₦950 and 10 mg ₦400; Vitamin B
+   Complex syrup ₦1,250 and a 1,000-tablet pack ₦2,300.
+3. **18 of the 88 comparison listings carry a pack count with no unit recorded.**
+
+Fixing any of them means a new vintage, which is the rule this record exists to enforce.
+
 ## What this vintage holds
 
 | object | value |
@@ -96,8 +126,9 @@ the source.
 
 ## Not done at freeze
 
-- The 40 verification cards have **not been ticked by a human**. The desk is built and the sample is
-  drawn; the judgement is not made.
+- The verification cards are **not all ticked by a human**. 18 of the 20 licence cards carry recorded
+  answers; 3 of the 20 pack cards do. The author reviewed the rest informally and reported no
+  disagreement, which is recorded as their claim and not as a scored sample.
 - **Nothing is deployed.** No public URL, no dashboard hosting, no API. Two of the four
   definition-of-done items are therefore unmet. The job that would publish the page to GitHub Pages is
   committed, but Pages was never enabled in the repository settings, so it has never run and would
