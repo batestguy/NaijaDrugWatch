@@ -17,6 +17,9 @@ venv/
 data/
 # Date-stamped scraper dumps. Local working copies only; the published archive goes to HF Datasets.
 archives/
+# Frozen vintage exports (scripts/export_vintage.py). 12 MB for the 2026-11-16 vintage, so above the
+# 5 MB git rule; the published copy belongs on Hugging Face Datasets, not in the repo.
+vintage/
 
 # --- build output ---
 # The public page and its JSON are generated from the database by scripts/build_site.py and published
