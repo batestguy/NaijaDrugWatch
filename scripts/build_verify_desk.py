@@ -1328,7 +1328,7 @@ JS = r"""
         (current === 'cannot' ? ' - this line will not count as a pass' : '')
       : 'Not answered yet. Nothing is pre-selected.';
     return '<li class="qline" id="line-' + number + '" data-line="' + number + '" tabindex="0"' +
-      ' role="group" aria-labelledby="line-' + number + '-q" aria-keyshortcuts="p f u">' +
+      ' aria-labelledby="line-' + number + '-q" aria-keyshortcuts="p f u">' +
       '<p><span class="qnum">' + number + '</span>' +
       '<span class="qtext" id="line-' + number + '-q">' + esc(QLABELS[item.kind][index]) +
       '</span></p>' +
@@ -2219,7 +2219,7 @@ button puts the same text on the clipboard. Both carry the time they were made, 
 <h2 id="keys-heading">Keys</h2>
 <p>Nothing here needs a mouse, and nothing needs the network. Tab works as it does on any page; the
 keys below are shortcuts on top of that, and do nothing while the cursor is in the note field.</p>
-<div class="tablewrap" role="region" aria-labelledby="keys-heading" tabindex="0">
+<div class="tablewrap" role="region" aria-label="Key shortcuts table" tabindex="0">
 <table class="keys">
 <caption>One key per row.</caption>
 <thead><tr><th scope="col">Key</th><th scope="col">What it does</th></tr></thead>
