@@ -1,6 +1,42 @@
 # Progress
 
-Single state file for NaijaDrugWatch. Last updated **2026-11-13**.
+Single state file for NaijaDrugWatch. Last updated **2026-11-16**.
+
+## Frozen — 2026-11-16
+
+**The project stopped collecting today.** The schedule is disabled, the vintage is exported, and both
+pages plus the verification desk were rebuilt against it. The full record is `FROZEN.md`; the
+2026-11-13 block below is the plan this completes and is otherwise unchanged.
+
+Done, each verified by reading the real output:
+
+| step | evidence |
+|---|---|
+| schedule off | workflow `daily` (id 410978489) state `disabled_manually` |
+| index refreshed | 428 rows before, 428 after, newest day 2026-11-13 — the index had nothing to add |
+| vintage exported | `vintage/2026-11-16/`, 8 base tables, **36,936 rows**, 12,284,353 bytes, 10 files, **0 row-count mismatches**; dump readable by `pg_restore --list` (8 TABLE DATA, 5 views, 1 matview) |
+| public page rebuilt | exit 0, **3,526 numbers checked, 0 unexplained**, 44 comparison rows, 217 single-shop rows |
+| desk rebuilt | exit 0, **2,402 checks passed, 0 failed**, 86 licence cards, 44 pack cards |
+| sample redrawn from the frozen vintage | 20 of 86 and 20 of 44, seed `20261114`, no shortfall, ids identical across two builds |
+
+Two deliberate edits. `.gitignore` gained `vintage/`, because 12 MB breaks the 5 MB rule and the
+published copy belongs on Hugging Face. And the desk's sample file moved from `2026-11-14` to
+`2026-11-16`, because the date in that name is the vintage the sample came from, not the day the rule
+was written; the seed is unchanged and no card had been judged.
+
+Numbers at freeze: 2,800 latest listings, 559 attached, 1,433 products of which 335 carry a price,
+261 cells, 44 comparisons, 154 suspicious listings across 86 products, 10,967 registrations of which
+1,856 carry a status, 3 week-over-week changes, 428 index cells.
+
+Still open, unchanged: the 40 cards are unticked; nothing is deployed; no axe run on either page; the
+dump has never been restored into a scratch database.
+
+**One correction to the 13 November block below.** It lists, as an open item, that the page shows
+licences not active "without saying that a lapsed licence is not a fake drug". I checked the built
+page before changing anything: that caveat has been there since the tribute rewrite — the limitations
+list says a lapsed or inactive registration "is not evidence that the medicine is fake or illegal,
+and this project has not inspected, tested or bought any product". Nothing to add; the open item was
+stale.
 
 ## Handoff — paused mid-finish, 2026-11-13
 
