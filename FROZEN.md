@@ -56,7 +56,9 @@ the source.
 - **Verification desk:** build exit 0, **2,402 checks passed, 0 failed**; 86 licence cards and 44 pack
   cards; 414,852 bytes.
 - **Sample:** 20 of 86 licence cards and 20 of 44 pack cards, seed `20261114`, no shortfall, drawn
-  before any card was judged. The same ids came out of two consecutive builds.
+  before any card was judged. The same ids came out of two consecutive builds. The sample file records
+  the minute it was built, so rebuilding the desk rewrites that one line; the ids never move, which is
+  the property that matters.
 - **Independent re-check** by the secretary, 16 assertions, all pass: sample valid UTF-8, 40 unique
   ids, every id present in the built desk, desk population equal to the database (44 comparisons,
   86 products, 154 rows), page numbers equal to the database (2,800 listings, 559 attached).
