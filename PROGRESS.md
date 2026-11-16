@@ -28,8 +28,9 @@ Numbers at freeze: 2,800 latest listings, 559 attached, 1,433 products of which 
 261 cells, 44 comparisons, 154 suspicious listings across 86 products, 10,967 registrations of which
 1,856 carry a status, 3 week-over-week changes, 428 index cells.
 
-Still open, unchanged: the 40 cards are unticked; nothing is deployed; no axe run on either page; the
-dump has never been restored into a scratch database.
+Still open: **21 of the 40 cards carry recorded answers** (18 of 20 licence, 3 of 20 pack) — the rest
+were reviewed by the author without being marked, and are not counted; nothing is deployed; no axe run
+on either page; the dump has never been restored into a scratch database.
 
 **One correction to the 13 November block below.** It lists, as an open item, that the page shows
 licences not active "without saying that a lapsed licence is not a fake drug". I checked the built
