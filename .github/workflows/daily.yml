@@ -283,6 +283,69 @@ jobs:
         continue-on-error: true
         run: python -X utf8 scripts/stock_signal_watch.py
 
+  # The public page. `scripts/build_site.py` reads the database, renders `site/index.html` and
+  # `site/data.json`, then reads every query a second time and refuses to write anything if a printed
+  # number does not match the fresh read - so a green run of this job means the page is re-derivable,
+  # not merely rendered.
+  #
+  # `if: always()` ON PURPOSE. A red pipeline is the night the health panel on the page has something
+  # to say, so publishing must not depend on the pipeline succeeding: a failed night has to reach the
+  # public page with its failure visible. The build step itself is what may fail this job, and only
+  # when the numbers cannot be re-derived - publishing a page whose figures do not reproduce is the
+  # one outcome worse than publishing nothing.
+  #
+  # `DATABASE_URL` is the same repository secret the pipeline uses. Read-only: the script opens the
+  # connection with `default_transaction_read_only=on`, so it cannot write even by mistake.
+  #
+  # Pages has to be enabled by the repository owner (Settings > Pages > Source: GitHub Actions) and
+  # the repository must be public for this to cost nothing. Until then `deploy-pages` fails on the
+  # first run and says so; nothing else in the workflow is affected.
+  publish:
+    needs: pipeline
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      pages: write
+      id-token: write
+      contents: read
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      PYTHONIOENCODING: utf-8
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # psycopg only. The page needs no fastembed, no streamlit and no scraper dependency, and the
+      # build should not pay for them.
+      - name: Install psycopg
+        run: pip install "psycopg[binary]>=3.2,<3.3"
+
+      # No continue-on-error. Exit 1 means the second read disagreed with the first, and the script
+      # writes neither file in that case, so a failed audit leaves the previous published page up
+      # rather than replacing it with numbers nobody could reproduce.
+      - name: Build the page and check its numbers
+        run: python -X utf8 scripts/build_site.py
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload the page
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
+
   # Failures and absences both land here, because they are different events with different
   # triggers: a red job needs `if: failure()`, but a dropped fire is an *absence* -- there is no
   # failure to catch, only a gate that noticed the day was unrun and ran it. That is why this job is
