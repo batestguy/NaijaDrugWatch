@@ -964,6 +964,10 @@ margin:.8rem 0 0}
 @media (max-width:640px){
  .steps{grid-template-columns:1fr}
 }
+/* Moving between cards. The keys [ and ] always did this; without buttons a mouse could not. */
+.cardnav{display:flex;gap:.6rem;margin:.5rem 0 1.4rem}
+.cardnav button{flex:1 1 auto}
+.cardnav .hint{font-size:.85em;margin-left:.3rem}
 @media (max-width:430px){
  .wrap{padding:.75rem .6rem 2rem}
  h1{font-size:1.35rem}
@@ -1801,11 +1805,10 @@ JS = r"""
   function answerLine(line, answer) {
     var item = currentItem();
     if (!item) { return; }
+    // A click must do exactly what the key does. It used to record the answer and stay put, so a
+    // mouse-only reader finished a card and sat there with no sign of what came next.
     state.focus = line;
-    setAnswer(item, line, answer);
-    render();
-    announce('Question ' + line + ' marked ' + ANSWER_LABEL[answer] + '. Card outcome ' +
-      outcomeOf(item).outcome + '.');
+    answerFocused(answer);
   }
 
   function clearCard() {
@@ -1998,6 +2001,8 @@ JS = r"""
     els.live = $('live');
     els.tabLicence = $('tab-licence');
     els.tabPack = $('tab-pack');
+    els.prevCard = $('prev-card');
+    els.nextCard = $('next-card');
     els.note = $('note');
     els.openNote = $('open-note');
     els.exportMessage = $('export-message');
@@ -2008,6 +2013,8 @@ JS = r"""
 
     els.tabLicence.addEventListener('click', function () { setList('licence'); });
     els.tabPack.addEventListener('click', function () { setList('pack'); });
+    if (els.prevCard) { els.prevCard.addEventListener('click', function () { moveCard(-1); }); }
+    if (els.nextCard) { els.nextCard.addEventListener('click', function () { moveCard(1); }); }
 
     els.filters.addEventListener('click', function (event) {
       var button = event.target.closest('[data-filter]');
@@ -2113,6 +2120,10 @@ record cannot be turned into one without inventing answers.</p>
 <button type="button" id="tab-pack" aria-pressed="false">Pack</button>
 </div>
 <p id="position" class="pos"></p>
+<div class="cardnav" role="group" aria-label="Move between cards">
+<button type="button" id="prev-card">&larr; Previous card <span class="hint">[</span></button>
+<button type="button" id="next-card">Next card &rarr; <span class="hint">]</span></button>
+</div>
 </section>
 <p id="live" class="sr-only" role="status" aria-live="polite"></p>
 <div id="card"></div>
@@ -2184,8 +2195,9 @@ cards</td></tr>
 </tbody>
 </table>
 </div>
-<p class="hint">Clicking a Pass / Fail / Cannot tell button sets that line and leaves the highlight
-where it is. The keys advance; the mouse does not have to.</p>
+<p class="hint">Clicking Pass / Fail / Cannot tell does the same thing the keys do: it records the answer
+and moves to the next line, and after the last line it moves to the next card. If you want to stay on a
+card, press <kbd>[</kbd> or the Previous card button.</p>
 </section>
 
 <section aria-labelledby="about-heading">
