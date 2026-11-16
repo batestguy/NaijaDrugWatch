@@ -1,0 +1,677 @@
+{
+  "checklist_version": 2,
+  "generated_utc": "2026-11-16T03:09:10.284Z",
+  "data_as_of": "2026-11-15 11:28 UTC",
+  "data_built_utc": "2026-11-16 03:01 UTC",
+  "note": "One entry per card. Each numbered key is that line of the checklist: pass, fail or cannot. The outcome is recomputed from those answers and is never typed by hand.",
+  "cards": {
+    "licence-2225": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:51:06.427Z"
+    },
+    "licence-21": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:48:40.642Z"
+    },
+    "licence-23": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:51:16.300Z"
+    },
+    "licence-2401": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:51:30.562Z"
+    },
+    "licence-44": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:50:23.202Z"
+    },
+    "licence-47": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:51:37.874Z"
+    },
+    "licence-53": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:51:46.795Z"
+    },
+    "licence-67": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:51:59.086Z"
+    },
+    "licence-2218": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:52:12.666Z"
+    },
+    "licence-2407": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:15.604Z"
+    },
+    "licence-98": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:16.530Z"
+    },
+    "licence-111": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:17.067Z"
+    },
+    "licence-2221": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:17.386Z"
+    },
+    "licence-2339": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:17.611Z"
+    },
+    "licence-2238": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:17.859Z"
+    },
+    "licence-120": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:18.091Z"
+    },
+    "licence-2446": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:49:35.106Z"
+    },
+    "licence-150": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:36:47.082Z"
+    },
+    "licence-2494": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:50:06.098Z"
+    },
+    "licence-164": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:18.299Z"
+    },
+    "licence-170": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:18.491Z"
+    },
+    "licence-175": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:18.683Z"
+    },
+    "licence-178": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:18.874Z"
+    },
+    "licence-214": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:19.068Z"
+    },
+    "licence-2501": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:19.242Z"
+    },
+    "licence-231": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:49:18.514Z"
+    },
+    "licence-279": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:19.442Z"
+    },
+    "licence-2207": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:19.642Z"
+    },
+    "licence-2421": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:19.843Z"
+    },
+    "licence-2267": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:20.042Z"
+    },
+    "licence-2425": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:20.250Z"
+    },
+    "licence-2243": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:49:00.786Z"
+    },
+    "licence-365": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:50:15.891Z"
+    },
+    "licence-2458": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:49:43.290Z"
+    },
+    "licence-2506": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:20.450Z"
+    },
+    "licence-2234": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:20.666Z"
+    },
+    "licence-2303": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:20.867Z"
+    },
+    "licence-2392": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:21.078Z"
+    },
+    "licence-2509": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:21.291Z"
+    },
+    "licence-437": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:21.507Z"
+    },
+    "licence-440": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:50:30.218Z"
+    },
+    "licence-441": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:21.707Z"
+    },
+    "licence-2231": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:21.930Z"
+    },
+    "licence-2369": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:22.164Z"
+    },
+    "licence-453": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:22.371Z"
+    },
+    "licence-2244": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:22.595Z"
+    },
+    "licence-471": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:22.804Z"
+    },
+    "licence-490": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:50:37.770Z"
+    },
+    "licence-491": {
+      "1": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:50:43.986Z"
+    },
+    "licence-2251": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:23.018Z"
+    },
+    "licence-2330": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:49:27.305Z"
+    },
+    "licence-565": {
+      "4": "pass",
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:24.938Z"
+    },
+    "licence-577": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:26.764Z"
+    },
+    "licence-575": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:27.189Z"
+    },
+    "licence-579": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:27.394Z"
+    },
+    "licence-578": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:50:53.566Z"
+    },
+    "licence-2232": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:48:50.290Z"
+    },
+    "licence-591": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:27.594Z"
+    },
+    "licence-599": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:50:55.098Z"
+    },
+    "licence-2465": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:27.794Z"
+    },
+    "licence-2432": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:28.003Z"
+    },
+    "licence-701": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:28.196Z"
+    },
+    "licence-2493": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:49:57.490Z"
+    },
+    "licence-755": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:28.403Z"
+    },
+    "licence-2266": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:28.602Z"
+    },
+    "licence-794": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:28.802Z"
+    },
+    "licence-2454": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:29.002Z"
+    },
+    "licence-2485": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:29.202Z"
+    },
+    "licence-2488": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:49:50.197Z"
+    },
+    "licence-2438": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:29.410Z"
+    },
+    "licence-869": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:51:02.914Z"
+    },
+    "licence-870": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:29.618Z"
+    },
+    "licence-2263": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:29.842Z"
+    },
+    "licence-2312": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:30.052Z"
+    },
+    "licence-2489": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:30.282Z"
+    },
+    "licence-2297": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:30.506Z"
+    },
+    "licence-2302": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:49:10.458Z"
+    },
+    "licence-2317": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:30.706Z"
+    },
+    "licence-2213": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:30.938Z"
+    },
+    "licence-1055": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:31.139Z"
+    },
+    "licence-2275": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:31.354Z"
+    },
+    "licence-2368": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:31.586Z"
+    },
+    "licence-2387": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:31.814Z"
+    },
+    "licence-2388": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:32.026Z"
+    },
+    "licence-2325": {
+      "5": "pass",
+      "note": "",
+      "outcome": "incomplete",
+      "at": "2026-11-16T02:52:32.267Z"
+    },
+    "licence-2398": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:52:54.939Z"
+    },
+    "pack-189-Lagos": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "6": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:42:56.883Z"
+    },
+    "pack-1038-Lagos": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "6": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:37:33.530Z"
+    },
+    "pack-1049-Lagos": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "6": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:40:08.906Z"
+    }
+  },
+  "line_fail_counts": {
+    "licence": {
+      "1": 0,
+      "2": 0,
+      "3": 0,
+      "4": 0,
+      "5": 0
+    },
+    "pack": {
+      "1": 0,
+      "2": 0,
+      "3": 0,
+      "4": 0,
+      "5": 0,
+      "6": 0
+    }
+  },
+  "saved_by": "desk_server",
+  "saved_at_utc": "2026-11-16 03:09 UTC"
+}

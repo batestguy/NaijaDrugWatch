@@ -1,0 +1,58 @@
+{
+  "checklist_version": 2,
+  "generated_utc": "2026-11-16T02:41:21.890Z",
+  "data_as_of": "2026-11-15 11:28 UTC",
+  "data_built_utc": "2026-11-16 02:32 UTC",
+  "note": "One entry per card. Each numbered key is that line of the checklist: pass, fail or cannot. The outcome is recomputed from those answers and is never typed by hand.",
+  "cards": {
+    "licence-150": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:36:47.082Z"
+    },
+    "pack-1038-Lagos": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "6": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:37:33.530Z"
+    },
+    "pack-1049-Lagos": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "6": "pass",
+      "note": "",
+      "outcome": "pass",
+      "at": "2026-11-16T02:40:08.906Z"
+    }
+  },
+  "line_fail_counts": {
+    "licence": {
+      "1": 0,
+      "2": 0,
+      "3": 0,
+      "4": 0,
+      "5": 0
+    },
+    "pack": {
+      "1": 0,
+      "2": 0,
+      "3": 0,
+      "4": 0,
+      "5": 0,
+      "6": 0
+    }
+  }
+}

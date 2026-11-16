@@ -44,3 +44,7 @@ Thumbs.db
 .neon
 # Playwright MCP writes screenshots and accessibility snapshots here during UI checks.
 .playwright-mcp/
+
+# A superseded manual eyeball sheet, kept on disk for provenance and never to be used. Tracked here
+# so the working tree stays clean: its replacement is the verification desk.
+.agent/eyeball-sheet.md
