@@ -80,11 +80,46 @@ class DeskHandler(SimpleHTTPRequestHandler):
 
         path = self.out_path
         path.parent.mkdir(parents=True, exist_ok=True)
+        cards, lines = count_progress(payload)
+
+        # A browser with no answers in it must never wipe a file that has some. This is not
+        # hypothetical: on 2026-11-16 a test browser was opened on this page, posted its empty state, and
+        # replaced 89 saved cards with none. The answers came back from git, but they were one unlucky
+        # moment from being gone.
+        if path.exists():
+            try:
+                previous = json.loads(path.read_text(encoding="utf-8"))
+                old_cards, old_lines = count_progress(previous)
+            except (OSError, json.JSONDecodeError):
+                old_cards, old_lines = 0, 0
+            if old_lines > 0 and lines == 0:
+                print(f"REFUSED: incoming save is empty and the file holds {old_lines} answers",
+                      flush=True)
+                body = json.dumps({
+                    "ok": False,
+                    "refused": "empty",
+                    "held": old_lines,
+                    "message": "This browser has no answers, and the file on disk has "
+                               f"{old_lines}. Nothing was written. If you meant to start over, delete "
+                               "the file yourself; this page will not do it.",
+                }).encode("utf-8")
+                self.send_response(409)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                return
+            # Fewer answers than before is legitimate (a cleared card), but keep the previous copy so a
+            # mistake is recoverable rather than final.
+            if old_lines > lines:
+                backup = path.with_name(path.stem + ".previous.json")
+                backup.write_text(json.dumps(previous, indent=2, ensure_ascii=False) + "\n",
+                                  encoding="utf-8")
+
         tmp = path.with_suffix(".json.tmp")
         tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         os.replace(tmp, path)  # atomic: a half-written answer set never replaces a whole one
 
-        cards, lines = count_progress(payload)
         print(f"saved {path.name}: {cards} card(s) judged, {lines} line(s) answered ({saved_at})",
               flush=True)
 

@@ -1938,6 +1938,7 @@ JS = r"""
         headers: { 'Content-Type': 'application/json' },
         body: exportText()
       }).then(function (response) {
+        if (response.status === 409) { return response.json().then(function (info) { throw info; }); }
         if (!response.ok) { throw new Error('HTTP ' + response.status); }
         return response.json();
       }).then(function (info) {
@@ -1945,7 +1946,13 @@ JS = r"""
         var lines = info.lines === 1 ? '1 line' : info.lines + ' lines';
         autosaveNotice('Saved to disk at ' + info.saved_at_utc + ' - ' + cards + ' judged, ' +
           lines + ' answered.', false);
-      }).catch(function () {
+      }).catch(function (info) {
+        if (info && info.refused === 'empty') {
+          autosaveNotice('This browser has no answers, and the file on disk holds ' + info.held +
+            '. Nothing was written: reopening the desk in a browser without your answers cannot wipe ' +
+            'them.', true);
+          return;
+        }
         autosaveNotice('Could not save to disk. Your answers are still kept in this browser; ' +
           'use the download button under "Take the answers out".', true);
       });

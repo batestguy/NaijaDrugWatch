@@ -1,7 +1,7 @@
 {
   "seed": 20261114,
   "build_date": "2026-11-16",
-  "built_utc": "2026-11-16 03:01 UTC",
+  "built_utc": "2026-11-16 07:07 UTC",
   "file": ".agent/verify-sample-2026-11-16.json",
   "rule": "Simple random sample without replacement, drawn separately per list from random.Random(seed + stream) on sorted item ids, before any card was judged.",
   "lists": {
