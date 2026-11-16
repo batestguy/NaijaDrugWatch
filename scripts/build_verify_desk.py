@@ -1137,6 +1137,7 @@ JS = r"""
     entry.at = new Date().toISOString();
     state.answers[item.id] = entry;
     saveEntry(item);
+    autosave();
   }
 
   function setNote(item, value) {
@@ -1145,6 +1146,7 @@ JS = r"""
     entry.at = new Date().toISOString();
     state.answers[item.id] = entry;
     saveEntry(item);
+    autosave();
   }
 
   // ------------------------------------------------------------------ the computed outcome
@@ -1818,6 +1820,7 @@ JS = r"""
     writeJson(STORE_KEY, state.answers);
     state.focus = 1;
     render();
+    autosave();
     announce('Every answer and the note cleared for ' + item.name + '.');
   }
 
@@ -1908,6 +1911,46 @@ JS = r"""
   }
 
   function exportText() { return JSON.stringify(buildExport(), null, 2); }
+
+  // --------------------------------------------------------------- automatic saving
+  // The page posts its whole answer set to the little server that serves it, which writes the file to
+  // disk. Every answer, note and clear triggers it, and it fires once on load so answers already in
+  // this browser are flushed without anyone pressing anything. Opened from a file rather than over
+  // http there is no server to post to; the post fails quietly and the download button, which was the
+  // only route before, still works.
+  var autosaveTimer = null;
+
+  function autosaveNotice(text, bad) {
+    var el = $('autosave');
+    if (!el) { return; }
+    el.hidden = false;
+    el.textContent = text;
+    el.className = bad ? 'hint badline' : 'hint okline';
+  }
+
+  function autosave(now) {
+    if (!/^https?:$/.test(location.protocol)) { return; }
+    if (autosaveTimer) { clearTimeout(autosaveTimer); }
+    autosaveTimer = setTimeout(function () {
+      autosaveTimer = null;
+      fetch('save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: exportText()
+      }).then(function (response) {
+        if (!response.ok) { throw new Error('HTTP ' + response.status); }
+        return response.json();
+      }).then(function (info) {
+        var cards = info.judged === 1 ? '1 card' : info.judged + ' cards';
+        var lines = info.lines === 1 ? '1 line' : info.lines + ' lines';
+        autosaveNotice('Saved to disk at ' + info.saved_at_utc + ' - ' + cards + ' judged, ' +
+          lines + ' answered.', false);
+      }).catch(function () {
+        autosaveNotice('Could not save to disk. Your answers are still kept in this browser; ' +
+          'use the download button under "Take the answers out".', true);
+      });
+    }, now ? 0 : 400);
+  }
 
   function download() {
     var text = exportText();
@@ -2077,6 +2120,9 @@ JS = r"""
   }
   render();
   updateStorageWarning();
+  // Flush whatever this browser already holds, so answers given before automatic saving existed reach
+  // the disk without anyone pressing a button.
+  autosave(true);
 })();
 """
 
@@ -2120,6 +2166,7 @@ record cannot be turned into one without inventing answers.</p>
 <button type="button" id="tab-pack" aria-pressed="false">Pack</button>
 </div>
 <p id="position" class="pos"></p>
+<p id="autosave" class="hint" hidden>Answers save to this machine as you go.</p>
 <div class="cardnav" role="group" aria-label="Move between cards">
 <button type="button" id="prev-card">&larr; Previous card <span class="hint">[</span></button>
 <button type="button" id="next-card">Next card &rarr; <span class="hint">]</span></button>
@@ -2455,14 +2502,24 @@ def self_check(document: str, items: dict[str, list[dict[str, Any]]],
         if payload["meta"].get("sample") != sample:
             problems.append("the sample embedded in the page is not the sample that was drawn")
 
-    # No reference to the network outside the data block. This is the property `file://` cares about:
-    # a stylesheet, script, font or image at another address would be a request, and on a double-click
-    # it would fail silently.
+    # No external subresource. The property this protects is the one `file://` cares about: a stylesheet,
+    # script, font or image at another address is a request, and on a double-click it fails silently.
+    # The page now makes one request of its own - a same-origin POST of the answers to the little server
+    # that serves it - so this looks for external references rather than for the four letters.
     outside = document.replace(blocks[0], "")
     checks += 1
-    stray = re.findall(r"(?i)http", outside)
-    if stray:
-        problems.append(f"{len(stray)} 'http' occurrence(s) outside the data block")
+    external = re.findall(r"""(?i)(?:src|href)\s*=\s*["']?https?://""", outside)
+    external += re.findall(r"""(?i)url\(\s*["']?https?://""", outside)
+    if external:
+        problems.append(f"{len(external)} external reference(s) outside the data block: {external[:3]}")
+    checks += 1
+    if re.search(r"""(?i)<script[^>]+src=""", outside):
+        problems.append("a script is loaded from outside the page")
+    checks += 1
+    posts = [target for target in re.findall(r"""fetch\(\s*['"]([^'"]*)['"]""", outside)
+             if not target.startswith("save")]
+    if posts:
+        problems.append(f"the page fetches something other than its own save endpoint: {posts}")
 
     return checks, problems
 
