@@ -141,10 +141,13 @@ Fixing any of them means a new vintage, which is the rule this record exists to 
   rule stays *incomplete* rather than failing: `color-contrast` on 13 cells whose background is
   obscured by a scroll container, so those colours were checked by hand (worst pairing 7.22:1 against
   a 4.5 requirement). The dashboard has not been audited since 8 November and is not deployed.
-- The dump has been proven readable by `pg_restore --list`, but **never restored into a working
-  database**, so restorability is proven to the level of listing, not to the level of a working copy.
-  **This is the next task, written out in `PROGRESS.md`**: restore once by hand, then make it a
-  committed script and a CI job so the proof can be re-run by anyone.
+- The dump **has now been restored**, on 17 November 2026, into a throwaway PostgreSQL 17.12
+  container (`pgvector/pgvector:pg17`). `pg_restore` exited 0 with no errors or warnings, all three
+  extensions were created from the dump itself, and every check passed: 8 tables at their manifest
+  counts, 2,800 listings, 559 matched, 44 comparisons, 154 suspicious, 1,856 registrations with a
+  status, 428 index rows, and the 1,433 embeddings returned as genuine 384-dimension vectors.
+  Transcript: `.agent/T1117-restore-transcript.txt`. What is still missing is the script and the CI job
+  that would re-run this without me, which is the next task in `PROGRESS.md`.
 - Reproduction: the generated pages are not byte-identical between runs because they embed the build
   time to the minute. The sampled ids are stable across builds; the page hash is not.
 

@@ -4,6 +4,12 @@ Single state file for NaijaDrugWatch. Last updated **2026-11-16**.
 
 ## Next task — prove the export restores, and make that proof live in the repo
 
+**Step 1 is done (17 November).** The dump was restored into a throwaway PostgreSQL 17.12 container:
+exit 0, no errors, extensions created from the dump, all 22 checks passed — 8 tables at manifest counts,
+2,800 listings, 559 matched, 44 comparisons, 154 suspicious, 1,856 registrations with a status, 428
+index rows, and 1,433 embeddings as real 384-dimension vectors. Transcript in
+`.agent/T1117-restore-transcript.txt`. **Steps 2 and 3 remain** and are written out below.
+
 **Why this is first.** The frozen vintage exists in two places: the Neon database and `vintage/2026-11-16/`.
 The export has been proven *readable* — `pg_restore --list` reads it, every CSV row count matches the
 database, and the pharmacies table comes out with the right rows. It has **never been restored into a
@@ -34,6 +40,25 @@ because the CI test cannot exist without it.
 the archive is PostgreSQL-only and the schema depends on pgvector, `pg_trgm`, `unaccent` and a
 materialised view; a MySQL restore would prove something about a different database built differently,
 which is worse than no test.
+
+### Compatibility checked 17 November — the server is already here, the extension is not
+
+Scanned the machine rather than assuming:
+
+- **A full PostgreSQL 18.6 server is already installed**, in a conda environment (`pg-client`):
+  `postgres.exe`, `initdb.exe`, `pg_ctl.exe`, `createdb.exe`, plus `psql`, `pg_dump`, `pg_restore`.
+  There is no service, no cluster and no data directory, and port 5432 is free, so nothing to collide
+  with. Postgres needs no "installation" in the Windows sense: `initdb` a folder, `pg_ctl start`,
+  delete the folder afterwards.
+- **`pg_trgm` and `unaccent` are present** in that environment. **`pgvector` is not.**
+- **conda cannot supply it for this version.** Every conda-forge win-64 build of pgvector 0.8.x
+  declares `libpq >=16.15,<16.16` — PostgreSQL 16 only — and the `pkgs/main` builds target libpq 14
+  and 15. A dry-run install into `pg-client` proposes *downgrading PostgreSQL 18.6 to 16.15*. That
+  would not work: the archive was written from 17.12, and PostgreSQL cannot restore a newer major's
+  dump into an older server.
+- **So the compatible route is the container image** `pgvector/pgvector:pg17`, which bundles the
+  extension against the right major. Docker Desktop is installed here; the engine was stopped and has
+  been started for this.
 
 **Definition of done.** A recorded restore transcript in `.agent/`, `scripts/verify_restore.py`
 committed and re-runnable, a CI job that goes red when the export no longer restores, and the

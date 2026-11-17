@@ -1,0 +1,45 @@
+# Restore transcript - 2026-11-17
+
+Image: pgvector/pgvector:pg17 (digest b513c48566e4...), 653 MB, bundles pgvector against PostgreSQL 17
+Container: postgres 17.12 (Debian), port 55432, throwaway
+Command: pg_restore --dbname=<container> --no-owner --no-privileges vintage/2026-11-16/naijadrugwatch.dump
+Restore exit code: 0, no errors, no warnings
+
+== extensions ==
+   pg_trgm, plpgsql, unaccent, vector
+PASS  extension vector present
+PASS  extension pg_trgm present
+PASS  extension unaccent present
+
+== table row counts against the manifest ==
+PASS  drug_match_rules  1,433 of 1,433
+PASS  nafdac_registrations  10,967 of 10,967
+PASS  nafdac_status_snapshots  14,099 of 14,099
+PASS  pharmacies  3 of 3
+PASS  pharmacy_listings  4,459 of 4,459
+PASS  price_history  4,459 of 4,459
+PASS  products  1,433 of 1,433
+PASS  scrape_runs  83 of 83
+
+== the figures the project publishes ==
+PASS  latest listings  2,800 of 2,800
+PASS  matched to a product  559 of 559
+PASS  products  1,433 of 1,433
+PASS  cheapest cells  261 of 261
+PASS  two-shop comparisons  44 of 44
+PASS  suspicious listings  154 of 154
+PASS  registrations  10,967 of 10,967
+PASS  registrations with a status  1,856 of 1,856
+PASS  index rows  428 of 428
+
+== the vector column survived as a vector ==
+PASS  embeddings are 384-dimensional vectors  first row: 384 dims
+PASS  every product kept its embedding  1,433 of 1,433
+
+== the views still answer ==
+   Exforge HCT 10/160/25 mg via MedPlus: 40800.00
+   Diovan 160 mg via MedPlus: 36650.00
+   Aprovasc 300/10 Tablet via MedPlus: 33600.00
+PASS  a comparison view returns rows
+
+ALL CHECKS PASSED
