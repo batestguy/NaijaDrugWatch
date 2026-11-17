@@ -50,7 +50,8 @@ the source.
 - **Export:** every CSV's data-row count equals the database count. 0 mismatches out of 8.
 - **Dump:** `pg_restore --list` reads it and shows 8 `TABLE DATA` entries, 5 views, 1 materialised
   view.
-- **Public page:** build exit 0, **3,787 numbers checked, 0 unexplained**; 44 comparison rows and 217
+- **Public page:** the 13 November purple design, built from the database. Build exit 0, **3,787
+  numbers checked, 0 unexplained**; 44 comparison rows and 217
   single-shop rows; 105,796 bytes.
 - **Methods page:** 19,371 bytes, eight stages in the order they happened, the decisions with what each
   cost, and the limits stated rather than buried. Its eleven database-derived figures are checked against

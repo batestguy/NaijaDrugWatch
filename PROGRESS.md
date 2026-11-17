@@ -24,13 +24,39 @@ What that changes and what it must not:
   to guarantee. The purple study solves that by keeping text on flat tints and letting the photograph sit
   behind the display headline only. That is the arrangement to keep.
 
-**Status: brief written, work not yet delivered.**
+**Delivered 17 November** in commit `65dcaca`, and the gates held on that commit:
+
+- build **3,787 numbers checked, 0 unexplained**, 44 comparison rows, 217 single-shop rows;
+- **axe 0 violations** at 1440 px and at 375 px;
+- no sideways scroll at 375 px; wide tables scroll inside their own boxes;
+- 25 readable colour pairs pass, worst 6.15:1; the REGISTER word is measured and printed at 1.51:1
+  as decoration, which is the one contrast figure that is deliberately not a pass.
+
+**Four deviations from the study, each with a reason:**
+
+1. **The study's own photographs are not used.** They are CSIS images under a non-commercial licence,
+   which is not in this project's licence records and would not permit reuse here. The project's CC0
+   portrait is used in the study's arrangement instead.
+2. **The "Pack" column is not in the tables.** Pack counts are recorded without units on 18 of the 88
+   comparison listings, which is already a published limitation; printing a bare count beside a price
+   would invite arithmetic the data cannot support.
+3. **The two typefaces the study never applied** (Instrument Serif, regular and italic) are not carried
+   over. Archivo Black and Inter are, embedded as data URIs and subset to the characters the page
+   prints.
+4. **The naira sign is drawn by the system font.** Neither embedded face contains U+20A6, so `₦` falls
+   back; it did the same in the study.
+
+**A defect the agent reported wrongly and axe caught.** It stated the dashboard button in the dark block
+measured 8.40:1, having read the pair out of the stylesheet. The button inherited the block's link colour
+instead, so its label was painted the same violet as its own background — 1:1, invisible. axe called it
+*incomplete* rather than a failure; reading the computed style confirmed it. Fixed, and the lesson is the
+standing one: a number read from source is not a measurement.
 
 ## Pages, as of 17 November
 
 | page | what it is | state |
 |---|---|---|
-| `site/index.html` | the front page: prices, comparisons, registration findings, pipeline health, the tribute | 107,897 bytes, audit 3,787 numbers 0 unexplained |
+| `site/index.html` | the front page, now in the 13 November purple design: headline, her photograph, the seven-figure panel, then prices, comparisons, registration findings, the data, pipeline health, the limitations, the sources | 176,080 bytes, audit 3,787 numbers 0 unexplained, axe 0 |
 | `site/dashboard.html` | every price, filterable, each row linking to the shop page and the register record | 787,250 bytes, 2,800 rows |
 | `site/about.html` | **how this was built** — eight stages, the decisions and their costs, the limits, how to reproduce | 19,371 bytes, 11 figures re-checked per build |
 | `site/verify/` | the verification desk — a working tool, not published | built |

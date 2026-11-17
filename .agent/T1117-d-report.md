@@ -4,6 +4,10 @@
 design study of 13 November with every number taken from the database. `about.html`, the database,
 the schema and `build_dashboard.py` were not touched.
 
+The author committed this work as `65dcaca` with three fixes of their own on top of it (the hero
+caption's right edge, an invisible dashboard button, and the deep block sitting outside the `main`
+landmark). Those three are recorded, and the correction to one of my own claims, in §1.
+
 ---
 
 ## 1. What the build says
@@ -73,11 +77,36 @@ The one line below the floor is the REGISTER watermark, and it is printed rather
 | embedded faces | Archivo Black: loaded, Inter: loaded | same |
 
 The "incomplete" rows axe leaves are the ones it cannot resolve by itself: at 1440 px the six texts in
-the three nav cards and the deep-block button, at 375 px every cell inside the horizontally scrolling
-tables. Each of them was checked by hand against the pair the build measures: nav-card heading
-10.86:1 on the page and 9.93:1 on the panel, nav-card text 6.15:1, the deep-block button 8.40:1, and
-in the tables the price in ink on paper 17.79:1, the unit and note text 6.73:1, the *active* tag
-7.42:1, the *not active* tag 9.08:1 and the *not read* tag 6.73:1.
+the three nav cards, at 375 px every cell inside the horizontally scrolling tables. Each of them was
+checked by hand against the pair the build measures: nav-card heading 10.86:1 on the page and 9.93:1
+on the panel, nav-card text 6.15:1, and in the tables the price in ink on paper 17.79:1, the unit and
+note text 6.73:1, the *active* tag 7.42:1, the *not active* tag 9.08:1 and the *not read* tag 6.73:1.
+
+**Correction, after the author's review.** This paragraph originally claimed the deep-block button
+also measured 8.40:1. It did not: the button is an `<a>` inside the deep block, and the block's
+`a { color: #C6AEDF }` beat the button's own `color`, so its label was painted the same violet as
+its own plate and was invisible. The claim was wrong because the pair was read out of the CSS
+instead of out of the computed style. The author's commit fixed it
+(`.built a.dash{color:#2A0F45;background:#C6AEDF}`, now measured at rgb(42,15,69) on
+rgb(198,174,223) = 8.40:1), and the button is no longer among axe's incomplete nodes. The lesson
+belongs here: a contrast claim on this page is worth nothing unless the computed colour is the one
+being claimed.
+
+### Three defects the author's review found, and what changed
+
+The author's commit `65dcaca` ("feat(index): the 13 November purple design is now the shipped main
+page") carries this work and three fixes to it:
+
+1. **The hero caption ran off the right edge at 1440 px.** Fixed with padding; the caption's text
+   now ends 20 px inside the viewport (the box itself is flush with the edge, which is what makes
+   the photograph bleed).
+2. **The dashboard button in the deep block was invisible** — its label was the same violet as its
+   own background, described above and fixed.
+3. **The deep block sat outside any landmark.** It is now inside `<main>`, so the page has one
+   `main` landmark and the block's heading, tags and link are inside it.
+
+All three were found by running the checks, not by reading the code, and all three are fixed in the
+committed file. The build still reports `3,787 numbers checked, 0 unexplained` on that state.
 
 ---
 
