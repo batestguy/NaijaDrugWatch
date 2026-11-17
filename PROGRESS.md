@@ -10,15 +10,19 @@ figure against what the project claims, then removes the container. Proved by ru
 pass, exit 0, and the container is gone afterwards. It refuses an unknown vintage (exit 2) rather than
 comparing against nothing.
 
-**Step 3 is written but switched off.** `.github/workflows/restore.yml` runs the same check against a
-`pgvector/pgvector:pg17` service container on every push. It is gated on a repository variable because
-the vintage is gitignored and the runner cannot read it. To switch it on, publish the export and set
-`VINTAGE_PUBLISHED=true`, `VINTAGE_DUMP_URL`, `VINTAGE_MANIFEST_URL`. A skipped job is not a pass, so
-this line stays here until it runs for real.
+**Step 3 is live (17 November).** `.github/workflows/restore.yml` runs the same check on every push
+against a `pgvector/pgvector:pg17` service container. **Run 44023213615: success**, 22 checks passing in
+CI. It is gated on `vars.VINTAGE_PUBLISHED`; a skipped job is not a pass, so this paragraph is the
+record that it has actually run.
 
-**The one decision left on this task: where the export is published.** A GitHub release asset on this
-repo is free, already in your account, and one command away. The Hugging Face dataset was the original
-plan and keeps the 12 MB out of the repository's own hosting. Either works; CI only needs a direct URL.
+**The export is published in both places.**
+
+| where | URL | what it is |
+|---|---|---|
+| GitHub release | `releases/tag/vintage-2026-11-16` | 11 assets, the dump plus every CSV, the schema record and the manifest; anonymous download verified |
+| Hugging Face dataset | `JBZABC/naijadrugwatch-vintage-2026-11-16` | the same 12 files plus a dataset card stating what the data does not claim |
+
+The CI job reads the GitHub release assets. The Hugging Face copy is the one to cite and reuse.
 
 **Why this is first.** The frozen vintage exists in two places: the Neon database and `vintage/2026-11-16/`.
 The export has been proven *readable* — `pg_restore --list` reads it, every CSV row count matches the

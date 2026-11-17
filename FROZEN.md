@@ -153,6 +153,10 @@ Fixing any of them means a new vintage, which is the rule this record exists to 
 
 ## How to restore
 
+**Published copies.** GitHub release `vintage-2026-11-16` on this repository (11 assets, anonymous
+download) and the Hugging Face dataset `JBZABC/naijadrugwatch-vintage-2026-11-16` (same files plus a
+dataset card). The gitignored local folder is the working copy, not the archive.
+
 **One command, if Docker is running:**
 
 ```powershell

@@ -43,6 +43,13 @@ The second is NULL wherever the pack size could not be parsed, and it ranks only
 be. It is therefore **not** "best value" and must never be labelled that way: where the cheapest pack
 has an unknown size, the lowest *known* unit price can belong to a more expensive pack.
 
+## Data
+
+The frozen vintage is published twice: as a [GitHub release](https://github.com/batestguy/NaijaDrugWatch/releases/tag/vintage-2026-11-16)
+and as the Hugging Face dataset [`JBZABC/naijadrugwatch-vintage-2026-11-16`](https://huggingface.co/datasets/JBZABC/naijadrugwatch-vintage-2026-11-16),
+which carries a dataset card stating what the data does and does not claim. Restoring it is one command
+(`scripts/verify_restore.py`), and CI runs that command on every push.
+
 ## Layout
 
 ```
