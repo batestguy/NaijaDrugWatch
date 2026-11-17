@@ -78,6 +78,19 @@ Scanned the machine rather than assuming:
 committed and re-runnable, a CI job that goes red when the export no longer restores, and the
 "never restored" line in `FROZEN.md` replaced with the date and the numbers it produced.
 
+## What is left, after the freeze
+
+- **Deploy.** Nothing has a public address. GitHub Pages for the page and Streamlit Community Cloud for
+  the dashboard; the publishing job is already in the workflow, waiting for Pages to be switched on.
+- **The dashboard polish** — graphs and headline numbers. The author's step.
+- **The next version.** `NEXT-VERSION.md` records seven measured changes that were deliberately not made
+  before the freeze, each with the number that justified it: title-to-title matching, the failing
+  candidate stage, the concentration rule, the supplement scope decision, the weakest source, two display
+  collisions, and the missing pack units.
+- **Two published copies, two checks.** `scripts/check_published_match.py` compares every published file
+  against the manifest, and CI runs it after the restore — so the copy a reader downloads cannot quietly
+  stop being the copy that was tested.
+
 ## Frozen — 2026-11-16
 
 **The project stopped collecting today.** The schedule is disabled, the vintage is exported, and both

@@ -84,3 +84,9 @@ jobs:
             --dsn "$DSN" \
             --dump "$RUNNER_TEMP/vintage/naijadrugwatch.dump" \
             --manifest "$RUNNER_TEMP/vintage/MANIFEST.json"
+
+      - name: Check the other published copy is the same vintage
+        # The Hugging Face dataset is the copy a reader would cite and reuse, and nothing else in CI
+        # touches it. Without this step one re-upload could leave the tested copy and the cited copy
+        # different, both looking fine.
+        run: python scripts/check_published_match.py
