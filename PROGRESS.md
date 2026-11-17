@@ -2,6 +2,30 @@
 
 Single state file for NaijaDrugWatch. Last updated **2026-11-17**.
 
+## Design decision, 17 November — the purple study becomes the main page
+
+The design study committed on 13 November at `docs/mockups/v1/` (deep purple `#2A0F45` and violet
+`#7A4FB0` on lavender whites, her photograph large and fading into the page, the word REGISTER set
+enormous behind it, the Nigeria outline in the corner, six figures across the top) is to **become the
+main page**. The author's instruction: that is what the deliverable should look like.
+
+What that changes and what it must not:
+
+- The **look** is taken from the study. The **numbers are not**: the study carries 2,793 prices, 342
+  matched, 43 comparisons and 10,925 registrations, all of which were true on 13 November and none of
+  which is true now. Every figure must come from the database through the existing facts.
+- Every section and every claim on the current page survives: the price tables, the two-shop
+  comparisons, the registration findings, the data-behind-this-page section, pipeline health, the
+  limitations, the sources, and the two child pages reachable from the nav row.
+- The gates that made the cream version shippable apply to the purple one: **the build audit must read
+  0 unexplained**, **axe must read 0 violations**, contrast must clear 4.5:1 on every surface with text
+  over the photograph measured rather than assumed, and it must hold at 375 px with no sideways scroll.
+- The cream version was chosen on 13 November partly because text over her photograph made contrast hard
+  to guarantee. The purple study solves that by keeping text on flat tints and letting the photograph sit
+  behind the display headline only. That is the arrangement to keep.
+
+**Status: brief written, work not yet delivered.**
+
 ## Pages, as of 17 November
 
 | page | what it is | state |
