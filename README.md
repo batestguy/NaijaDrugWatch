@@ -50,6 +50,12 @@ and as the Hugging Face dataset [`JBZABC/naijadrugwatch-vintage-2026-11-16`](htt
 which carries a dataset card stating what the data does and does not claim. Restoring it is one command
 (`scripts/verify_restore.py`), and CI runs that command on every push.
 
+Two generated pages accompany the data. **How this was built** explains the eight stages, the decisions
+and their costs, and the limits, with eleven of its figures re-checked against the database on every
+build. **Every price, explorable** lists all 2,800 prices in one self-contained file, filterable by shop,
+medicine and licence, with each row linking to the pharmacy page it came from and the NAFDAC record
+behind it.
+
 ## Layout
 
 ```

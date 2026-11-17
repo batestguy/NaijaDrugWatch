@@ -1,6 +1,24 @@
 # Progress
 
-Single state file for NaijaDrugWatch. Last updated **2026-11-16**.
+Single state file for NaijaDrugWatch. Last updated **2026-11-17**.
+
+## Pages, as of 17 November
+
+| page | what it is | state |
+|---|---|---|
+| `site/index.html` | the front page: prices, comparisons, registration findings, pipeline health, the tribute | 107,897 bytes, audit 3,787 numbers 0 unexplained |
+| `site/dashboard.html` | every price, filterable, each row linking to the shop page and the register record | 787,250 bytes, 2,800 rows |
+| `site/about.html` | **how this was built** — eight stages, the decisions and their costs, the limits, how to reproduce | 19,371 bytes, 11 figures re-checked per build |
+| `site/verify/` | the verification desk — a working tool, not published | built |
+| `dashboard/app.py` | the Streamlit app | **not deployed and now redundant**: the explorable page does its job with no server |
+
+Both new pages pass axe with 0 violations. The dashboard's first scan found two real defects — content
+outside a `main` landmark — which is why the scan is run rather than assumed.
+
+**The live database was unreachable on 17 November** ("server closed the connection unexpectedly", twice).
+Both pages were built from the frozen export restored into a container instead, which is the first time
+the archive has been shown sufficient to regenerate the deliverables. Whether Neon is suspended or the
+VPN is intercepting was not established.
 
 ## Next task — prove the export restores, and make that proof live in the repo
 
