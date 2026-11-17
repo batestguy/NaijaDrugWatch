@@ -50,6 +50,16 @@ from envfile import ensure_database_url
 
 REPO_URL = "https://github.com/batestguy/NaijaDrugWatch"
 GREENBOOK_URL = "http://greenbook.nafdac.gov.ng"
+
+# Where the frozen vintage is published. The page points at both copies because they are checked against
+# each other on every push: the release is what the restore job downloads, the dataset is what a reader
+# would cite. Keeping the two URLs here stops the page drifting from the thing it describes.
+VINTAGE_TAG = "vintage-2026-11-16"
+RELEASE_URL = f"{REPO_URL}/releases/tag/{VINTAGE_TAG}"
+HF_DATASET = "JBZABC/naijadrugwatch-vintage-2026-11-16"
+HF_URL = f"https://huggingface.co/datasets/{HF_DATASET}"
+VINTAGE_TABLES = 8
+VINTAGE_ROWS = 36936
 SITE = Path("site")
 
 # Policy, not measurement: the project's own line for "this source has stopped reporting".
@@ -621,6 +631,15 @@ font:1rem/1.55 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
 .wrap{max-width:62rem;margin:0 auto;padding:1rem .75rem 3rem}
 /* Prose keeps a readable measure; tables are allowed the full width. */
 .wrap p,.wrap li{max-width:68ch}.wrap .tablewrap,.wrap table{max-width:none}
+/* The front door's links to the rest of the site: three cards, because there are three things to do
+   after reading the prices - look at one price, understand the method, or take the data. */
+.pagenav{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin:.9rem 0 .4rem}
+.pagenav a{display:block;border:2px solid var(--line);border-radius:6px;padding:.6rem .7rem;
+background:var(--panel);text-decoration:none;color:var(--ink)}
+.pagenav a:hover,.pagenav a:focus{border-color:var(--ink)}
+.pagenav strong{display:block;color:var(--accent)}
+.pagenav span{display:block;font-size:.9rem;color:var(--muted);margin-top:.15rem}
+@media (max-width:760px){.pagenav{grid-template-columns:1fr}}
 /* The unit a price is per, printed beside the money. Smaller and muted so the number stays the loud
    thing while the unit cannot be lost. */
 .unit{font-size:.86em;color:var(--muted);white-space:nowrap}
@@ -1202,15 +1221,16 @@ class Page:
 <header>
 <h1>Medicine prices and registration status in Nigeria</h1>
 <p class="tribute-line"><span class="name">{DORA_NAME} {DORA_HONOURS}</span>, {self.dates},
-led NAFDAC from 2001 to 2008. The prices below are checked against the register her agency keeps.
-<a href="about.html">How this was built</a></p>
+led NAFDAC from 2001 to 2008. The prices below are checked against the register her agency keeps.</p>
 <p class="lede">This page is built from a database that records what three online pharmacies asked for
 medicines on the day it was read, and what the NAFDAC register says about the registration behind each
 of those medicines. It is independent, it is not a shop, and it is not endorsed by NAFDAC.</p>
 {stamp}
-<p class="lede" style="margin-top:.6rem"><a href="dashboard.html"><strong>Every price, explorable</strong></a>
-&mdash; all {overview["latest_listings"]:,} prices, filterable by shop, medicine and licence, with each
-row linking to the shop page it came from and to the NAFDAC record behind it.</p>
+<nav class="pagenav" aria-label="Pages">
+<a href="dashboard.html"><strong>Every price, explorable</strong><span>All {overview["latest_listings"]:,} prices, filterable, each row linking to its source</span></a>
+<a href="about.html"><strong>How this was built</strong><span>The eight stages, what each cost, and what it cannot claim</span></a>
+<a href="#data"><strong>Get the data</strong><span>The frozen vintage, as a database dump and as CSV</span></a>
+</nav>
 {banner}
 </header>
 </div>
@@ -1329,6 +1349,23 @@ anybody can use.</p>
 not a ruling on the medicine: <em>not active</em> records a lapsed or inactive registration, and is not
 evidence that the medicine is fake or illegal. How far these records have been checked against the live
 register, and what that check can and cannot prove, is written out in the project README.</p>
+
+<h2 id="data">The data behind this page</h2>
+<p>This page is generated from a database, and that database is published. It is a frozen vintage dated
+16 November 2026 &mdash; {VINTAGE_TABLES} tables, {VINTAGE_ROWS:,} rows &mdash; as a PostgreSQL dump, a CSV
+for every table, a written schema record, and a manifest carrying a checksum for every file.</p>
+<ul class="limits">
+<li><a href="{HF_URL}">The dataset on Hugging Face</a> &mdash; the copy to cite and reuse, with a dataset
+card that states what the data does not claim.</li>
+<li><a href="{RELEASE_URL}">The same files as a release on GitHub</a> &mdash; the copy the restore check
+downloads and tests.</li>
+</ul>
+<p>Restoring it is one command and it is proven on every push: the dump is loaded into an empty
+PostgreSQL 17 database and compared against the manifest and against every figure on this page. Both
+published copies are checksum-compared to the same manifest on each push, so the copy you download is the
+copy that was tested.</p>
+<p class="note">Data CC-BY-4.0, code MIT. Credit it as <em>NaijaDrugWatch, frozen vintage of 16 November
+2026</em>. The medicine list descends from #FixMedPrices, also CC-BY-4.0.</p>
 
 <h2 id="health">Pipeline health</h2>
 <p>This panel is about the machinery, not the medicines, and it says what did not happen as loudly as
