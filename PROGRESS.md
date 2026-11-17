@@ -2,7 +2,124 @@
 
 Single state file for NaijaDrugWatch. Last updated **2026-11-17**.
 
-## Design decision, 17 November — the purple study becomes the main page
+## Handoff — 17 November 2026
+
+Read this block and `FROZEN.md`, and you know where everything stands. Everything below it is history:
+the freeze record, the 16 November verification, the pauses, the earlier handoffs. They are kept because
+they explain decisions; they are not current state.
+
+### What this deliverable is, in one paragraph
+
+An independent, $0/month project that joins NAFDAC drug-registration status to prices published by three
+Nigerian online pharmacies, so a price can be checked against the licence behind the medicine. It ran as
+a nightly pipeline for a week, then was **frozen on 16 November 2026**: collection stopped, the database
+was exported, and the export is published so a stranger can rebuild it. It is not a shop, not a price
+index, and not endorsed by NAFDAC or any pharmacy in the data. Code MIT, data CC-BY-4.0.
+
+### What ships today
+
+| what | where | state |
+|---|---|---|
+| **The front page** — the 13 November purple design: headline, her photograph, the seven-figure panel, then prices, comparisons, registration findings, the data, pipeline health, the limitations, sources | `site/index.html` | 176,080 bytes, self-contained, **3,787 numbers checked 0 unexplained**, axe **0 violations** at 1440 and 375 px |
+| **Every price, explorable** — all 2,800 prices, filterable by shop, medicine and licence, each row linking to the shop page and the register record | `site/dashboard.html` | 787 KB, 2,800 rows, axe **0 violations** |
+| **How this was built** — eight stages in order, decisions with their costs, the limits, how to reproduce | `site/about.html` | 19,371 bytes, 11 figures re-queried on every build |
+| **The frozen vintage** — 8 tables, 36,936 rows | GitHub release `vintage-2026-11-16`; Hugging Face `JBZABC/naijadrugwatch-vintage-2026-11-16` | published twice, both checksum-compared to the same manifest on every push |
+| **The verification desk** — the 40-card human check | `site/verify/`, not published | 21 of 40 cards carry recorded judgements |
+| **The Streamlit app** | `dashboard/app.py` | built, **not deployed, and now redundant**: the explorable page does its job with no server |
+
+Nothing is deployed. There is no public URL.
+
+### The figures, as they stand
+
+2,800 prices · **559 matched** to a medicine · 335 medicines carry a price · 1,433 in the catalogue ·
+261 cheapest-price cells, of which **44 are two-shop comparisons** · 154 listings on a registration that
+is not Active · 10,967 registrations, **1,856 (16.9%) with a readable status** · 428 index rows ·
+3 week-over-week changes. Last data: **15 November 2026**; frozen **16 November 2026**.
+
+Of the 559 matched: 298 on an active registration, 154 not active, 46 with a registration number but no
+status read, 61 with no registration number at all.
+
+### What is verified, and by what
+
+| claim | how it was checked |
+|---|---|
+| every figure on the front page comes from the database | the build re-runs every query and compares; **3,787 numbers, 0 unexplained**, and it refuses to write on a mismatch |
+| the pages are usable by keyboard and screen reader | axe-core 4.10.2: **0 violations** on all three pages; the desk scans as a five-row copy because 2,800 rows time out |
+| text is readable | 25 colour pairs measured per build, worst 6.15:1; the faint REGISTER word is 1.51:1 and labelled decoration |
+| the archive restores | `scripts/verify_restore.py` restores the dump into a throwaway PostgreSQL 17 container and checks 22 things, in CI on **every push** |
+| the two published copies are the same vintage | `scripts/check_published_match.py` hashes every file against the manifest, in CI after the restore |
+| the register records are faithful | 20 of 20 sampled records re-read and matched on six fields |
+| the price comparisons are faithful | 88 page reads, 0 differences — **but see the limit below** |
+
+### What is not true, or not known
+
+- **No human has checked the pack comparisons at scale.** 18 of 20 licence cards and 3 of 20 pack cards
+  carry recorded judgements. The rest were reviewed by the author without being marked and are not
+  counted. The 44 comparisons rest on a machine re-read plus that small sample.
+- **The machine re-read proves no drift, not correct parsing.** Both shops were re-read through the same
+  channels the scrapers use: HealthPlus refused its independent endpoint with repeated rate limits, and
+  MedPlus has no second server-side source.
+- **16.9% of the register has a readable status**, so "flagged" is a fraction of a fraction.
+- **One unit price is per millilitre** (a 100 ml syrup) beside per-tablet prices; the page prints the
+  unit beside every unit price for that reason.
+- **Supplements and pharmacy sundries are in the price data** and are not medicines.
+- **Two product names appear twice each** at very different prices: Amlodipine 5 mg and 10 mg, and a
+  Vitamin B complex syrup and a 1,000-tablet pack.
+- **18 of the 88 comparison listings record a pack count with no unit.**
+- **Nothing is deployed.** No Pages, no dashboard host, no API. The seed of that is in the workflow and it
+  has never run.
+- **The live database is unreachable** as of 17 November ("server closed the connection unexpectedly",
+  twice, twice in a row). Both pages were built from the frozen export restored into a container, which
+  is the first proof that the archive alone can regenerate the deliverable. Whether Neon is suspended or
+  a VPN is intercepting was **not established**.
+
+### What to do next
+
+1. **Deploy.** This is the one thing between the project and an address. GitHub Pages for the three
+   pages (the `publish` job is already in `daily.yml` and has never run because Pages is not enabled),
+   and Streamlit Community Cloud if the app is still wanted — though the explorable page makes it
+   optional. Needs the repository owner's account, about an hour.
+2. **The dashboard polish** — graphs and headline numbers. The author's own step, unblocked.
+3. **The next version**, written out in `NEXT-VERSION.md`: seven measured changes, each with the figure
+   that justified it. The biggest is matching shop titles to each other instead of to the register.
+4. **Decide what to do about the live database.** Re-probe it once the VPN is off. If it is suspended,
+   the export is the deliverable and the database is a convenience.
+
+### How to run it
+
+```powershell
+# the pinned interpreter, and the database for anything that reads one
+.venv\Scripts\python.exe -X utf8 scripts\build_site.py        # the front page + methods page
+.venv\Scripts\python.exe -X utf8 scripts\build_dashboard.py   # the explorable page
+.venv\Scripts\python.exe -X utf8 scripts\verify_restore.py    # prove the archive restores
+.venv\Scripts\python.exe -X utf8 scripts\check_published_match.py  # prove the two copies match
+.venv\Scripts\python.exe -X utf8 scripts\desk_server.py       # the verification desk, with auto-save
+```
+
+The build scripts read `DATABASE_URL` from the environment or from `.env`. If the live database is down,
+restore the vintage into a container and point `DATABASE_URL` at it:
+
+```powershell
+docker run -d --name ndw-build -e POSTGRES_PASSWORD=build -e POSTGRES_DB=ndw -p 55440:5432 pgvector/pgvector:pg17
+$env:PGPASSWORD="build"; pg_restore --host=127.0.0.1 --port=55440 --username=postgres --dbname=ndw --no-owner --no-privileges vintage\2026-11-16\naijadrugwatch.dump
+$env:DATABASE_URL="postgresql://postgres:build@127.0.0.1:55440/ndw"
+```
+
+### Rules this project has learned the hard way
+
+- **A number read from source is not a measurement.** Twice this month a stylesheet's stated colour and a
+  report's stated ratio were both wrong, and running the check settled it in seconds.
+- **Every page proves its own numbers before it is written.** If a figure cannot be re-derived, the build
+  fails rather than publishing.
+- **A frozen vintage is immutable.** Corrections ship as a new vintage with a new date, never as an edit.
+- **The fragile step does not go to the reader.** The desk's answers were lost once to a manual download;
+  they now save themselves, and an empty browser is refused rather than allowed to overwrite them.
+- **Never restore a PostgreSQL dump into MySQL, and never install pgvector through conda on Windows** for
+  PG 17/18 — the solver downgrades the server to 16 and the dump will not load.
+
+---
+
+## Design decision, 17 November - the purple study becomes the main page
 
 The design study committed on 13 November at `docs/mockups/v1/` (deep purple `#2A0F45` and violet
 `#7A4FB0` on lavender whites, her photograph large and fading into the page, the word REGISTER set
