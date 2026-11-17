@@ -846,22 +846,82 @@ def health_rows(health: dict[str, Any]) -> str:
     return "\n".join(out)
 
 
-def about_page(dates: str) -> str:
-    """The one biography page: sourced facts, each traceable to one of three URLs, and nothing else.
+# The figures the methods page states. Kept in one place so that `about_drift` can check the ones that
+# come from the database against it, rather than trusting prose typed once and never re-read.
+ABOUT: dict[str, Any] = {
+    "listings": 2800,
+    "attached": 559,
+    "unattached": 2241,
+    "products": 1433,
+    "priced": 335,
+    "cells": 261,
+    "comparisons": 44,
+    "flagged": 154,
+    "regs": 10967,
+    "with_status": 1856,
+    "coverage": "16.9",
+    "index_rows": 428,
+    "changes": 3,
+    # Records of the build itself, not re-derivable from the database.
+    "seed_products": 1074,
+    "added_products": 359,
+    "cleared_links": 54,
+    "lost_links": 28,
+    "audit_numbers": 3787,
+    "exported_rows": 36936,
+    "exported_tables": 8,
+    "restore_checks": 22,
+}
 
-    The prose is deliberately thin. It renders only what `.agent/DORA-facts.md` records, it does not
-    date the attack (TIME's own dating is not precise enough), it makes no claim either way about
-    criticism of her tenure, and it adds no honour beyond OFR. The one paragraph of opinion is
-    labelled as opinion.
+ABOUT_DRIFT_SQL: list[tuple[str, str]] = [
+    ("listings", "select count(*) from v_latest_listings"),
+    ("attached", "select count(*) from v_latest_listings where product_id is not null"),
+    ("products", "select count(*) from products"),
+    ("priced", "select count(distinct product_id) from v_latest_listings where product_id is not null"),
+    ("cells", "select count(*) from v_cheapest_per_product_state"),
+    ("comparisons", "select count(*) from v_cheapest_per_product_state where is_comparison"),
+    ("flagged", "select count(*) from v_suspicious_listings"),
+    ("regs", "select count(*) from nafdac_registrations"),
+    ("with_status", "select count(*) from nafdac_registrations where status is not null"),
+    ("index_rows", "select count(*) from mv_drug_price_index"),
+    ("changes", "select count(*) from v_price_change_7d"),
+]
+
+
+def about_drift(conn: Any) -> list[str]:
+    """The methods page states figures as prose; this checks the ones a query can answer.
+
+    WHY. Prose is the one place a stale number can hide in this project: the front page is audited by
+    re-running its queries, and the methods page is not. These eleven queries are cheap, and they turn
+    "the page says 2,800" into a build failure when it stops being true.
     """
-    portrait = CREDIT_PORTRAIT
-    monument = CREDIT_MONUMENT
+    problems = []
+    for key, sql in ABOUT_DRIFT_SQL:
+        try:
+            actual = conn.execute(sql).fetchone()[0]
+        except Exception as exc:  # noqa: BLE001 - a failing query is itself a finding
+            problems.append(f"methods page: cannot check {key}: {type(exc).__name__}")
+            continue
+        if int(actual) != int(ABOUT[key]):
+            problems.append(f"methods page says {key}={ABOUT[key]}, database says {actual}")
+    return problems
+
+
+def about_page() -> str:
+    """The methods page: how the deliverable was built, and what it cannot claim.
+
+    WHY THIS PAGE EXISTS. It used to be a biography of Dora Akunyili. The tribute to her belongs on the
+    front page, where it is; a reader who follows a link from a price table wants to know how the price
+    was obtained and what has been checked, not who founded the register. So this page is the account of
+    the work: eight stages in the order they happened, the decisions with what each one cost, and the
+    limits stated rather than buried.
+    """
     return f"""<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>About {DORA_NAME} {DORA_HONOURS}</title>
+<title>How this was built - NaijaDrugWatch</title>
 <link rel="icon" href="data:,">
 <style>{CSS}</style>
 </head>
@@ -870,121 +930,184 @@ def about_page(dates: str) -> str:
 <div class="wrap">
 <header>
 <p class="subhead"><a href="index.html">&larr; Medicine prices and registration status in Nigeria</a></p>
-<div class="masthead">
-<img class="masthead-mark" src="assets/dora/{PORTRAIT_FILE}" width="480" height="600"
- alt="Portrait of Dora Akunyili">
-<div class="masthead-text">
-<h1>{DORA_NAME} {DORA_HONOURS}</h1>
-<p class="tribute-line">{dates}</p>
-</div>
-</div>
+<h1>How this was built</h1>
+<p class="lede">NaijaDrugWatch joins NAFDAC drug-registration status to prices published by Nigerian
+pharmacies. It is independent, it costs nothing to run, and neither NAFDAC nor any pharmacy in the data
+endorses it. Code is MIT, data CC-BY-4.0. The register the prices are checked against belongs to the
+agency Dora Akunyili led from 2001 to 2008; her tribute is on the
+<a href="index.html">front page</a>, and this page is about the work.</p>
+<p class="muted">The project is frozen. Collection stopped on 16 November 2026 and the newest price in
+the data was recorded on 15 November 2026. This page records how it was built, what was checked, and
+what those checks cannot establish.</p>
 </header>
 <main id="main">
-<p class="lede">This page is here because the prices on the other page are checked against the register
-of the agency she led. Everything below comes from the three sources listed at the foot of the page.
-Where those sources are silent, this page is silent too.</p>
 
-<h2 id="who">Who she was</h2>
-<p>Dora Nkem Akunyili OFR was born on 14 July 1954 and died on 7 June 2014. Both dates are as the
-National Library of Nigeria records them. Before NAFDAC she was a senior lecturer and consultant
-pharmacologist at the University of Nigeria, Nsukka.</p>
+<h2 id="register">1. The register came first, and it had no API</h2>
+<p>The NAFDAC Greenbook has no JSON API &mdash; <code>/api/*</code>, <code>/sitemap.xml</code> and
+<code>/search?q=</code> all return 404 &mdash; and no mirror of it exists. It is read as HTML: six
+category pages give each entry's name, form, strength and registration number, and detail pages give
+status and expiry.</p>
+<p>At freeze the register held <strong>{ABOUT["regs"]:,} registrations</strong>, of which
+<strong>{ABOUT["with_status"]:,} ({ABOUT["coverage"]}%)</strong> carried a readable status, because a
+status exists only where a detail page was read. A missing status does not mean a registration is
+Active; it means this project has not read it.</p>
+<p>That site's certificate has expired, so its pages are fetched over plain HTTP and the integrity of
+what is stored rests on checksums kept locally rather than on the connection.</p>
 
-<h2 id="nafdac">NAFDAC, 2001 to 2008</h2>
-<p>She was Director-General of the National Agency for Food and Drug Administration and Control from
-2001 to 2008. The Princeton profile of her puts her start in April 2001 and describes her service as
-nearly eight years.</p>
+<h2 id="catalogue">2. The medicine list had to be built, then rebuilt</h2>
+<p>The seed was the #FixMedPrices catalogue, released under CC-BY-4.0: a national commodities list of
+{ABOUT["seed_products"]:,} products, carrying herbal and reproductive-health items and almost none of
+what an ordinary pharmacy shelves.</p>
+<p>A tool was written that turns an unmatched shop title into a product only when the name overlaps, the
+strength agrees and the dosage form is compatible, with the register &mdash; not the shop's wording
+&mdash; as the authority. It added <strong>{ABOUT["added_products"]} products</strong>, taking the
+catalogue to {ABOUT["products"]:,}. At freeze only <strong>{ABOUT["priced"]}</strong> of those carried a
+live price, which is the honest measure of how much of a catalogue is real.</p>
 
-<h2 id="after">Afterwards</h2>
-<p>In December 2008 she was appointed Minister of the Federal Ministry of Information and
-Communication. She died at a specialist cancer hospital in India on 7 June 2014, after a two-year
-battle with uterine cancer, and was laid to rest at Agulu in Anambra State.</p>
+<h2 id="scraping">3. Scraping: API first, and polite</h2>
+<p>Each pharmacy is read through its product API where one exists and through HTML where none does. One
+request every two seconds per host, a User-Agent naming the project, product and price fields only &mdash;
+no reviews, no personal data.</p>
+<p>The largest gain came from finding the right route. MedPlus's category pages returned the same twenty
+links on every page; its drugs route paginates properly, twenty per page, page 70 holding 16 and page 71
+empty. That took one shop from <strong>128 products collected to 1,396</strong>, and the nightly run from
+about 1&nbsp;h&nbsp;50&nbsp;m to about 2&nbsp;h&nbsp;50&nbsp;m.</p>
+<p>A refusal counts as failure, not partial success: a 403 or 429 stops the run and records a failed row.
+A night also fails when more than 10% of its pages fail or when a full sweep returns under 1,000 records.
+Those two thresholds are judgements, not measurements, and the code says so.</p>
 
-<figure class="about-figure">
-<img src="assets/dora/{MONUMENT_FILE}" width="480" height="776"
- alt="A memorial statue of Dora Akunyili">
-<figcaption>A memorial to her at Ezinano, Agulu. The name of the place and of what is shown are the
-photographer's, as given on Wikimedia Commons.</figcaption>
-</figure>
+<h2 id="matching">4. Matching is two-stage and deterministic</h2>
+<p>A shop's title is never attached to a medicine on similarity alone. The title is embedded, the ten
+nearest products become candidates, and a deterministic rule then decides on strength, dosage form and
+active ingredient. Similarity alone was rejected because a close title can describe a different
+medicine.</p>
+<p>At freeze <strong>{ABOUT["attached"]:,} of {ABOUT["listings"]:,}</strong> listings were attached and
+<strong>{ABOUT["unattached"]:,}</strong> were not. A strength guard added late stopped a listing
+attaching to a medicine of a different strength: it cleared <strong>{ABOUT["cleared_links"]} wrong
+links across 22 products</strong> and left no contradictions under the strict check, at the cost of
+{ABOUT["lost_links"]} matched listings. One of those was a known false refusal &mdash; Augmentin 1&nbsp;g
+against an 875&nbsp;mg+125&nbsp;mg product, where 1,000&nbsp;mg is the sum of the parts.</p>
 
-<h2 id="words">In her words</h2>
-<figure class="pull">
-<blockquote><p>"The back windscreen was shattered&hellip; A bullet pierced through my head scarf and
-grazed my scalp."</p></blockquote>
-<figcaption>{DORA_NAME}, quoted in TIME, "Drug Warrior", 31 October 2005.</figcaption>
-</figure>
-<p>Those are her words describing an attack on the car she and her family were travelling in. This
-page does not give that attack a date: TIME places it "three years" before the article was published,
-which is not precise enough to print as a year.</p>
+<h2 id="views">5. The answers are views, not prose</h2>
+<p>Every figure the page prints comes from SQL: the latest price per listing, the cheapest price per
+product and state, the two-shop comparisons, the listings whose registration is not Active or has
+expired, the seven-day price change, and a daily index the pipeline refreshes rather than a person.</p>
+<p>At freeze that was {ABOUT["listings"]:,} listings, {ABOUT["attached"]:,} attached,
+{ABOUT["cells"]} cheapest-price cells of which <strong>{ABOUT["comparisons"]} are genuine two-shop
+comparisons</strong>, {ABOUT["flagged"]} listings resting on a registration that is not Active, and
+{ABOUT["index_rows"]} index rows. The seven-day view returned {ABOUT["changes"]} products: the feature
+works, and the market it watched was quiet.</p>
 
-<h2 id="sister">Her sister</h2>
-<p>TIME reports the next sentence in its own words, not in hers:</p>
-<figure class="pull">
-<blockquote><p>"Akunyili's sister Vivian, a diabetic, died in 1988, a victim of fake insulin."</p>
-</blockquote>
-<figcaption>TIME, "Drug Warrior", 31 October 2005. The sentence is TIME's; this page does not put it
-in her mouth.</figcaption>
-</figure>
+<h2 id="audit">6. The page proves its own numbers</h2>
+<p>The page is generated from the database by a script that runs every query twice. It renders first,
+then re-reads and compares what it printed against what the database says now. Nothing is written unless
+the two agree, and the last line of the build is the audit. At freeze it read
+<strong>{ABOUT["audit_numbers"]:,} numbers checked, 0 unexplained</strong>.</p>
+<p>A second generated page lists every price with filters, each row linking to the shop page the price
+came from and to the register record behind it. The links make the sources inspectable; they do not make
+the parsing correct.</p>
 
-<h2 id="figure">A figure this page does not print</h2>
-<p>TIME reported that before she took over her post in 2001, "a staggering 80%" of the medicines sold
-were "deficient in one way or another". The report gives no method for that number, so it is quoted
-here only as TIME stated it.</p>
-<p>A widely repeated pair of numbers &mdash; a high share before her tenure and a much lower share
-after it &mdash; is not printed on this page, because nothing read for this page supports either
-number.</p>
+<h2 id="checked">7. Somebody checked it, and recorded how little</h2>
+<p>Before any verdict existed, the sampling rule was written down and committed: twenty licence records
+and twenty pack comparisons, chosen by a seeded draw, no substitution allowed, and the interval to be
+reported with the result.</p>
+<p>Of the licence cards, <strong>18 of 20</strong> carry recorded line-by-line judgements against the
+live register page &mdash; all pass, 100% within a 95% interval of 82% to 100%. Of the pack cards,
+<strong>3 of 20</strong> carry recorded judgements, and 3 of 3 is too small a number to report as a rate.
+The author reviewed the remaining pack cards without marking them; they are not counted here, and that
+distinction is the point of recording the rule in advance.</p>
+<p>The sources were then re-read by machine: <strong>20 of 20</strong> register records matched on
+status, expiry, approval date, name and strength, and all {ABOUT["comparisons"]} comparisons matched
+across <strong>88 page reads</strong> with no differences.</p>
+<p>That machine check has a narrow reach, and saying so matters more than the result. Both shops were
+re-read through the same channels the scrapers use: one refused its independent endpoint with repeated
+rate limits, and the other has no second server-side source. It shows the pages had not drifted. It
+cannot show the parsers read them correctly, and it is not a human verification.</p>
 
-<h2 id="view">The project's view</h2>
-<div class="opinion">
-<p class="label">Opinion, labelled as opinion. Not a finding, and not sourced above.</p>
-<p>A price can only be checked against a register that somebody keeps, and a register that nobody can
-read protects nobody. This project can attach a licence status to only part of what it lists, and it
-prints that shortfall on the page rather than behind it. We think the shortfall is worth showing: a
-page that hides what it cannot read is worth less than one that says so.</p>
+<h2 id="freeze">8. Then it was frozen, and the freeze was tested</h2>
+<p>A nightly pipeline is a standing promise, and one that runs unwatched on free tiers ends by publishing
+stale numbers with nobody's name on the failure. Between 12 and 15 November only <strong>5 to 42
+prices</strong> changed per night against {ABOUT["listings"]:,} on the shelf. Collection stopped on
+16 November 2026 and the schedule was disabled rather than left running unattended.</p>
+<p>The data were exported before anything was switched off: {ABOUT["exported_tables"]} tables and
+{ABOUT["exported_rows"]:,} rows as a PostgreSQL dump, a CSV per table, a written schema record, and a
+manifest carrying a checksum for every file. It is published twice &mdash; a release on the code
+repository and a dataset on Hugging Face &mdash; and both copies are compared against that manifest on
+every push.</p>
+<p>The export is restored into an empty PostgreSQL 17 database on every push and compared against the
+manifest and the published figures: <strong>{ABOUT["restore_checks"]} checks</strong>, including that
+the {ABOUT["products"]:,} embeddings return as 384-dimension vectors rather than text. A restore proves
+the archive can be used again; it does not prove the original pages were read correctly, which is why
+section 7 exists.</p>
+
+<h2 id="decisions">Decisions worth naming, with what each cost</h2>
+<div class="tablewrap" role="region" aria-label="Decisions and their costs" tabindex="0">
+<table>
+<caption>One decision per row.</caption>
+<thead><tr><th scope="col">Decision</th><th scope="col">What was chosen</th><th scope="col">What it cost</th></tr></thead>
+<tbody>
+<tr><th scope="row">Scheduler</th><td>GitHub Actions cron, not Prefect</td><td>Free and unlimited on a
+public repository, but no retry engine and no run history beyond the workflow page</td></tr>
+<tr><th scope="row">Database</th><td>Neon, not Supabase</td><td>The free tier does not pause after idle
+days, but it does suspend on inactivity &mdash; which is why the export exists at all</td></tr>
+<tr><th scope="row">MedPlus coverage</th><td>A full sweep every night, not a rotating window</td>
+<td>About 68 minutes a night, to cover the whole catalogue instead of a quarter of it</td></tr>
+<tr><th scope="row">What a comparison means</th><td>Two pharmacies publishing a price for the same
+product</td><td>A shop whose stock we cannot confirm still counts; the page carries that caveat instead of
+narrowing the count</td></tr>
+<tr><th scope="row">Inactive licences</th><td>Labelled, not hidden</td><td>The finding stays visible, and
+so does the reading it rests on</td></tr>
+<tr><th scope="row">What was not built</th><td>No warehouse layer, no ORM, no API</td><td>SQL files and
+scripts; a rebuild means running those files in order</td></tr>
+</tbody>
+</table>
 </div>
 
-<h2 id="sources">Sources</h2>
+<h2 id="limits">What it does not claim</h2>
+<ul class="limits">
+<li><strong>Not a market index and not a national price survey.</strong> Lagos, three online pharmacies,
+and {ABOUT["priced"]} medicines carrying a price at freeze.</li>
+<li><strong>Only {ABOUT["coverage"]}% of the register has a readable status</strong>, so a flagged listing
+describes a fraction of a fraction, not the register.</li>
+<li><strong>A lapsed licence is not a fake drug.</strong> Nothing here was bought, tested or
+inspected.</li>
+<li><strong>The price data include supplements and pharmacy sundries</strong> that are not medicines.</li>
+<li><strong>One published unit price is per millilitre</strong> &mdash; a 100&nbsp;ml syrup &mdash; beside
+prices per tablet. The page prints the unit beside every unit price for that reason.</li>
+<li><strong>The {ABOUT["comparisons"]} comparisons rest on a machine re-read and a small recorded human
+sample</strong>, not a complete human audit.</li>
+<li><strong>Nothing is deployed.</strong> The project ships as a repository, a dated export and generated
+pages, not as a live service.</li>
+</ul>
+
+<h2 id="reproduce">Reproducing this</h2>
 <ol class="limits">
-<li>The National Library of Nigeria's repository, item 973ac71e: her name and honours, both dates, the
-years as Director-General, where she died and where she was laid to rest.
-{link(NLN_ITEM, "nigeriareposit.nln.gov.ng")}</li>
-<li>Princeton, Innovations for Successful Societies, profile of Dora Akunyili, read through a Wayback
-snapshot dated 9 September 2025 because the live host answers this machine with a challenge: April
-2001, "nearly eight years", the December 2008 appointment, and the post at the University of Nigeria,
-Nsukka. {link(PRINCETON_ITEM, "the archived profile")}</li>
-<li>TIME, "Drug Warrior", by Michael Lemonick and Gilbert Da Costa, 31 October 2005, read through a
-Wayback replay: her own words on the attack, the sentence about her sister, and the 80% figure.
-{link(TIME_ITEM, "the archived article")}</li>
+<li>Use the repository's pinned Python environment and install from <code>requirements.txt</code>; do not
+substitute the system interpreter.</li>
+<li>Apply the SQL files in <code>schema/</code> in their numbered order, then follow the dependency order
+in the README to load the seed, collect listings, link registrations, match products and build the
+pages.</li>
+<li>With Docker running, verify the frozen export with <code>scripts/verify_restore.py</code>. It restores
+the dump into a throwaway PostgreSQL 17 database, compares the tables and published figures, and removes
+the container.</li>
 </ol>
-<p class="note">Nothing beyond those three is claimed here. This page does not date the attack, it
-does not say whether her tenure was criticised or not, and it adds no honour beyond OFR.</p>
 
-<h2 id="images">The images on this page</h2>
-<div class="credits">
-<p><strong>1. The portrait</strong> in the masthead, and the mark in the footer. A crop of
-{link(portrait["page"], portrait["title"])} on Wikimedia Commons, credited to the
-{esc(portrait["author"])}, released under {link(portrait["licence_url"], "CC0 1.0")} (public domain
-dedication). Changes: {esc(portrait["change"])}. CC0 requires no attribution; it is given anyway.</p>
-<p><strong>2. The statue photograph</strong> above. A crop of
-{link(monument["page"], monument["title"])} on Wikimedia Commons, photographed by
-{esc(monument["author"])}, released under
-{link(monument["licence_url"], "CC BY-SA 4.0")}. Changes: {esc(monument["change"])}, so this crop
-carries the same licence and may be reused under it. Share-alike applies to the photograph, not to
-the price data on the other page, which is CC-BY-4.0.</p>
-</div>
 </main>
 <footer>
-<img class="footer-mark" src="assets/dora/{MARK_FILE}" width="220" height="220" alt="">
-<p><strong>{DORA_NAME} {DORA_HONOURS}</strong>, {dates}.
-<a href="index.html">Medicine prices and registration status in Nigeria</a>.</p>
-<p>This page is one file and three local images. No external stylesheet, script, font or image is
-fetched, so it works with no network. It is generated by <code>scripts/build_site.py</code> from
-constants that quote the National Library of Nigeria's record; if a date in that generator is ever
-unset, the build refuses to write either page instead of printing a date from memory.</p>
+<p><strong>Independence and licence.</strong> Not endorsed by NAFDAC and not affiliated with, or paid by,
+any pharmacy named in the data. Code MIT; data CC-BY-4.0. The medicine list descends from #FixMedPrices,
+CC-BY-4.0, credited as its licence requires. Source and issue tracker:
+{link(REPO_URL, "github.com/batestguy/NaijaDrugWatch")}.</p>
+<p>This page is one file. No external stylesheet, script, font or image is fetched, so it works with no
+network. It is generated by <code>scripts/build_site.py</code>, and the figures above that a query can
+answer are checked against the database on every build.</p>
 </footer>
 </div>
 </body>
 </html>
 """
+    portrait = CREDIT_PORTRAIT
+    monument = CREDIT_MONUMENT
 
 
 class Page:
@@ -1080,11 +1203,14 @@ class Page:
 <h1>Medicine prices and registration status in Nigeria</h1>
 <p class="tribute-line"><span class="name">{DORA_NAME} {DORA_HONOURS}</span>, {self.dates},
 led NAFDAC from 2001 to 2008. The prices below are checked against the register her agency keeps.
-<a href="about.html">About her</a></p>
+<a href="about.html">How this was built</a></p>
 <p class="lede">This page is built from a database that records what three online pharmacies asked for
 medicines on the day it was read, and what the NAFDAC register says about the registration behind each
 of those medicines. It is independent, it is not a shop, and it is not endorsed by NAFDAC.</p>
 {stamp}
+<p class="lede" style="margin-top:.6rem"><a href="dashboard.html"><strong>Every price, explorable</strong></a>
+&mdash; all {overview["latest_listings"]:,} prices, filterable by shop, medicine and licence, with each
+row linking to the shop page it came from and to the NAFDAC record behind it.</p>
 {banner}
 </header>
 </div>
@@ -1098,7 +1224,7 @@ of those medicines. It is independent, it is not a shop, and it is not endorsed 
 <p class="band-name"><strong>{DORA_NAME} {DORA_HONOURS}</strong></p>
 <p class="band-dates">{self.dates}</p>
 <p class="band-why">She led the agency whose register this page reads. Where the reading falls short,
-the page says so. <a href="about.html">About her</a></p>
+the page says so. <a href="about.html">How this was built</a></p>
 </div>
 </div>
 </section>
@@ -1283,7 +1409,7 @@ and the views they read are in the repository, so a stranger can re-run the whol
 <footer>
 <img class="footer-mark" src="assets/dora/{MARK_FILE}" width="220" height="220" alt="">
 <p><strong>{DORA_NAME} {DORA_HONOURS}</strong>, {self.dates}.
-<a href="about.html">About her</a>.</p>
+<a href="about.html">How this was built</a>.</p>
 <p>Built from a Postgres database by <code>scripts/build_site.py</code>. Prices in Nigerian naira
 (&#8358;). Times in UTC unless a Lagos date is named. The page is two files and four local images:
 no external stylesheet, script, font or image is fetched, so it works with no network.</p>
@@ -1295,7 +1421,7 @@ credited to the {esc(CREDIT_PORTRAIT['author'])} and released under
 <a href="{esc(CREDIT_PORTRAIT['licence_url'])}">CC0 1.0</a>, a public domain dedication. That licence
 requires no attribution; it is given here anyway, naming the file, the author and the change made to
 it. One further image, a photograph of a memorial to her, appears on the
-<a href="about.html">About page</a>, with its own credit beside it.</p>
+<a href="about.html">How this was built</a>, with its own credit beside it.</p>
 <p class="note">The CC0 file is a photograph from the National Library of Nigeria, the same
 institution whose repository holds the dates and the NAFDAC dates used on the About page. The
 photograph and the register data are different things: the photograph identifies the person the
@@ -1444,6 +1570,9 @@ def main() -> int:
         document = page.build()
 
         checked, problems = audit(conn, facts, page.used)
+        # The methods page states figures as prose, which the fact audit cannot see. These eleven queries
+        # are the ones a query can answer; a stale number there fails the build like any other.
+        problems += about_drift(conn)
 
     if problems:
         print(f"{checked} numbers checked, {len(problems)} unexplained", file=sys.stderr)
@@ -1475,7 +1604,7 @@ def main() -> int:
 
     html_bytes = document.encode("utf-8")
     (SITE / "index.html").write_bytes(html_bytes)
-    about_bytes = about_page(dates).encode("utf-8")
+    about_bytes = about_page().encode("utf-8")
     (SITE / "about.html").write_bytes(about_bytes)
 
     payload = {
