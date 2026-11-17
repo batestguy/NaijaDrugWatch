@@ -103,17 +103,19 @@ def stop_container(name: str) -> None:
     run(["docker", "rm", "-f", name])
 
 
-def restore(dump: Path, port: int, password: str) -> bool:
+def restore(dump: Path, target: dict) -> bool:
+    """pg_restore one archive into `target`, a dict of libpq parameters."""
     tool = which("pg_restore") or which("pg_restore.exe")
     if not tool:
         print("pg_restore is not on PATH - it ships with the postgresql client tools", file=sys.stderr)
         return False
-    env = dict(os.environ, PGPASSWORD=password)
-    proc = run(
-        [tool, f"--host={HOST}", f"--port={port}", f"--username={USER}", f"--dbname={DBNAME}",
-         "--no-owner", "--no-privileges", str(dump)],
-        env=env,
-    )
+    env = dict(os.environ)
+    if target.get("password"):
+        env["PGPASSWORD"] = target["password"]
+    cmd = [tool, f"--host={target.get('host', HOST)}", f"--port={target.get('port', 5432)}",
+           f"--username={target.get('user', USER)}", f"--dbname={target.get('dbname', DBNAME)}",
+           "--no-owner", "--no-privileges", str(dump)]
+    proc = run(cmd, env=env)
     if proc.returncode != 0:
         print(f"pg_restore failed ({proc.returncode}):", file=sys.stderr)
         print("\n".join((proc.stderr or "").splitlines()[:15]), file=sys.stderr)
@@ -203,6 +205,8 @@ def main(argv: list[str]) -> int:
                              "environment in CI, never written into a file)")
     parser.add_argument("--port", type=int, default=55433)
     parser.add_argument("--container", default="ndw-verify-restore")
+    parser.add_argument("--no-restore", action="store_true",
+                        help="only check an already-restored database; do not load the dump")
     parser.add_argument("--keep", action="store_true", help="leave the container running")
     args = parser.parse_args(argv[1:])
 
@@ -219,9 +223,22 @@ def main(argv: list[str]) -> int:
         return 2
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
 
+    # CI passes --dsn for a service container that is empty, so the dump has to be loaded into it.
+    # Missing that is how the first CI run reported 21 failures against an empty database.
     if args.dsn:
-        return check(connect(None, None, args.dsn), args.vintage, manifest)
+        conn = connect(None, None, args.dsn)
+        if not args.no_restore:
+            from psycopg.conninfo import conninfo_to_dict
+            if not dump.exists():
+                print(f"cannot find the dump at {dump}", file=sys.stderr)
+                return 2
+            if not restore(dump, conninfo_to_dict(args.dsn)):
+                return 1
+        return check(conn, args.vintage, manifest)
 
+    if args.no_restore:
+        print("--no-restore needs --dsn: there is nothing to check without a database", file=sys.stderr)
+        return 2
     if not dump.exists():
         print(f"cannot find the dump at {dump}", file=sys.stderr)
         return 2
@@ -234,7 +251,8 @@ def main(argv: list[str]) -> int:
     if not start_container(args.container, args.port, password):
         return 2
     try:
-        if not restore(dump, args.port, password):
+        if not restore(dump, {"host": HOST, "port": args.port, "user": USER,
+                              "dbname": DBNAME, "password": password}):
             return 1
         return check(connect(args.port, password, None), args.vintage, manifest)
     finally:
