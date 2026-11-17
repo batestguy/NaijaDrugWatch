@@ -153,6 +153,16 @@ Fixing any of them means a new vintage, which is the rule this record exists to 
 
 ## How to restore
 
+**One command, if Docker is running:**
+
+```powershell
+.venv\Scripts\python.exe -X utf8 scripts\verify_restore.py
+```
+
+It starts a throwaway PostgreSQL 17 container, restores the dump, checks every table and every
+published figure, and removes the container. Exit 0 means the export still becomes the database it
+came from. The manual steps below are what that script does, for when you want to look inside.
+
 1. Create an empty Postgres 17 database. Enable `pg_trgm`, `pgvector`, `unaccent` — `schema/001_extensions.sql`.
 2. Either restore the dump: `pg_restore --dbname=<url> --no-owner --no-privileges naijadrugwatch.dump`,
    or load the CSVs by hand in dependency order: `pharmacies`, `products`, `drug_match_rules`,

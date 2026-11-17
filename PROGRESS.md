@@ -4,11 +4,21 @@ Single state file for NaijaDrugWatch. Last updated **2026-11-16**.
 
 ## Next task — prove the export restores, and make that proof live in the repo
 
-**Step 1 is done (17 November).** The dump was restored into a throwaway PostgreSQL 17.12 container:
-exit 0, no errors, extensions created from the dump, all 22 checks passed — 8 tables at manifest counts,
-2,800 listings, 559 matched, 44 comparisons, 154 suspicious, 1,856 registrations with a status, 428
-index rows, and 1,433 embeddings as real 384-dimension vectors. Transcript in
-`.agent/T1117-restore-transcript.txt`. **Steps 2 and 3 remain** and are written out below.
+**Step 2 is done (17 November).** `scripts/verify_restore.py` is one command that starts a throwaway
+PostgreSQL 17 container, restores the dump, checks every table against the manifest and every published
+figure against what the project claims, then removes the container. Proved by running it: 22 checks
+pass, exit 0, and the container is gone afterwards. It refuses an unknown vintage (exit 2) rather than
+comparing against nothing.
+
+**Step 3 is written but switched off.** `.github/workflows/restore.yml` runs the same check against a
+`pgvector/pgvector:pg17` service container on every push. It is gated on a repository variable because
+the vintage is gitignored and the runner cannot read it. To switch it on, publish the export and set
+`VINTAGE_PUBLISHED=true`, `VINTAGE_DUMP_URL`, `VINTAGE_MANIFEST_URL`. A skipped job is not a pass, so
+this line stays here until it runs for real.
+
+**The one decision left on this task: where the export is published.** A GitHub release asset on this
+repo is free, already in your account, and one command away. The Hugging Face dataset was the original
+plan and keeps the 12 MB out of the repository's own hosting. Either works; CI only needs a direct URL.
 
 **Why this is first.** The frozen vintage exists in two places: the Neon database and `vintage/2026-11-16/`.
 The export has been proven *readable* — `pg_restore --list` reads it, every CSV row count matches the

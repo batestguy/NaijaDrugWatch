@@ -1,0 +1,86 @@
+# Restore test: does the frozen export still become a working database?
+#
+# WHY THIS EXISTS. The export was proven readable for two days before anyone proved it restorable, and
+# a backup nobody restores is a hope rather than an archive. This job turns that check into something
+# that runs on every push, so the day the export stops restoring is the day it is noticed.
+#
+# THE GATE, AND WHY THERE IS ONE. The vintage is 12 MB and gitignored against this repo's 5 MB rule, so
+# the job cannot read it from the checkout. It downloads the published export from a URL held in a
+# repository variable. Until the export is published, the job is skipped rather than failing: a red
+# cross on every push would train everyone to ignore it, and a green tick that tested nothing would be
+# worse. Set these two repository variables to switch it on:
+#
+#   VINTAGE_PUBLISHED  = true
+#   VINTAGE_DUMP_URL   = direct URL to naijadrugwatch.dump
+#   VINTAGE_MANIFEST_URL = direct URL to MANIFEST.json
+#
+# A skipped job is not a pass. `PROGRESS.md` records that the CI half of the restore task is pending
+# until the export is published; that line is what to update when this starts running.
+
+name: restore
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  restore:
+    if: vars.VINTAGE_PUBLISHED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_PASSWORD: verify
+          POSTGRES_DB: ndw_verify
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ndw_verify"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch the published vintage
+        env:
+          DUMP_URL: ${{ vars.VINTAGE_DUMP_URL }}
+          MANIFEST_URL: ${{ vars.VINTAGE_MANIFEST_URL }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/vintage"
+          curl -fsSL -o "$RUNNER_TEMP/vintage/naijadrugwatch.dump" "$DUMP_URL"
+          curl -fsSL -o "$RUNNER_TEMP/vintage/MANIFEST.json" "$MANIFEST_URL"
+          ls -l "$RUNNER_TEMP/vintage"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the client
+        run: pip install "psycopg[binary]==3.2.13"
+
+      - name: Install a pg_restore that matches the archive
+        run: |
+          # The dump was written by pg_dump 18.6; a client older than the archive refuses it.
+          sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-18
+          pg_restore --version
+
+      - name: Restore and check every figure
+        env:
+          DSN: ${{ format('host=127.0.0.1 port=5432 user=postgres password=verify dbname=ndw_verify') }}
+        run: |
+          set -euo pipefail
+          python scripts/verify_restore.py \
+            --dsn "$DSN" \
+            --dump "$RUNNER_TEMP/vintage/naijadrugwatch.dump" \
+            --manifest "$RUNNER_TEMP/vintage/MANIFEST.json"
