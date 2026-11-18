@@ -1,6 +1,6 @@
 # Progress
 
-Single state file for NaijaDrugWatch. Last updated **2026-11-17**.
+Single state file for NaijaDrugWatch. Last updated **2026-11-18**.
 
 ## Handoff — 17 November 2026
 
@@ -20,9 +20,9 @@ index, and not endorsed by NAFDAC or any pharmacy in the data. Code MIT, data CC
 
 | what | where | state |
 |---|---|---|
-| **The front page** — the 13 November purple design: headline, her photograph, the seven-figure panel, then prices, comparisons, registration findings, the data, pipeline health, the limitations, sources | `site/index.html` | 176,080 bytes, self-contained, **3,787 numbers checked 0 unexplained**, axe **0 violations** at 1440 and 375 px |
-| **Every price, explorable** — all 2,800 prices, filterable by shop, medicine and licence, each row linking to the shop page and the register record | `site/dashboard.html` | 787 KB, 2,800 rows, axe **0 violations** |
-| **How this was built** — eight stages in order, decisions with their costs, the limits, how to reproduce | `site/about.html` | 19,371 bytes, 11 figures re-queried on every build |
+| **The front page** — pruned to a landing page on 18 November: hero (headline, the 154, the tally), the word REGISTER, one large placeholder frame for a dashboard recording, a data-download line, the deep block with two buttons, the licence footer | `site/index.html` | **78,699 bytes**, self-contained, **3,787 numbers checked 0 unexplained**, contrast 30 pairs all passing (worst 5.13:1). **No limitations block and no sources section** — both were removed with the sections on 18 November; only the licence line in the footer remains. axe not re-run since the purple build |
+| **Every price, explorable** — all 2,800 prices, filterable by shop, medicine and licence, each row linking to the shop page and the register record. Reached only from the deep block's button; the card that used to point at it is gone | `site/dashboard.html` | 787,250 bytes, 2,800 rows, axe **0 violations** (measured before 18 November) |
+| **How this was built** — a **flowchart**: a wordless tool watermark behind 20 green/white step boxes, dark arrows, cave-speech copy, the decisions table and the limits list, and a rebuild recipe | `site/about.html` | **40,261 bytes**, 21 figures re-queried on every build; no file paths or script names on the page (removed 18 November) |
 | **The frozen vintage** — 8 tables, 36,936 rows | GitHub release `vintage-2026-11-16`; Hugging Face `JBZABC/naijadrugwatch-vintage-2026-11-16` | published twice, both checksum-compared to the same manifest on every push |
 | **The verification desk** — the 40-card human check | `site/verify/`, not published | 21 of 40 cards carry recorded judgements |
 | **The Streamlit app** | `dashboard/app.py` | built, **not deployed, and now redundant**: the explorable page does its job with no server |
@@ -169,11 +169,261 @@ instead, so its label was painted the same violet as its own background — 1:1,
 *incomplete* rather than a failure; reading the computed style confirmed it. Fixed, and the lesson is the
 standing one: a number read from source is not a measurement.
 
-## Pages, as of 17 November
+## Colour change, 18 November - every purple became orange
+
+The author's instruction: "make every purple orange on that page, thick bleeding orange". The palette in
+`scripts/build_site.py` was moved from violet to orange and the warm whites moved with it, because orange
+ink on a lavender sheet reads as two colours fighting.
+
+- accent `#4A1E80` -> `#B23C00`; deep band `#2A0F45` -> `#8F3300`; the unused soft violet `#7A4FB0` is
+  kept as `#E2611F` and marked declaration-only (3.35:1, never text).
+- papers warmed: page `#F8F5FA` -> `#FFF8F2`, panel `#EFEAF5` -> `#FDEFE4`, tint `#F4EFFA` -> `#FEF2E8`,
+  rule `#D9D0E4` -> `#EAD6C6`, body ink `#120C19` -> `#1C1108`, secondary `#5B5270` -> `#6B5343`.
+- the deep band's hardcoded violets (`#C3B7D2` body, `#C6AEDF` plate, `#DDCCEE` hover, `#E6DDF2` tags)
+  are now custom properties, so the stylesheet and the contrast audit read one value instead of two that
+  can drift.
+- **"not active" is not orange.** `#7B1F4B` became a dark chocolate `#4A2C1A`, not a red-orange, so a
+  status tag cannot be mistaken for a link. The green "active" and "confirmed" tags are unchanged.
+
+Measured at build, not read from source: **27 colour pairs, all at or above 4.5:1, worst 5.13:1** (the
+button label on its peach plate). White on the accent is 5.93:1 and the accent on the page is 5.64:1,
+which is the pair that constrains how bright "bleeding orange" can be. Build exit 0, **3,787 numbers
+checked, 0 unexplained**, 44 comparison rows, 217 single-shop rows.
+
+Rendered and looked at in a browser at 1440 px and at 375 px: no sideways scroll (375 = 375), the hero,
+the tables, the status tags, the tribute band and the deep block all read as one orange page.
+
+**Not done:** axe has not been re-run on the orange build; the 0-violation result in the section above
+belongs to the purple build. The change is **not committed**. `FROZEN.md` still calls the page "the
+purple design" and is left alone on purpose: it is a frozen record of what was verified on 16 November,
+and a frozen record is corrected by a new vintage, not by an edit.
+
+## Headline split, 18 November - the licence question becomes a deck
+
+The front page's headline read "What a medicine costs. Whether its licence is active." in one h1, both
+halves at display size and competing. At the author's instruction the second sentence is now a
+**paragraph one step down** — same Archivo Black face and the same ink black it had inside the headline,
+at the same size as the headline and held 8 px beneath it.
+
+What it buys: the headline states one thing, and the licence question reads as the page's second subject
+rather than as a second headline. Both stay above the fold, so nothing is demoted below the date line.
+
+Measured: ink on paper 17.62:1 (the pair was already in the audit); build exit 0, **3,787 numbers
+checked, 0 unexplained**; rendered at 1440 px and at 375 px with no sideways scroll (375 = 375), deck at
+35 px and 20 px respectively.
+
+## First screen, 18 November - seven equal figures became one finding
+
+The two rows of seven cells under the headline were a dashboard: seven boxes of equal weight, mixing
+scale (2,800 prices, 10,967 registrations), coverage (559 matched, 44 comparable) and finding (298
+active, 154 not active). Equal weight was the message, and it was the wrong message — the 154 is the
+claim and the rest is the receipt.
+
+Replaced with **one figure and the arithmetic that makes it checkable**, in the order the work happened:
+
+> **154** of the 498 prices we could trace to a licence record sit on a registration that is not active.
+> 2,800 prices read → 559 matched to a medicine → 498 carry a licence number → 298 active, 154 not
+> active, 46 never read | 10,967 in the register.
+
+The receipt closes: 298 + 154 + 46 = 498, and 498 + 61 (the matched rows with no licence number, still
+stated in the note beneath) = 559. Every figure is a fact the audit re-reads; none is typed. The 498 is
+computed from the three status counts rather than subtracted, so a change in any one of them cannot
+leave the sentence asserting a total that is no longer true.
+
+**What left the first screen, and where it went:**
+
+- 2,800, 559, 298, 154, 46, 10,967 — all still on the first screen, in the receipt line.
+- **44 two-shop comparisons — now appears nowhere on the page.** It was one of the seven; it is not in
+  the receipt because it is a coverage caveat rather than a step in the chain, and it has no home in
+  the Prices section yet. **This is an open decision, not a finished change:** the number is true, it
+  was published, and it has been dropped without a replacement. Either it returns with its reason
+  attached ("only two shops publish prices we can read; one covers the whole country and can never
+  pair"), or the Prices section carries it.
+- The now-unused dashboard-cell helper and its `.fig`/`.figs` rules were deleted rather than left for
+  someone to reuse by accident.
+
+Measured: build exit 0, **3,787 numbers checked, 0 unexplained**; 44 comparison rows and 217
+single-shop rows still built; rendered at 1440 px and 375 px, no sideways scroll; the arrows are
+attached to the step they point at so a line break cannot strand one.
+
+## The tally, 18 November - her dress colours on the receipt
+
+The receipt line under the finding was 13 px of grey text: correct, and generic. It is now a printed
+tally — four steps, the figures in **Archivo Black at 40 px**, each with a short rule above it and an
+arrow between, in colours taken from her photograph rather than chosen from taste.
+
+The three colours were sampled with PIL from the portrait and the band crop in this repository, then
+measured. Two are used raw, one is darkened:
+
+| colour | raw sample | used | why |
+|---|---|---|---|
+| navy | `#161A64` (0.9% of the band crop) | `#161A64` | 14.61:1 on the page, no change needed |
+| red | `#9F2519` (8.5% of the portrait) | `#9F2519` | 7.25:1 on the page, no change needed |
+| gold | `#D7A320` (1.1% of the band crop) | `#7A5800` | the raw gold is 2.18:1 as text; the same gold at text strength is 6.19:1 |
+
+The fourth figure is the page's own orange, because it is the finding and should tie to the headline
+rather than to the dress. The arrows carry the colour of the step they lead into, at 17 px — the same
+size class as before, since the instruction was colour, not scale.
+
+**Verified:** the three new pairs are in the build-time contrast list, so they are measured on every
+build rather than assumed — 14.61, 7.25, 6.19, all above 4.5:1. Build exit 0, **3,787 numbers checked,
+0 unexplained**. Rendered at 1440 px (four across, arrows between) and at 375 px, where it becomes a
+2 × 2 grid and the arrows are hidden so none can point at a row that is not there; no sideways scroll.
+
+**Unproven:** nobody has looked at this but me. The dress provenance is a sample from two JPEGs of one
+photograph, so the three colours are representative of the wrapper, not exhaustive of it.
+
+## De-duplication, 18 November - the date said once
+
+The first screen said the same two facts twice inside forty words: the masthead line carried "Prices read
+on 15 November ... collection stopped on 16 November", and the paragraph under the tally repeated both,
+adding "Lagos" a second time. A third paragraph ("The three registration figures are ...") was both
+repetitive and, after the tally replaced the seven boxes, no longer true.
+
+Fixed by giving each fact one home:
+
+- **masthead** carries what the page is, which is said nowhere else: *Three online pharmacies checked
+  against one national register.* The smallest type on the page no longer carries the most important
+  qualifier.
+- **the paragraph** was cut to one sentence at the author's instruction ("leave only collection stopped
+  on 16 November 2026"): *Collection stopped on 16 November 2026.* It no longer says that the newest
+  price is a day older, nor that every figure is stated as at the freeze. What covered that ground
+  elsewhere is still there and now carries it alone: the freshness panel is headed **Age at freeze** and
+  its note reads "every age below is measured to that moment, not to the day you are reading this."
+  The computed "day before" phrasing that briefly stood here was removed with the sentence.
+- **the note** was deleted at the author's instruction ("remove note no one cares"). It defined the
+  figures and carried the 61 rows with no licence number. The 61 is still printed in the registration
+  table, so nothing was lost from the page; it is no longer explained on the first screen.
+
+Still on the page, deliberately: four further mentions of the freeze date, in the frozen-vintage
+sentence, the citation line, the freshness panel and the deep block. Repetition inside one screen is
+noise; the same date at a different depth is signposting for a reader who scrolled.
+
+Verified: build exit 0, **3,787 numbers checked, 0 unexplained** (the count is of facts re-read, not of
+figures printed, so it is unchanged by the removal). Rendered at 1440 px and 375 px, no sideways scroll.
+
+## Pruned to a landing page, 18 November - prices to the produced block removed
+
+At the author's instruction, everything between the page nav and the "How the numbers were produced"
+block was deleted from the front page: the two price tables (44 comparisons, 217 single-shop rows), the
+tribute band, the registration-status section, the data-behind-this-page section, pipeline health, the
+limitations, the sources block and the how-to-check section. **207 lines of the template; the page went
+from 178,059 to 78,124 bytes and from fourteen sections to one.**
+
+The front page is now: the first screen, the word REGISTER across the base, two link cards, the deep
+block, the footer.
+
+Knock-on changes this forced, each made because the deleted section had been carrying something:
+
+- **The nav lost its third card.** "Get the data" pointed at `#data`, an anchor inside the deleted
+  region. The grid is now auto-fit, so the two remaining cards share the row instead of leaving a hole.
+- **The footer gained a Sources line.** The deleted block was the only place carrying the data licence
+  and the #FixMedPrices credit, and that is a licence obligation, not decoration. Without it the page
+  would have been published with no CC-BY-4.0 attribution and no MIT statement. One line now reads
+  HealthPlus / MedPlus / Drugstore.ng, the NAFDAC Greenbook, the #FixMedPrices credit, CC-BY-4.0 and
+  MIT. **This was a breach introduced by the deletion and repaired within the same build.**
+- **The footer's image credit said "three crops of one photograph ... the wide crop in the band".** The
+  band is gone, so it now says two crops.
+
+What is now **not** on the page, and was there this morning: the limitation that this is not the market
+and that coverage is partial (**this breaks the project's own published-limitations rule**), the
+registration-status detail behind the 154, the pipeline health panel, the citation line, and any way to
+download the frozen vintage. The dashboard and methods pages still exist and carry most of it.
+
+Audit behaviour worth knowing: the build still fetches and re-reads the price facts for this page even
+though nothing prints them, so the log still says **3,787 numbers checked, 0 unexplained**. That count
+is of facts re-read, not figures printed, and after this change the two are far apart. The dashboard page
+is where those cells are printed.
+
+Verified: build exit 0; `site/index.html` 78,124 bytes with **0 tables and one h2**; rendered at 1440 px
+(1,759 px tall) and at 375 px, no sideways scroll.
+
+## Footer stripped, 18 November - licence and the person who built it
+
+The footer held five paragraphs and a 220 px thumbnail of her. At the author's instruction it now holds
+three lines and no image:
+
+- **Licence.** the three pharmacies, the NAFDAC Greenbook as the licence source, the #FixMedPrices
+  CC-BY-4.0 credit, this page's data licence (CC-BY-4.0) and its code licence (MIT).
+- **Portrait.** the Wikimedia Commons file, the National Library of Nigeria, CC0 1.0, credited although
+  that licence asks for nothing.
+- **Built by batestguy**, with links to the profile and to the repository, which had no credit line
+  anywhere on the page until now.
+
+Removed: the thumbnail, her name and dates in the footer (kept in the hero caption), the "built from a
+Postgres database by build_site.py" paragraph, the "one file and four local images" claim, the typeface
+note, and the CC0 explainer paragraph.
+
+**Knock-on: the build copied four images and the page used one.** With the footer thumbnail gone, the
+mark, the band crop and the memorial crop were referenced by no page at all — checked across index,
+dashboard, about and the verification desk. The copy list is now the portrait alone, and the three stale
+files were deleted from the build output, so the published directory carries one image instead of four.
+
+Verified: build exit 0, **3,787 numbers checked, 0 unexplained**; `site/index.html` 78,124 bytes; no
+image on the page fails to load; footer renders in three lines at 1440 px and at 375 px with no sideways
+scroll.
+
+## Cards replaced by placeholders, 18 November - two frames reserved for GIFs
+
+The two link cards under the hero were removed. "How this was built" now sits beside "Open the price
+dashboard" inside the deep block, as a second button of the same style — so the dashboard and the methods
+page are one row of two actions rather than two cards and a button.
+
+In the space the cards occupied, **one full-width frame**, 440 px minimum height on a desktop and 240 px
+on a phone, captioned *Placeholder — animation of the dashboard in use*. It is a minimum, not a fixed
+height, so a real 16:9 recording will set its own and nothing has to be re-laid-out. Delete the
+`.placeholder-row` block and the `.ph` rules to remove it; nothing else depends on it.
+
+**Two defects found while doing this, both mine:**
+
+1. **The deep block had been sitting inside the content column since the pruning.** Deleting the sections
+   took the `</div>` that closed the page wrapper with it, so the orange block and everything after it
+   were nested one level too deep. Browsers closed it silently, which is why it looked nearly right.
+   Closed properly; the orange block is now full-bleed as designed, and the open/close counts inside
+   `<main>` balance at 9 and 9.
+2. **The new frames forced 400 px of width on a 375 px screen.** `aspect-ratio:16/10` combined with
+   `min-height:250px` derives a minimum width from the height. Aspect ratio dropped; height alone below
+   760 px. `scrollWidth` is back to 375.
+
+Verified: build exit 0, **3,787 numbers checked, 0 unexplained**; `site/index.html` 78,124 bytes;
+rendered at 1440 px (two frames side by side, two buttons in one row) and at 375 px (frames stacked,
+buttons wrapped), no sideways scroll.
+
+## Methods page rebuilt as a flow, 18 November
+
+`site/about.html` was rewritten from eight prose stages into a **flowchart**: 20 boxes down a centred
+820 px column, alternating deep green and white, joined by dark arrows, over a giant watermark of the
+tool names. Copy cut to noun phrases. The decisions table and the limits list survive, compacted; the
+rebuild steps survive as an ordered list.
+
+- The watermark names only tools that are in the project: Neon Postgres, PostgreSQL, pgvector, pg_trgm,
+  unaccent, SQL, Python, psycopg, fastembed, bge-small-en-v1.5, GitHub Actions, the NAFDAC Greenbook,
+  #FixMedPrices, Hugging Face, Wikimedia Commons, and Streamlit marked "unused". It is `aria-hidden` and
+  carries no meaning.
+- **All 21 recorded figures still print.** The builder verified this by walking the figure dictionary and
+  failing if any value was absent from the generated page.
+- **File paths and script names were removed from the page at the author's instruction** — those belong in
+  the repository, not on a public page. Checked afterwards: zero occurrences of `scripts/`, `.py`,
+  `.venv`, `requirements.txt`, `schema/` in the rendered text.
+- Green boxes are `#1c5c2e` with white text, 8.02:1; white boxes are paper with ink text and a green
+  border. Both were already measured pairs; no new pair was needed.
+
+**Landing page gained a download line** under the placeholder frame: the release, the Hugging Face
+dataset and `data.json`, with the table and row counts taken from the fact dictionary rather than typed.
+
+Verified: build exit 0, **3,787 numbers checked, 0 unexplained**; `site/about.html` 40,261 bytes,
+`site/index.html` 78,699 bytes; 20 boxes and 19 arrows in the DOM; flow centred at 820 px with its left
+edge at 310 px on a 1440 px screen; no sideways scroll at 1440 px.
+
+**Unproven:** axe has not been run on the new methods page; "no violations" rests on the measured colour
+pairs and manual checks only. The builder hit its 40-step cap, so the last edit was rebuilt by the
+secretary rather than by the agent.
+
+
 
 | page | what it is | state |
 |---|---|---|
-| `site/index.html` | the front page, now in the 13 November purple design: headline, her photograph, the seven-figure panel, then prices, comparisons, registration findings, the data, pipeline health, the limitations, the sources | 176,080 bytes, audit 3,787 numbers 0 unexplained, axe 0 |
+| `site/index.html` | the front page, in the 13 November design recoloured orange: headline, her photograph, the seven-figure panel, then prices, comparisons, registration findings, the data, pipeline health, the limitations, the sources | 78,124 bytes, audit 3,787 numbers 0 unexplained, contrast 27 pairs pass; axe re-run outstanding |
 | `site/dashboard.html` | every price, filterable, each row linking to the shop page and the register record | 787,250 bytes, 2,800 rows |
 | `site/about.html` | **how this was built** — eight stages, the decisions and their costs, the limits, how to reproduce | 19,371 bytes, 11 figures re-checked per build |
 | `site/verify/` | the verification desk — a working tool, not published | built |

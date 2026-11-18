@@ -156,7 +156,7 @@ PORTRAIT_FILE = "dora-portrait.jpg"
 BAND_FILE = "dora-band.jpg"
 MARK_FILE = "dora-mark.jpg"
 MONUMENT_FILE = "dora-monument.jpg"
-IMAGE_FILES = (PORTRAIT_FILE, BAND_FILE, MARK_FILE, MONUMENT_FILE)
+IMAGE_FILES = (PORTRAIT_FILE,)
 ASSET_SRC = Path("docs/assets/dora")
 
 CREDIT_PORTRAIT = {
@@ -185,7 +185,7 @@ CREDIT_MONUMENT = {
 IMAGE_BUDGET_BYTES = 400 * 1024
 
 # ---- the typefaces -------------------------------------------------------------------------------
-# The purple study embedded five faces. Two of them - Instrument Serif, regular and italic - are
+# The 13 November study embedded five faces. Two of them - Instrument Serif, regular and italic - are
 # never applied by the study's own CSS, so they are not carried over. The two that are applied are
 # kept: the display face, Archivo Black, and the text face, Inter. Both are SIL Open Font License
 # 1.1, which permits embedding and redistribution, and both are embedded here as data URIs so the
@@ -228,11 +228,12 @@ FONT_CSS = (
 REGISTER_WORD_PATH = "M111.7 -54.2 140.5 0.0H93.9L70.9 -47.2H55.5V0.0H13.9V-129.4H93.1Q107.0 -129.4 116.9 -124.1Q126.8 -118.7 131.8 -109.6Q136.8 -100.5 136.8 -89.7Q136.8 -77.9 130.4 -68.3Q124.0 -58.7 111.7 -54.2ZM82.8 -99.9H55.5V-76.0H82.8Q87.7 -76.0 91.0 -79.5Q94.4 -83.0 94.4 -88.0Q94.4 -93.1 91.0 -96.5Q87.7 -99.9 82.8 -99.9Z M150.9 -129.4H262.8V-98.4H192.4V-80.5H252.6V-50.8H192.4V-31.0H264.1V0.0H150.9Z M408.2 -82.6H368.5Q368.5 -90.7 361.4 -95.7Q354.2 -100.6 344.1 -100.6Q329.4 -100.6 321.9 -92.8Q314.3 -85.0 314.3 -70.7V-58.7Q314.3 -44.4 321.9 -36.6Q329.4 -28.8 344.1 -28.8Q354.2 -28.8 361.4 -33.6Q368.5 -38.4 368.5 -45.9H339.2V-72.2H408.2V0.0H386.8L382.6 -12.8Q364.9 2.3 336.3 2.3Q304.2 2.3 288.0 -14.6Q271.8 -31.4 271.8 -64.7Q271.8 -97.6 290.2 -114.7Q308.5 -131.7 342.4 -131.7Q361.0 -131.7 375.8 -126.0Q390.7 -120.4 399.5 -109.4Q408.2 -98.4 408.2 -82.6Z M426.4 0.0V-129.4H468.0V0.0Z M599.9 -91.8V-89.5H560.9V-90.3Q560.9 -95.9 556.8 -99.7Q552.7 -103.5 544.2 -103.5Q535.9 -103.5 531.5 -101.0Q527.1 -98.6 527.1 -95.0Q527.1 -89.9 533.1 -87.5Q539.1 -85.0 552.5 -82.4Q568.1 -79.2 578.2 -75.7Q588.2 -72.2 595.7 -64.3Q603.3 -56.4 603.5 -42.9Q603.5 -19.9 587.9 -8.8Q572.4 2.3 546.5 2.3Q516.2 2.3 499.3 -7.9Q482.5 -18.1 482.5 -43.8H521.8Q521.8 -34.0 526.9 -30.8Q532.0 -27.5 542.7 -27.5Q550.6 -27.5 555.8 -29.2Q560.9 -30.9 560.9 -36.1Q560.9 -40.8 555.2 -43.2Q549.5 -45.5 536.5 -48.2Q520.7 -51.5 510.3 -55.2Q500.0 -58.9 492.3 -67.3Q484.6 -75.8 484.6 -90.3Q484.6 -111.6 501.0 -121.6Q517.5 -131.7 542.7 -131.7Q567.5 -131.7 583.5 -121.6Q599.5 -111.6 599.9 -91.8Z M689.2 -96.3V0.0H647.7V-96.3H605.2V-129.4H731.6V-96.3Z M741.2 -129.4H853.1V-98.4H782.7V-80.5H842.9V-50.8H782.7V-31.0H854.4V0.0H741.2Z M965.4 -54.2 994.2 0.0H947.5L924.6 -47.2H909.1V0.0H867.6V-129.4H946.8Q960.7 -129.4 970.6 -124.1Q980.4 -118.7 985.4 -109.6Q990.4 -100.5 990.4 -89.7Q990.4 -77.9 984.0 -68.3Q977.6 -58.7 965.4 -54.2ZM936.4 -99.9H909.1V-76.0H936.4Q941.3 -76.0 944.7 -79.5Q948.1 -83.0 948.1 -88.0Q948.1 -93.1 944.7 -96.5Q941.3 -99.9 936.4 -99.9Z"
 
 # ---- two palettes, one page each ------------------------------------------------------------------
-# The front page uses the purple palette of the design study committed on 13 November
-# (docs/mockups/v1/index.html): deep purple on lavender whites, her photograph as a watermark, the
-# word REGISTER set enormous across the base. The methods page keeps the cream palette it was built
-# with, because only the front page's design was changed. Nothing here is red next to green: the
-# price page must never colour a price.
+# The front page uses the palette of the design study committed on 13 November
+# (docs/mockups/v1/index.html): a deep accent on warm whites, her photograph as a watermark, the
+# word REGISTER set enormous across the base. The study's palette was violet; it was moved to orange on
+# 18 November at the author's instruction, and the papers warmed with it. The methods page keeps the
+# cream palette it was built with, because only the front page's design was changed. Nothing here is
+# red next to green: the price page must never colour a price.
 
 # The cream palette, used by about.html only. Unchanged: two tints and one accent, taken from the one
 # photograph rather than from taste. The two tints are the deep plum of the shadow behind her headwrap
@@ -250,26 +251,51 @@ CREAM_WARN_BG = "#fdf1e3"
 CREAM_BAND_BG = "#2a1a20"
 CREAM_BAND_TEXT = "#f7f0e6"
 CREAM_BAND_ACCENT = "#e2b25c"
+# The methods page reads as a flow chart, and its step boxes alternate green and white. The green is
+# the same one the front page's "active" tag already uses (#1c5c2e), so the two pages cannot disagree
+# about what green means; white on it measures 8.02:1, measured below with every other pair. The white
+# is a true white rather than the page's paper, so a white box reads as a box and not as a gap.
+CREAM_GREEN = "#1c5c2e"
+CREAM_WHITE = "#ffffff"
 
-# The purple palette, used by index.html. The six colours are the study's own, read off its CSS.
-PURPLE = "#4A1E80"
-PURPLE_DEEP = "#2A0F45"
-PURPLE_SOFT = "#7A4FB0"
-INK = "#120C19"
-PAPER = "#F8F5FA"
-RULE = "#D9D0E4"
-MUTED = "#5B5270"
-TINT = "#F4EFFA"        # the study's cream: a lavender tint, used for the deep band's body text
-PANEL = "#EFEAF5"       # a flat lavender panel, one step down from the page
-NOT_ACTIVE = "#7B1F4B"  # the study's "not active": a deep rose, and never red next to green
+# The orange palette, used by index.html. The hues are the study's own, moved from violet to orange at
+# the author's instruction on 18 November ("make every purple orange, thick bleeding orange"). The
+# relative lightness steps are kept, so the pairs measured below keep the ratios they were measured at:
+# the accent is dark enough for white to sit on it (5.93:1) and light enough to be read on the page
+# (5.64:1). The papers warm with the accent, because orange ink on a lavender sheet reads as two
+# colours fighting rather than one page.
+ORANGE = "#B23C00"        # headings, links, rules, and the plate behind white text
+ORANGE_DEEP = "#8F3300"   # the deep band, and the button's own label inside it
+ORANGE_SOFT = "#E2611F"   # DECLARATION ONLY, never set as text: 3.35:1 on the page, below the floor
+INK = "#1C1108"
+PAPER = "#FFF8F2"
+RULE = "#EAD6C6"
+MUTED = "#6B5343"
+TINT = "#FEF2E8"        # the tribute band's ground, one step off the page
+PANEL = "#FDEFE4"       # a flat warm panel, one step down from the page
+NOT_ACTIVE = "#4A2C1A"  # a dark chocolate, chosen so a status tag cannot be read as an orange link
+BAND_TEXT = "#F6D9C0"   # body text inside the deep band
+BAND_PLATE = "#F7C6A3"  # the dashboard button's plate, and the links in the deep band
+BAND_PLATE_HOVER = "#FBDCC4"
+BAND_TAG = "#FBEDE2"         # the licence tags inside the deep band
+BAND_TAG_RULE = "#DDA07C"    # their border: 3.3:1 on the band, above the 3:1 floor for a border
+
+# Three colours read off her photograph, not chosen from taste: the navy and the red of her wrapper and
+# the gold of its print, sampled with PIL from the portrait in this repository and darkened only where a
+# colour could not be read as text on the page. The pale, raw values are in the comment beside each.
+DRESS_NAVY = "#161A64"   # raw #161A64, unchanged - 14.61:1 on the page
+DRESS_RED = "#9F2519"    # raw #9F2519, unchanged - 7.25:1 on the page
+DRESS_GOLD = "#7A5800"   # raw #D7A320 was 2.18:1 as text; this is the same gold at text strength - 6.19:1
 
 CREAM_PALETTE_CSS = f""":root{{--ink:{CREAM_INK};--muted:{CREAM_MUTED};--line:{CREAM_LINE};--bg:{CREAM_PAPER};
 --panel:{CREAM_PANEL};--accent:{CREAM_ACCENT};--warn:{CREAM_WARN};--warn-bg:{CREAM_WARN_BG};
 --band:{CREAM_BAND_BG};--band-ink:{CREAM_BAND_TEXT};--band-accent:{CREAM_BAND_ACCENT}}}"""
 
-PALETTE_CSS = f""":root{{--purple:{PURPLE};--purple-deep:{PURPLE_DEEP};--purple-soft:{PURPLE_SOFT};
+PALETTE_CSS = f""":root{{--orange:{ORANGE};--orange-deep:{ORANGE_DEEP};--orange-soft:{ORANGE_SOFT};
 --ink:{INK};--bg:{PAPER};--rule:{RULE};--muted:{MUTED};--tint:{TINT};--panel:{PANEL};
---not-active:{NOT_ACTIVE}}}"""
+--not-active:{NOT_ACTIVE};--band-text:{BAND_TEXT};--band-plate:{BAND_PLATE};
+--band-plate-hover:{BAND_PLATE_HOVER};--band-tag:{BAND_TAG};--band-tag-rule:{BAND_TAG_RULE};
+--dress-navy:{DRESS_NAVY};--dress-red:{DRESS_RED};--dress-gold:{DRESS_GOLD}}}"""
 
 # Every text-on-surface pair the page actually uses, with the ratio WCAG 2.2 AA asks for (4.5:1 for
 # body text). Measured at build time and printed; a pair below the floor fails the build.
@@ -289,25 +315,35 @@ CONTRAST_PAIRS: list[tuple[str, str, str]] = [
     ("about: links on the page", CREAM_ACCENT, CREAM_PAPER),
     ("about: links on a panel", CREAM_ACCENT, CREAM_PANEL),
     ("about: a warning on its own panel", CREAM_WARN, CREAM_WARN_BG),
-    # index.html, purple palette
+    # about.html, the flow chart's alternating step boxes
+    ("about: step text on a green step", CREAM_WHITE, CREAM_GREEN),
+    ("about: step text on a white step", CREAM_INK, CREAM_WHITE),
+    ("about: secondary text on a white step", CREAM_MUTED, CREAM_WHITE),
+    ("about: a tool name on a white step", CREAM_ACCENT, CREAM_WHITE),
+    # index.html, orange palette
     ("front: body text on the page", INK, PAPER),
     ("front: secondary text on the page", MUTED, PAPER),
     ("front: secondary text on a panel", MUTED, PANEL),
     ("front: body text on a panel", INK, PANEL),
-    ("front: headings and links on the page", PURPLE, PAPER),
-    ("front: headings and links on a panel", PURPLE, PANEL),
-    ("front: headings and links on a tint", PURPLE, TINT),
+    ("front: headings and links on the page", ORANGE, PAPER),
+    ("front: headings and links on a panel", ORANGE, PANEL),
+    ("front: headings and links on a tint", ORANGE, TINT),
     ("front: a photograph caption", MUTED, PAPER),
     ("front: a photograph caption on a tint", MUTED, TINT),
     ("front: 'not active' on the page", NOT_ACTIVE, PAPER),
     ("front: 'not active' on a panel", NOT_ACTIVE, PANEL),
     ("front: 'active' on the page", "#1c5c2e", PAPER),
     ("front: 'not read' on the page", MUTED, PAPER),
-    ("front: band body text on the deep band", "#C3B7D2", PURPLE_DEEP),
-    ("front: band heading on the deep band", "#FFFFFF", PURPLE_DEEP),
-    ("front: band tag on the deep band", "#E6DDF2", PURPLE_DEEP),
-    ("front: button text on its lavender plate", PURPLE_DEEP, "#C6AEDF"),
-    ("front: white on purple", "#FFFFFF", PURPLE),
+    ("front: band body text on the deep band", BAND_TEXT, ORANGE_DEEP),
+    ("front: band heading on the deep band", "#FFFFFF", ORANGE_DEEP),
+    ("front: band tag on the deep band", BAND_TAG, ORANGE_DEEP),
+    ("front: button text on its warm plate", ORANGE_DEEP, BAND_PLATE),
+    ("front: the button's plate, hovered", ORANGE_DEEP, BAND_PLATE_HOVER),
+    ("front: white on orange", "#FFFFFF", ORANGE),
+    # the three figures carried by her dress colours, which are text and are therefore measured
+    ("front: step figure one on the page", DRESS_NAVY, PAPER),
+    ("front: step figure two on the page", DRESS_RED, PAPER),
+    ("front: step figure three on the page", DRESS_GOLD, PAPER),
 ]
 
 # The one pair on the page that is deliberately below the floor: the enormous word REGISTER across the
@@ -315,10 +351,14 @@ CONTRAST_PAIRS: list[tuple[str, str, str]] = [
 # reader needs, and no number or claim depends on it. It is measured anyway and printed, because a
 # value that is not measured is a value nobody can argue with.
 #
-# The word is drawn in purple at 22% opacity over the paper, so the colour a reader's eye gets is the
-# blend of the two, not the purple. It is the blend that is measured here.
+# The word is drawn in the accent at 22% opacity over the paper, so the colour a reader's eye gets is
+# the blend of the two, not the accent. It is the blend that is measured here.
 DECORATIVE_PAIRS: list[tuple[str, str, str, float]] = [
-    ("the REGISTER watermark on the page", PURPLE, PAPER, 0.22),
+    ("the REGISTER watermark on the page", ORANGE, PAPER, 0.22),
+    # The methods page's own watermark: the tools that did the work, set enormous behind the flow.
+    # It is painted as CSS generated content, so there is no text node for a contrast checker to
+    # measure and nothing in the accessibility tree to announce. Measured anyway, and printed.
+    ("the tool watermark on the methods page", CREAM_ACCENT, CREAM_PAPER, 0.12),
 ]
 
 
@@ -804,9 +844,27 @@ CONSUMED = {"breakdown", "ledger"}
 
 
 # --------------------------------------------------------------------------- the page
-# Two stylesheets, one page each. The cream sheet is the methods page, unchanged. The purple sheet is
+# Two stylesheets, one page each. The cream sheet is the methods page, unchanged. The orange sheet is
 # the front page, ported from the design study committed on 13 November.
-CSS_CREAM = CREAM_PALETTE_CSS + """
+# The tools that did the work, for the watermark behind the methods page's flow. Only tools that are
+# actually in this project: the register, the database, its three extensions, the language and driver,
+# the two models, the scheduler, the seed catalogue, the two places the frozen export is published,
+# the source of her photograph, and the app that was built and never deployed - which is why the word
+# beside it is "unused" rather than a claim that it runs.
+CREAM_TOOLS = (
+    "Neon Postgres \u00b7 PostgreSQL \u00b7 pgvector \u00b7 pg_trgm \u00b7 unaccent \u00b7 SQL \u00b7 "
+    "Python \u00b7 psycopg \u00b7 fastembed \u00b7 bge-small-en-v1.5 \u00b7 GitHub Actions \u00b7 "
+    "NAFDAC Greenbook \u00b7 #FixMedPrices \u00b7 Hugging Face \u00b7 Wikimedia Commons \u00b7 "
+    "Streamlit (unused) \u00b7 "
+)
+
+# The cream sheet carries the display face it uses for the flow's headings and its watermark. The bytes
+# are the same embedded Archivo Black the front page uses, not a second copy of the font: only the
+# @font-face rule is repeated here, because a stylesheet cannot borrow another stylesheet's rules.
+CSS_CREAM = CREAM_PALETTE_CSS + (
+    '@font-face{font-family:"Archivo Black";src:url(' + FONT_ARCHIVO_BLACK + ') '
+    'format("woff2");font-weight:400;font-style:normal;font-display:swap}'
+) + """
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);
@@ -928,15 +986,63 @@ margin:1rem 0;border-radius:0 4px 4px 0}
  .masthead{gap:.7rem}
  .masthead-mark{width:4.6rem;flex-basis:4.6rem}
 }
-"""
+/* ---- the flow ---------------------------------------------------------------------------------
+   The page is one flow chart: a green box, a white box, green, white, down a dark arrow, in the order
+   the work happened. Each box is still a step with its own <h2>, so the page is navigable by heading;
+   the arrow between two boxes is decoration and is hidden from assistive technology. Every word in a
+   box sits on a flat fill, green or white, so its contrast is a measured pair (see CONTRAST_PAIRS)
+   rather than a hope. The arrows take the page's ink, so they are dark in both kinds of gap. */
+.wrap{position:relative}
+.wrap>header,.wrap>main,.wrap>footer{position:relative;z-index:1}
+.flow{position:relative;z-index:1;margin:1rem auto 2rem;max-width:820px}
+.step{position:relative;border-radius:8px;padding:.9rem 1.05rem 1rem;overflow-wrap:break-word}
+.step.green{background:#1c5c2e;color:#fff;border:2px solid #1c5c2e}
+.step.white{background:#fff;color:var(--ink);border:2px solid #1c5c2e}
+.step h2{font-family:"Archivo Black",Impact,sans-serif;font-weight:400;font-size:1.08rem;
+ line-height:1.25;letter-spacing:-.01em;border:0;padding:0;margin:0 0 .45rem;color:inherit}
+.step h2 .n{display:block;font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;
+ font-family:inherit;margin:0 0 .2rem}
+.step ul{margin:.2rem 0 0;padding-left:1.05rem}
+.step ol{margin:.2rem 0 0;padding-left:1.15rem}
+.step .tablewrap{margin:.2rem 0 .1rem}
+.step li{margin:.3rem 0;max-width:64ch}
+.step p{margin:.45rem 0 0;max-width:64ch}
+.step .tool{font-weight:700}
+.step.white .tool{color:var(--accent)}
+.step .fig{font-weight:700;font-variant-numeric:tabular-nums}
+.step .sub{color:inherit}
+.step.white .sub{color:var(--muted)}
+.step code{font-size:.9em;overflow-wrap:anywhere}
+.arrow{position:relative;height:1.75rem}
+.arrow::before{content:"";position:absolute;left:50%;margin-left:-1.5px;top:0;bottom:.55rem;width:3px;
+ background:var(--ink)}
+.arrow::after{content:"";position:absolute;left:50%;bottom:0;margin-left:-7px;
+ border-left:7px solid transparent;border-right:7px solid transparent;border-top:9px solid var(--ink)}
+/* The watermark: the tools that did the work, set enormous and faint behind the flow, in the page's
+   own display face. It is painted as generated content and not as a text node - the accessibility
+   tree holds nothing to announce, and a checker has no node to measure - and the layer clips it, so
+   it can never widen the page at a narrow width. Its paint is measured anyway (DECORATIVE_PAIRS). */
+.wm{position:absolute;inset:0;overflow:hidden;pointer-events:none;user-select:none;z-index:0}
+.wm::before{display:block;font-family:"Archivo Black",Impact,sans-serif;font-weight:400;
+ font-size:clamp(2.4rem,12.5vw,6.5rem);line-height:.88;letter-spacing:-.035em;
+ color:var(--accent);opacity:.12;padding:.2rem .4rem;overflow-wrap:anywhere}
+@media (max-width:420px){
+ .step{padding:.8rem .8rem .9rem}
+ .step h2{font-size:1rem}
+}
+""" + (
+    # The words themselves, repeated so the layer covers a page this tall at any width. Written once
+    # in CREAM_TOOLS above, so a tool named there cannot go missing from the watermark.
+    '.wm::before{content:"' + " ".join([CREAM_TOOLS] * 6) + '"}'
+)
 
 
-# The front page's stylesheet: the purple design study of 13 November, ported.
+# The front page's stylesheet: the design study of 13 November, ported and recoloured orange.
 #
 # WHAT THE STUDY DID AND WHAT IS KEPT. The slim masthead with the wordmark and the Nigeria outline;
 # the display headline on flat paper on the left with her photograph fading in from the right; the
 # word REGISTER set enormous and faint across the base; a panel of figures under the headline; the
-# deep-purple block at the foot; the tables with the medicine, shop, price and registration status on
+# deep block at the foot; the tables with the medicine, shop, price and registration status on
 # one row. What is added is everything the study did not have: the frozen-snapshot stamp, the price
 # tables with their stock and licence tags, the registration findings, pipeline health, the limits and
 # the sources.
@@ -946,14 +1052,14 @@ margin:1rem 0;border-radius:0 4px 4px 0}
 # column where the headline and the figures stand, and it carries no text of its own. The caption
 # under it stands on the paper below it. The REGISTER word is decoration, is hidden from assistive
 # technology, and is measured and printed anyway (see DECORATIVE_PAIRS).
-CSS_PURPLE = PALETTE_CSS + """
+CSS_ORANGE = PALETTE_CSS + """
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);
  font:1rem/1.55 "Inter",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
 .wrap{max-width:1240px;margin:0 auto;padding:0 24px}
-a{color:var(--purple);text-underline-offset:3px}
-a:focus-visible,:focus-visible{outline:3px solid var(--purple);outline-offset:2px}
+a{color:var(--orange);text-underline-offset:3px}
+a:focus-visible,:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
 .skip{position:absolute;left:-9999px;top:0;background:var(--bg);padding:.6rem 1rem;z-index:10}
 .skip:focus{left:.5rem;top:.5rem;border:2px solid var(--ink)}
 h1,h2,h3{font-family:"Archivo Black",Impact,sans-serif;font-weight:400;margin:0;letter-spacing:-.025em}
@@ -963,29 +1069,52 @@ strong{font-weight:600}
 code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em}
 
 /* ---- the masthead: wordmark, one line of place and date, the outline of the country ---------- */
-.top{background:var(--bg);border-bottom:2px solid var(--purple)}
+.top{background:var(--bg);border-bottom:2px solid var(--orange)}
 .top .wrap{display:flex;align-items:flex-start;justify-content:space-between;gap:32px;
  padding-top:20px;padding-bottom:18px}
 .brand{font-family:"Archivo Black",Impact,sans-serif;font-size:26px;letter-spacing:-.03em;line-height:1;
- color:var(--purple)}
+ color:var(--orange)}
 .brand b{font-weight:400;color:var(--ink)}
 .tagline{font-size:14px;color:var(--muted);max-width:52ch;margin-top:8px;line-height:1.45}
-.map{width:58px;height:auto;fill:var(--purple);flex:0 0 auto}
+.map{width:58px;height:auto;fill:var(--orange);flex:0 0 auto}
 
 /* ---- the hero: headline and figures on the left, her photograph fading in on the right -------- */
 .hero{position:relative;overflow:hidden;background:var(--bg);border-bottom:1px solid var(--rule)}
 .hero-grid{display:grid;grid-template-columns:minmax(0,1fr);padding:44px 24px 0;
  padding-left:max(24px,calc((100% - 1240px)/2));padding-right:24px}
-.hero h1{font-size:clamp(34px,4.4vw,62px);line-height:.95;color:var(--purple);max-width:16ch}
-.hero h1 span{color:var(--ink)}
+.hero h1{font-size:clamp(34px,4.4vw,62px);line-height:.95;color:var(--orange);max-width:16ch}
+/* The second half of the old headline, set as a paragraph on its own line: the same display face, the
+   same black it had inside the headline, and the same size as the headline itself, so the split changes
+   the line break and the colour, not the weight of the sentence. Ink on paper, 17.62:1. */
+.hero .deck{font-family:"Archivo Black",Impact,sans-serif;font-size:clamp(34px,4.4vw,62px);
+ line-height:.95;letter-spacing:-.025em;color:var(--ink);margin:8px 0 0;max-width:18ch}
 .stamp{font-size:14px;color:var(--muted);margin:18px 0 0;max-width:54ch;line-height:1.5}
-.figs{display:flex;margin-top:30px;border-top:2px solid var(--purple);max-width:700px}
-.fig{flex:1 1 0;min-width:0;padding:13px 14px 6px 0;border-bottom:1px solid var(--rule)}
-.fig + .fig{border-left:1px solid var(--rule);padding-left:14px}
-.fig .n{font-family:"Archivo Black",Impact,sans-serif;font-size:30px;line-height:1;color:var(--purple);
- letter-spacing:-.03em}
-.fig .l{font-size:11.5px;color:var(--muted);margin-top:7px;line-height:1.3}
-.figs.two{margin-top:16px;border-top:1px solid var(--rule)}
+/* ---- the finding: one figure carries the claim, the line beneath is the receipt ------------------ */
+.finding{margin:38px 0 0;max-width:56ch}
+.finding .n{font-family:"Archivo Black",Impact,sans-serif;font-size:clamp(40px,4.2vw,56px);
+ line-height:.86;letter-spacing:-.045em;color:var(--orange);margin:0}
+.finding .k{font-size:17px;line-height:1.5;color:var(--ink);margin:12px 0 0;max-width:44ch}
+.finding .k strong{font-weight:700;color:var(--orange)}
+/* The receipt: four steps, the figures in her dress colours, in the order the work happened. The arrow
+   takes the colour of the step it leads into, at the same small size: it is punctuation, not a figure. */
+.finding .chain{margin:24px 0 0;border-top:2px solid var(--orange);padding-top:14px;
+ display:flex;flex-wrap:wrap;align-items:flex-start;gap:0 14px;max-width:66ch}
+.finding .st{display:flex;flex-direction:column;gap:6px;--c:var(--ink);min-width:6rem}
+.finding .st::before{content:"";display:block;width:20px;height:3px;background:var(--c);margin-bottom:4px}
+.finding .st.d1{--c:var(--dress-navy)}
+.finding .st.d2{--c:var(--dress-red)}
+.finding .st.d3{--c:var(--dress-gold)}
+.finding .st.d4{--c:var(--orange)}
+.finding .st b{font-family:"Archivo Black",Impact,sans-serif;font-size:clamp(25px,2.9vw,40px);
+ line-height:1;letter-spacing:-.04em;color:var(--c)}
+.finding .st i{font-style:normal;font-size:10px;letter-spacing:.07em;text-transform:uppercase;
+ color:var(--muted);line-height:1.4;max-width:12ch;min-height:2.8em}
+.finding .arw{font-size:17px;line-height:1;padding-top:23px;color:var(--rule)}
+.finding .arw.d2{color:var(--dress-red)}
+.finding .arw.d3{color:var(--dress-gold)}
+.finding .arw.d4{color:var(--orange)}
+.finding .rest{font-size:12.5px;line-height:1.6;color:var(--muted);margin:10px 0 0;max-width:52ch}
+.finding .rest b{font-weight:700;color:var(--ink)}
 
 /* The photograph. It is a watermark: masked so the whole left column stands on flat paper, and it
    carries no text. The caption under it stands on the paper below the image, never on the image. */
@@ -1001,26 +1130,35 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:
    measured and printed by the build. */
 .hero-base{position:relative;height:104px;overflow:hidden;margin-top:30px}
 .bleedword{position:absolute;left:-2vw;top:0;width:calc(clamp(110px,18vw,270px)*5.316);
- height:auto;fill:var(--purple);opacity:.22;pointer-events:none;user-select:none}
+ height:auto;fill:var(--orange);opacity:.22;pointer-events:none;user-select:none}
 
 /* ---- the three doors to the rest of the site -------------------------------------------------- */
-.pagenav{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin:1.4rem 0 .4rem}
-.pagenav a{display:block;border:2px solid var(--rule);border-radius:6px;padding:.7rem .8rem;
- background:var(--panel);text-decoration:none;color:var(--ink)}
-.pagenav a:hover,.pagenav a:focus{border-color:var(--purple)}
-.pagenav strong{display:block;color:var(--purple)}
-.pagenav span{display:block;font-size:.92rem;color:var(--muted);margin-top:.15rem}
+/* Reserved space for one recording: the dashboard in use. One frame, full content width and tall enough
+   that a screen recording of a real session can sit in it without being shrunk to illegibility. Dashed so
+   it cannot be mistaken for a finished element. */
+.placeholder-row{display:block;margin:2.2rem 0 0}
+.ph{min-height:440px;border:2px dashed var(--rule);border-radius:6px;
+ background:var(--tint);display:flex;align-items:center;justify-content:center;padding:1.2rem;
+ text-align:center}
+.ph span{font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);
+ line-height:1.5;max-width:24ch}
+.dashrow{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+.dashrow .dash{margin-top:0}
+.dl{font-size:13.5px;line-height:1.7;color:var(--muted);margin:14px 0 0}
+.dl strong{color:var(--ink)}
+.dl .fig{font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+@media (max-width:760px){.ph{min-height:240px}}
 
 /* ---- sections -------------------------------------------------------------------------------- */
 section.body{padding:40px 0 0}
 .h2row{display:flex;align-items:end;justify-content:space-between;gap:24px;
- border-bottom:2px solid var(--purple);padding-bottom:10px}
-h2{font-size:clamp(22px,2.4vw,30px);line-height:1.02;color:var(--purple);max-width:26ch}
-h3{font-size:clamp(18px,1.8vw,22px);line-height:1.1;color:var(--purple);margin-top:2.2rem}
+ border-bottom:2px solid var(--orange);padding-bottom:10px}
+h2{font-size:clamp(22px,2.4vw,30px);line-height:1.02;color:var(--orange);max-width:26ch}
+h3{font-size:clamp(18px,1.8vw,22px);line-height:1.1;color:var(--orange);margin-top:2.2rem}
 .sub{font-size:15px;color:var(--muted);margin:12px 0 0;max-width:64ch}
-.fact{background:var(--panel);border-left:4px solid var(--purple);padding:.8rem .9rem;margin:1rem 0;
+.fact{background:var(--panel);border-left:4px solid var(--orange);padding:.8rem .9rem;margin:1rem 0;
  border-radius:0 4px 4px 0}
-.banner{background:var(--panel);border:2px solid var(--purple-deep);color:var(--ink);
+.banner{background:var(--panel);border:2px solid var(--orange-deep);color:var(--ink);
  padding:.8rem .95rem;margin:1rem 0;border-radius:4px}
 
 /* ---- tables ---------------------------------------------------------------------------------- */
@@ -1055,29 +1193,29 @@ ol.limits li{margin:.75rem 0}
  border:1px solid var(--rule)}
 .band-text h2{font-size:clamp(20px,2vw,26px)}
 .band-text p{font-size:15px;color:var(--muted);margin:.6rem 0 0;max-width:46ch}
-.band-text a{color:var(--purple)}
+.band-text a{color:var(--orange)}
 
 /* ---- the deep block: how the numbers were produced -------------------------------------------- */
-.built{background:var(--purple-deep);color:var(--tint);margin-top:3rem}
+.built{background:var(--orange-deep);color:var(--tint);margin-top:3rem}
 .built .wrap{display:grid;grid-template-columns:5fr 7fr;gap:40px;padding-top:36px;padding-bottom:40px;
  align-items:start}
 .built h2{color:#fff;font-size:clamp(22px,2.2vw,28px)}
-.built p{font-size:14px;color:#C3B7D2;margin:12px 0 0;max-width:46ch}
-.built a{color:#C6AEDF}
+.built p{font-size:14px;color:var(--band-text);margin:12px 0 0;max-width:46ch}
+.built a{color:var(--band-plate)}
 /* The dashboard button is a link inside the dark block, so the block's link colour painted its label the
-   same violet as its own background: 1:1, invisible. axe reported it as "incomplete" rather than a
+   same colour as its own background: 1:1, invisible. axe reported it as "incomplete" rather than a
    failure, and reading the computed style confirmed axe was right about the ratio. */
-.built a.dash{color:#2A0F45;background:#C6AEDF}
-.built a.dash:hover{background:#DDCCEE}
+.built a.dash{color:var(--orange-deep);background:var(--band-plate)}
+.built a.dash:hover{background:var(--band-plate-hover)}
 .tags{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
-.tags li{font-size:12px;letter-spacing:.08em;text-transform:uppercase;border:1px solid #8A6FB0;
- color:#E6DDF2;padding:7px 10px}
+.tags li{font-size:12px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--band-tag-rule);
+ color:var(--band-tag);padding:7px 10px}
 .dash{display:inline-block;margin-top:20px;font-family:"Archivo Black",Impact,sans-serif;font-size:13px;
- letter-spacing:.02em;color:#2A0F45;background:#C6AEDF;text-decoration:none;padding:11px 16px}
-.dash:hover{background:#DDCCEE}
+ letter-spacing:.02em;color:var(--orange-deep);background:var(--band-plate);text-decoration:none;padding:11px 16px}
+.dash:hover{background:var(--band-plate-hover)}
 
 /* ---- the footer ------------------------------------------------------------------------------- */
-footer{background:var(--bg);border-top:2px solid var(--purple);padding:24px 0 46px;font-size:12.5px;
+footer{background:var(--bg);border-top:2px solid var(--orange);padding:24px 0 46px;font-size:12.5px;
  color:var(--muted)}
 footer .wrap{max-width:1240px;margin:0 auto;padding:0 24px}
 .footer-mark{width:4rem;height:4rem;float:left;margin:0 .8rem .5rem 0;border-radius:3px;
@@ -1113,6 +1251,11 @@ footer .wrap{max-width:1240px;margin:0 auto;padding:0 24px}
 @media (max-width:560px){
   .fig{flex:1 1 50%}
   .fig .n{font-size:24px}
+  /* The tally wraps to two rows, so a trailing arrow would point at nothing: the row order carries the
+     sequence on a narrow screen instead. */
+  .finding .arw{display:none}
+  .finding .chain{gap:14px 22px}
+  .finding .st{min-width:7rem}
   table{font-size:.88rem}
   th,td{padding:.35rem .4rem}
   .num{padding-right:.6rem}
@@ -1136,11 +1279,6 @@ def naira(value: Any) -> str:
     if value is None:
         return '<span class="note">not known</span>'
     return f"\u20a6{value:,.2f}"
-
-
-def figure(number: str, label: str) -> str:
-    """One figure in the panel under the headline: the number, then the words that name it."""
-    return f'<div class="fig"><div class="n">{esc(number)}</div><div class="l">{esc(label)}</div></div>'
 
 
 def link(url: Any, text: str) -> str:
@@ -1330,167 +1468,243 @@ def about_page() -> str:
 <header>
 <p class="subhead"><a href="index.html">&larr; Medicine prices and registration status in Nigeria</a></p>
 <h1>How this was built</h1>
-<p class="lede">NaijaDrugWatch joins NAFDAC drug-registration status to prices published by Nigerian
-pharmacies. It is independent, it costs nothing to run, and neither NAFDAC nor any pharmacy in the data
-endorses it. Code is MIT, data CC-BY-4.0. The register the prices are checked against belongs to the
-agency Dora Akunyili led from 2001 to 2008; her tribute is on the
-<a href="index.html">front page</a>, and this page is about the work.</p>
-<p class="muted">The project is frozen. Collection stopped on 16 November 2026 and the newest price in
-the data was recorded on 15 November 2026. This page records how it was built, what was checked, and
-what those checks cannot establish.</p>
+<p class="lede">NAFDAC status, joined to Nigerian pharmacy prices. Independent, $0 a month, not endorsed by
+NAFDAC or any pharmacy here. Code MIT, data CC-BY-4.0. The register: the agency Dora Akunyili led,
+2001&ndash;2008. Her tribute is on the <a href="index.html">front page</a>.</p>
 </header>
+<div class="wm" aria-hidden="true"></div>
 <main id="main">
+<div class="flow">
 
-<h2 id="register">1. The register came first, and it had no API</h2>
-<p>The NAFDAC Greenbook has no JSON API &mdash; <code>/api/*</code>, <code>/sitemap.xml</code> and
-<code>/search?q=</code> all return 404 &mdash; and no mirror of it exists. It is read as HTML: six
-category pages give each entry's name, form, strength and registration number, and detail pages give
-status and expiry.</p>
-<p>At freeze the register held <strong>{ABOUT["regs"]:,} registrations</strong>, of which
-<strong>{ABOUT["with_status"]:,} ({ABOUT["coverage"]}%)</strong> carried a readable status, because a
-status exists only where a detail page was read. A missing status does not mean a registration is
-Active; it means this project has not read it.</p>
-<p>That site's certificate has expired, so its pages are fetched over plain HTTP and the integrity of
-what is stored rests on checksums kept locally rather than on the connection.</p>
+<div class="step green" id="register">
+<h2><span class="n">01 &middot; register</span> Register first. No API.</h2>
+<ul>
+<li><span class="tool">NAFDAC Greenbook</span>. No API. <code>/api/*</code> &rarr; 404. No mirror.</li>
+<li>HTML. 6 category pages: name, form, strength, number. Detail: status, expiry.</li>
+<li>Frozen: <span class="fig">{ABOUT["regs"]:,}</span> registrations. <span class="fig">{ABOUT["with_status"]:,}</span> readable (<span class="fig">{ABOUT["coverage"]}%</span>).</li>
+<li>Unread &ne; clean. Expired certificates. HTTP only: local checksums.</li>
+</ul>
+</div>
+<div class="arrow" aria-hidden="true"></div>
 
-<h2 id="catalogue">2. The medicine list had to be built, then rebuilt</h2>
-<p>The seed was the #FixMedPrices catalogue, released under CC-BY-4.0: a national commodities list of
-{ABOUT["seed_products"]:,} products, carrying herbal and reproductive-health items and almost none of
-what an ordinary pharmacy shelves.</p>
-<p>A tool was written that turns an unmatched shop title into a product only when the name overlaps, the
-strength agrees and the dosage form is compatible, with the register &mdash; not the shop's wording
-&mdash; as the authority. It added <strong>{ABOUT["added_products"]} products</strong>, taking the
-catalogue to {ABOUT["products"]:,}. At freeze only <strong>{ABOUT["priced"]}</strong> of those carried a
-live price, which is the honest measure of how much of a catalogue is real.</p>
+<div class="step white" id="catalogue">
+<h2><span class="n">02 &middot; seed</span> Seed list. Borrowed.</h2>
+<ul>
+<li><span class="tool">#FixMedPrices</span>, CC-BY-4.0. <span class="fig">{ABOUT["seed_products"]:,}</span> products.</li>
+<li>Herbal. Reproductive health. Almost none of what a pharmacy shelves.</li>
+</ul>
+</div>
+<div class="arrow" aria-hidden="true"></div>
 
-<h2 id="scraping">3. Scraping: API first, and polite</h2>
-<p>Each pharmacy is read through its product API where one exists and through HTML where none does. One
-request every two seconds per host, a User-Agent naming the project, product and price fields only &mdash;
-no reviews, no personal data.</p>
-<p>The largest gain came from finding the right route. MedPlus's category pages returned the same twenty
-links on every page; its drugs route paginates properly, twenty per page, page 70 holding 16 and page 71
-empty. That took one shop from <strong>128 products collected to 1,396</strong>, and the nightly run from
-about 1&nbsp;h&nbsp;50&nbsp;m to about 2&nbsp;h&nbsp;50&nbsp;m.</p>
-<p>A refusal counts as failure, not partial success: a 403 or 429 stops the run and records a failed row.
-A night also fails when more than 10% of its pages fail or when a full sweep returns under 1,000 records.
-Those two thresholds are judgements, not measurements, and the code says so.</p>
+<div class="step green">
+<h2><span class="n">03 &middot; catalogue</span> Rebuild. Register is judge.</h2>
+<ul>
+<li>Linker tool. Rules: name overlaps, strength agrees, form compatible.</li>
+<li>Authority: the <span class="tool">register</span>. Not the shop's wording.</li>
+<li>+<span class="fig">{ABOUT["added_products"]}</span> products &rarr; <span class="fig">{ABOUT["products"]:,}</span>.</li>
+<li>Priced at freeze: <span class="fig">{ABOUT["priced"]}</span>. A catalogue is not a shop shelf.</li>
+</ul>
+</div>
+<div class="arrow" aria-hidden="true"></div>
 
-<h2 id="matching">4. Matching is two-stage and deterministic</h2>
-<p>A shop's title is never attached to a medicine on similarity alone. The title is embedded, the ten
-nearest products become candidates, and a deterministic rule then decides on strength, dosage form and
-active ingredient. Similarity alone was rejected because a close title can describe a different
-medicine.</p>
-<p>At freeze <strong>{ABOUT["attached"]:,} of {ABOUT["listings"]:,}</strong> listings were attached and
-<strong>{ABOUT["unattached"]:,}</strong> were not. A strength guard added late stopped a listing
-attaching to a medicine of a different strength: it cleared <strong>{ABOUT["cleared_links"]} wrong
-links across 22 products</strong> and left no contradictions under the strict check, at the cost of
-{ABOUT["lost_links"]} matched listings. One of those was a known false refusal &mdash; Augmentin 1&nbsp;g
-against an 875&nbsp;mg+125&nbsp;mg product, where 1,000&nbsp;mg is the sum of the parts.</p>
+<div class="step white" id="scraping">
+<h2><span class="n">04 &middot; scrape</span> Scrape. API first.</h2>
+<ul>
+<li>API first: <span class="tool">WooCommerce Store API</span>, <span class="tool">Shopify /products.json</span>.</li>
+<li>No API? HTML.</li>
+<li>Polite: 2 s per host. <span class="tool">Python</span>, <span class="tool">psycopg</span>. Named User-Agent.</li>
+<li>Product and price fields only.</li>
+</ul>
+</div>
+<div class="arrow" aria-hidden="true"></div>
 
-<h2 id="views">5. The answers are views, not prose</h2>
-<p>Every figure the page prints comes from SQL: the latest price per listing, the cheapest price per
-product and state, the two-shop comparisons, the listings whose registration is not Active or has
-expired, the seven-day price change, and a daily index the pipeline refreshes rather than a person.</p>
-<p>At freeze that was {ABOUT["listings"]:,} listings, {ABOUT["attached"]:,} attached,
-{ABOUT["cells"]} cheapest-price cells of which <strong>{ABOUT["comparisons"]} are genuine two-shop
-comparisons</strong>, {ABOUT["flagged"]} listings resting on a registration that is not Active, and
-{ABOUT["index_rows"]} index rows. The seven-day view returned {ABOUT["changes"]} products: the feature
-works, and the market it watched was quiet.</p>
+<div class="step green">
+<h2><span class="n">05 &middot; route</span> MedPlus. Wrong door, right door.</h2>
+<ul>
+<li>Category pages: same 20 links, every page. Dead end.</li>
+<li>Drugs route: 20 per page. Page 70: 16 links. Page 71: empty.</li>
+<li><span class="fig">128</span> &rarr; <span class="fig">1,396</span> products.</li>
+<li>Night run: 1 h 50 m &rarr; 2 h 50 m.</li>
+</ul>
+</div>
+<div class="arrow" aria-hidden="true"></div>
 
-<h2 id="audit">6. The page proves its own numbers</h2>
-<p>The page is generated from the database by a script that runs every query twice. It renders first,
-then re-reads and compares what it printed against what the database says now. Nothing is written unless
-the two agree, and the last line of the build is the audit. At freeze it read
-<strong>{ABOUT["audit_numbers"]:,} numbers checked, 0 unexplained</strong>.</p>
-<p>A second generated page lists every price with filters, each row linking to the shop page the price
-came from and to the register record behind it. The links make the sources inspectable; they do not make
-the parsing correct.</p>
+<div class="step white">
+<h2><span class="n">06 &middot; refusals</span> Refusal = failure.</h2>
+<ul>
+<li>403, 429: stop. Failed row written.</li>
+<li>Night fails: over 10% of pages fail, or a full sweep returns under 1,000 records.</li>
+<li>Both thresholds: judgement, not measurement. The code says so.</li>
+</ul>
+</div>
+<div class="arrow" aria-hidden="true"></div>
 
-<h2 id="checked">7. Somebody checked it, and recorded how little</h2>
-<p>Before any verdict existed, the sampling rule was written down and committed: twenty licence records
-and twenty pack comparisons, chosen by a seeded draw, no substitution allowed, and the interval to be
-reported with the result.</p>
-<p>Of the licence cards, <strong>18 of 20</strong> carry recorded line-by-line judgements against the
-live register page &mdash; all pass, 100% within a 95% interval of 82% to 100%. Of the pack cards,
-<strong>3 of 20</strong> carry recorded judgements, and 3 of 3 is too small a number to report as a rate.
-The author reviewed the remaining pack cards without marking them; they are not counted here, and that
-distinction is the point of recording the rule in advance.</p>
-<p>The sources were then re-read by machine: <strong>20 of 20</strong> register records matched on
-status, expiry, approval date, name and strength, and all {ABOUT["comparisons"]} comparisons matched
-across <strong>88 page reads</strong> with no differences.</p>
-<p>That machine check has a narrow reach, and saying so matters more than the result. Both shops were
-re-read through the same channels the scrapers use: one refused its independent endpoint with repeated
-rate limits, and the other has no second server-side source. It shows the pages had not drifted. It
-cannot show the parsers read them correctly, and it is not a human verification.</p>
+<div class="step green" id="matching">
+<h2><span class="n">07 &middot; match</span> Two stages. Never similarity alone.</h2>
+<ul>
+<li><span class="tool">fastembed</span> and <span class="tool">bge-small-en-v1.5</span>, 384 dims, <span class="tool">pgvector</span>: top 10.</li>
+<li>Then rules: strength, form, ingredient. <span class="tool">pg_trgm</span>, <span class="tool">unaccent</span>.</li>
+<li>Similarity alone: rejected.</li>
+<li>Attached <span class="fig">{ABOUT["attached"]:,}</span> of <span class="fig">{ABOUT["listings"]:,}</span>. <span class="fig">{ABOUT["unattached"]:,}</span> not.</li>
+</ul>
+</div>
+<div class="arrow" aria-hidden="true"></div>
 
-<h2 id="freeze">8. Then it was frozen, and the freeze was tested</h2>
-<p>A nightly pipeline is a standing promise, and one that runs unwatched on free tiers ends by publishing
-stale numbers with nobody's name on the failure. Between 12 and 15 November only <strong>5 to 42
-prices</strong> changed per night against {ABOUT["listings"]:,} on the shelf. Collection stopped on
-16 November 2026 and the schedule was disabled rather than left running unattended.</p>
-<p>The data were exported before anything was switched off: {ABOUT["exported_tables"]} tables and
-{ABOUT["exported_rows"]:,} rows as a PostgreSQL dump, a CSV per table, a written schema record, and a
-manifest carrying a checksum for every file. It is published twice &mdash; a release on the code
-repository and a dataset on Hugging Face &mdash; and both copies are compared against that manifest on
-every push.</p>
-<p>The export is restored into an empty PostgreSQL 17 database on every push and compared against the
-manifest and the published figures: <strong>{ABOUT["restore_checks"]} checks</strong>, including that
-the {ABOUT["products"]:,} embeddings return as 384-dimension vectors rather than text. A restore proves
-the archive can be used again; it does not prove the original pages were read correctly, which is why
-section 7 exists.</p>
+<div class="step white">
+<h2><span class="n">08 &middot; guard</span> Strength guard. Late. Costly.</h2>
+<ul>
+<li>No listing attached to a different strength.</li>
+<li>Cleared <span class="fig">{ABOUT["cleared_links"]}</span> wrong links across 22 products. No contradictions under the strict check.</li>
+<li>Cost: <span class="fig">{ABOUT["lost_links"]}</span> matched listings.</li>
+<li>One known false refusal: Augmentin 1 g against 875 mg + 125 mg. 1,000 mg is the sum of the parts.</li>
+</ul>
+</div>
+<div class="arrow" aria-hidden="true"></div>
 
-<h2 id="decisions">Decisions worth naming, with what each cost</h2>
+<div class="step green" id="views">
+<h2><span class="n">09 &middot; views</span> Answers are views.</h2>
+<ul>
+<li><span class="tool">SQL</span> on <span class="tool">PostgreSQL</span>: latest, cheapest, two-shop, not-active, 7-day.</li>
+<li><span class="fig">{ABOUT["listings"]:,}</span> listings. <span class="fig">{ABOUT["attached"]:,}</span> attached. <span class="fig">{ABOUT["cells"]}</span> price cells. <span class="fig">{ABOUT["comparisons"]}</span> comparisons. <span class="fig">{ABOUT["flagged"]}</span> not active.</li>
+<li>7-day: <span class="fig">{ABOUT["changes"]}</span> products. Works. Market quiet.</li>
+</ul>
+</div>
+<div class="arrow" aria-hidden="true"></div>
+
+<div class="step white">
+<h2><span class="n">10 &middot; index</span> Index refreshed by machine.</h2>
+<ul>
+<li><span class="tool">mv_drug_price_index</span>. <span class="fig">{ABOUT["index_rows"]}</span> rows.</li>
+<li>Refresh: pipeline, not person. A stale index looks like a quiet market.</li>
+</ul>
+</div>
+<div class="arrow" aria-hidden="true"></div>
+
+<div class="step green" id="audit">
+<h2><span class="n">11 &middot; audit</span> Page proves itself.</h2>
+<ul>
+<li>Build renders. Re-reads every query. Compares. Disagreement: nothing written.</li>
+<li>Last line of the build: <span class="fig">{ABOUT["audit_numbers"]:,} numbers checked, 0 unexplained</span>.</li>
+</ul>
+</div>
+<div class="arrow" aria-hidden="true"></div>
+
+<div class="step white">
+<h2><span class="n">12 &middot; every price</span> Second page. Every price.</h2>
+<ul>
+<li>Filters on. Each row &rarr; the shop page it came from, the register record behind it.</li>
+<li>Links: sources inspectable. Parsing: not proven.</li>
+</ul>
+</div>
+<div class="arrow" aria-hidden="true"></div>
+
+<div class="step green" id="checked">
+<h2><span class="n">13 &middot; human check</span> Rule first. Verdict after.</h2>
+<ul>
+<li>20 licence cards. 20 pack cards. Seeded draw. No substitution.</li>
+<li>Licence: <span class="fig">18 of 20</span> judged. All pass. 82&ndash;100%.</li>
+<li>Pack: <span class="fig">3 of 20</span> judged. Too few for a rate.</li>
+</ul>
+</div>
+<div class="arrow" aria-hidden="true"></div>
+
+<div class="step white">
+<h2><span class="n">14 &middot; re-read</span> Machine re-read. Narrow reach.</h2>
+<ul>
+<li>Register: <span class="fig">20 of 20</span> equal.</li>
+<li>Prices: <span class="fig">{ABOUT["comparisons"]}</span> comparisons, <span class="fig">88</span> page reads. No difference.</li>
+<li>Same channels as the scrapers. One shop refused its endpoint.</li>
+<li>Proves no drift. Not parser correctness. Not a human check.</li>
+</ul>
+</div>
+<div class="arrow" aria-hidden="true"></div>
+
+<div class="step green" id="freeze">
+<h2><span class="n">15 &middot; freeze</span> Then frozen.</h2>
+<ul>
+<li>Nightly run = standing promise. Unwatched free tier: stale, unnamed.</li>
+<li>12&ndash;15 Nov: <span class="fig">5 to 42</span> changes a night, against <span class="fig">{ABOUT["listings"]:,}</span>.</li>
+<li>Stopped 16 Nov 2026. Newest price 15 Nov. Schedule off.</li>
+</ul>
+</div>
+<div class="arrow" aria-hidden="true"></div>
+
+<div class="step white">
+<h2><span class="n">16 &middot; export</span> Export before switch-off.</h2>
+<ul>
+<li><span class="fig">{ABOUT["exported_tables"]}</span> tables, <span class="fig">{ABOUT["exported_rows"]:,}</span> rows.</li>
+<li><span class="tool">PostgreSQL</span> dump. CSV per table. Written schema record. Manifest: one checksum per file.</li>
+<li>Published twice: a release on the code repository, a dataset on <span class="tool">Hugging Face</span>. Both checked against the manifest on every push.</li>
+</ul>
+</div>
+<div class="arrow" aria-hidden="true"></div>
+
+<div class="step green">
+<h2><span class="n">17 &middot; restore</span> Restore. Then trust the archive.</h2>
+<ul>
+<li>Every push: empty <span class="tool">PostgreSQL 17</span>, restore, compare manifest. <span class="fig">{ABOUT["restore_checks"]}</span> checks.</li>
+<li><span class="fig">{ABOUT["products"]:,}</span> embeddings return as 384-dim vectors.</li>
+<li><span class="tool">Docker</span>, then the restore check. Throwaway database.</li>
+<li>Proves the archive works. Not parser correctness. That is 13.</li>
+</ul>
+</div>
+<div class="arrow" aria-hidden="true"></div>
+
+<div class="step white" id="decisions">
+<h2><span class="n">18 &middot; decisions</span> Decisions. Each with its cost.</h2>
 <div class="tablewrap" role="region" aria-label="Decisions and their costs" tabindex="0">
 <table>
 <caption>One decision per row.</caption>
-<thead><tr><th scope="col">Decision</th><th scope="col">What was chosen</th><th scope="col">What it cost</th></tr></thead>
+<thead><tr><th scope="col">Decision</th><th scope="col">Chosen</th><th scope="col">Cost</th></tr></thead>
 <tbody>
-<tr><th scope="row">Scheduler</th><td>GitHub Actions cron, not Prefect</td><td>Free and unlimited on a
-public repository, but no retry engine and no run history beyond the workflow page</td></tr>
+<tr><th scope="row">Scheduler</th><td>GitHub Actions cron, not Prefect</td><td>Free and unlimited on a public
+repository. No retry engine. No run history beyond the workflow page.</td></tr>
 <tr><th scope="row">Database</th><td>Neon, not Supabase</td><td>The free tier does not pause after idle
-days, but it does suspend on inactivity &mdash; which is why the export exists at all</td></tr>
-<tr><th scope="row">MedPlus coverage</th><td>A full sweep every night, not a rotating window</td>
-<td>About 68 minutes a night, to cover the whole catalogue instead of a quarter of it</td></tr>
+days. It does suspend on inactivity &mdash; hence the export.</td></tr>
+<tr><th scope="row">MedPlus coverage</th><td>A full sweep every night, not a rotating window</td><td>About
+68 minutes a night. The whole catalogue, not a quarter.</td></tr>
 <tr><th scope="row">What a comparison means</th><td>Two pharmacies publishing a price for the same
-product</td><td>A shop whose stock we cannot confirm still counts; the page carries that caveat instead of
-narrowing the count</td></tr>
+product</td><td>Unconfirmed stock still counts. A caveat on the page, not a narrower count.</td></tr>
 <tr><th scope="row">Inactive licences</th><td>Labelled, not hidden</td><td>The finding stays visible, and
-so does the reading it rests on</td></tr>
+so does the reading it rests on.</td></tr>
 <tr><th scope="row">What was not built</th><td>No warehouse layer, no ORM, no API</td><td>SQL files and
-scripts; a rebuild means running those files in order</td></tr>
+scripts. A rebuild means running them in order.</td></tr>
 </tbody>
 </table>
 </div>
+</div>
+<div class="arrow" aria-hidden="true"></div>
 
-<h2 id="limits">What it does not claim</h2>
-<ul class="limits">
-<li><strong>Not a market index and not a national price survey.</strong> Lagos, three online pharmacies,
-and {ABOUT["priced"]} medicines carrying a price at freeze.</li>
-<li><strong>Only {ABOUT["coverage"]}% of the register has a readable status</strong>, so a flagged listing
-describes a fraction of a fraction, not the register.</li>
-<li><strong>A lapsed licence is not a fake drug.</strong> Nothing here was bought, tested or
-inspected.</li>
-<li><strong>The price data include supplements and pharmacy sundries</strong> that are not medicines.</li>
-<li><strong>One published unit price is per millilitre</strong> &mdash; a 100&nbsp;ml syrup &mdash; beside
-prices per tablet. The page prints the unit beside every unit price for that reason.</li>
-<li><strong>The {ABOUT["comparisons"]} comparisons rest on a machine re-read and a small recorded human
-sample</strong>, not a complete human audit.</li>
-<li><strong>Nothing is deployed.</strong> The project ships as a repository, a dated export and generated
-pages, not as a live service.</li>
+<div class="step green" id="limits">
+<h2><span class="n">19 &middot; limits</span> What it does not claim.</h2>
+<ul>
+<li>Not a market index. Not a national price survey. Lagos, three online pharmacies,
+<span class="fig">{ABOUT["priced"]}</span> medicines carrying a price at freeze.</li>
+<li>Register status readable for <span class="fig">{ABOUT["coverage"]}%</span>. A flagged listing: a
+fraction of a fraction.</li>
+<li>A lapsed licence is not a fake drug. Nothing was bought, tested or inspected.</li>
+<li>Supplements and pharmacy sundries are in the price data. They are not medicines.</li>
+<li>One unit price is per millilitre: a 100 ml syrup. The rest are per tablet. The unit is printed beside
+every unit price.</li>
+<li><span class="fig">{ABOUT["comparisons"]}</span> comparisons rest on a machine re-read and a small
+recorded human sample. Not a complete human audit.</li>
+<li>Nothing is deployed. A repository, a dated export, generated pages. Not a live service.</li>
+<li><span class="tool">Streamlit</span> dashboard: built, never deployed. Unused.</li>
 </ul>
+</div>
+<div class="arrow" aria-hidden="true"></div>
 
-<h2 id="reproduce">Reproducing this</h2>
-<ol class="limits">
-<li>Use the repository's pinned Python environment and install from <code>requirements.txt</code>; do not
-substitute the system interpreter.</li>
-<li>Apply the SQL files in <code>schema/</code> in their numbered order, then follow the dependency order
-in the README to load the seed, collect listings, link registrations, match products and build the
-pages.</li>
-<li>With Docker running, verify the frozen export with <code>scripts/verify_restore.py</code>. It restores
-the dump into a throwaway PostgreSQL 17 database, compares the tables and published figures, and removes
-the container.</li>
+<div class="step white" id="reproduce">
+<h2><span class="n">20 &middot; rebuild</span> Rebuild it yourself.</h2>
+<ol>
+<li>Pinned <span class="tool">Python</span>. Not the system interpreter.</li>
+<li>Schema in numbered order: 001 to 008.</li>
+<li>Then: seed, collect listings, link registrations, match products, build the pages.</li>
+<li><span class="tool">Docker</span> running, then the restore check. Throwaway PostgreSQL 17, removed after.</li>
 </ol>
+</div>
 
+</div>
 </main>
 <footer>
 <p><strong>Independence and licence.</strong> Not endorsed by NAFDAC and not affiliated with, or paid by,
@@ -1498,8 +1712,8 @@ any pharmacy named in the data. Code MIT; data CC-BY-4.0. The medicine list desc
 CC-BY-4.0, credited as its licence requires. Source and issue tracker:
 {link(REPO_URL, "github.com/batestguy/NaijaDrugWatch")}.</p>
 <p>This page is one file. No external stylesheet, script, font or image is fetched, so it works with no
-network. It is generated by <code>scripts/build_site.py</code>, and the figures above that a query can
-answer are checked against the database on every build.</p>
+network. It is generated from the database, and the figures above that a query can answer are checked
+against the database again on every build.</p>
 </footer>
 </div>
 </body>
@@ -1537,21 +1751,15 @@ class Page:
 
         if FROZEN:
             stamp = (
-                '<p class="stamp">A frozen snapshot. Collection stopped on '
-                f'{esc(human_date(FROZEN["frozen_on"]))}, and the newest price here was recorded on '
-                f'{esc(human_date(str(overview["lagos_newest_date"])))} in Lagos. Every figure below is '
-                'stated as it stood at the freeze, and the freshness panel measures each source to that '
-                'moment rather than to today.</p>'
+                '<p class="stamp">Collection stopped on '
+                f'{esc(human_date(FROZEN["frozen_on"]))}.</p>'
             )
             health_note = (
                 f' Because collection stopped on {esc(human_date(FROZEN["frozen_on"]))}, every age '
                 'below is measured to that moment, not to the day you are reading this.'
             )
             age_header = "Age at freeze"
-            masthead_line = (
-                f'Lagos. Prices read on {esc(human_date(str(overview["lagos_newest_date"])))}; '
-                f'collection stopped on {esc(human_date(FROZEN["frozen_on"]))}.'
-            )
+            masthead_line = "Three online pharmacies checked against one national register."
         else:
             stamp = (
                 f'<p class="stamp">Read from the database at {esc(overview["database_now_utc"])} '
@@ -1594,19 +1802,28 @@ class Page:
             for p in pharmacies
         )
 
-        # The panel of figures under the headline. Every number in it is a fact the audit re-reads;
-        # none of them is written here. The layout is the study's: three figures, then four.
-        figures_top = "".join([
-            figure(f'{overview["latest_listings"]:,}', "Prices read"),
-            figure(f'{overview["matched_listings"]:,}', "Prices matched to a medicine"),
-            figure(f'{overview["cells_comparison"]:,}', "Two-shop comparisons"),
-        ])
-        figures_second = "".join([
-            figure(f'{reg["matched_active"]:,}', "On an active registration"),
-            figure(f'{reg["matched_flagged"]:,}', "On a registration that is not active"),
-            figure(f'{reg["matched_status_not_read"]:,}', "On a status never read"),
-            figure(f'{reg["registrations_total"]:,}', "Registrations in the register"),
-        ])
+        # The finding under the headline. Every number in it is a fact the audit re-reads; none is
+        # written here. The shape is a receipt, not a dashboard: one figure carries the claim, and the
+        # small line beneath is the arithmetic that makes it checkable, in the order the work happened.
+        # 298 + 154 + 46 = 498, and 498 + 61 (the matched rows that carry no licence number) = 559, so
+        # the receipt closes. The figure is taken from the flagged set rather than typed.
+        checkable = reg["matched_active"] + reg["matched_flagged"] + reg["matched_status_not_read"]
+        finding = f"""<div class="finding">
+        <p class="n">{reg["matched_flagged"]:,}</p>
+        <p class="k">of the {checkable:,} prices we could trace to a licence record sit on a
+        registration that is <strong>not active</strong>.</p>
+        <p class="chain">
+        <span class="st d1"><b>{overview["latest_listings"]:,}</b><i>prices read</i></span>
+        <span class="arw d2">&rarr;</span>
+        <span class="st d2"><b>{overview["matched_listings"]:,}</b><i>matched to a medicine</i></span>
+        <span class="arw d3">&rarr;</span>
+        <span class="st d3"><b>{checkable:,}</b><i>carry a licence</i></span>
+        <span class="arw d4">&rarr;</span>
+        <span class="st d4"><b>{reg["matched_flagged"]:,}</b><i>not active</i></span>
+        </p>
+        <p class="rest"><b>{reg["matched_active"]:,}</b> active, <b>{reg["matched_status_not_read"]:,}</b> never read,
+        out of <b>{reg["registrations_total"]:,}</b> registrations in the register.</p>
+        </div>"""
 
         dedication = dedication_caption_html()
 
@@ -1618,7 +1835,7 @@ class Page:
 <title>What a medicine costs, and whether its licence is active - NaijaDrugWatch</title>
 <link rel="icon" href="data:,">
 <style>{FONT_CSS}
-{CSS_PURPLE}</style>
+{CSS_ORANGE}</style>
 </head>
 <body>
 <a class="skip" href="#main">Skip to the content</a>
@@ -1638,13 +1855,10 @@ class Page:
 <section class="hero" aria-label="What this page is about">
   <div class="hero-grid">
     <div class="hero-copy">
-      <h1>What a medicine costs. <span>Whether its licence is active.</span></h1>
+      <h1>What a medicine costs.</h1>
+      <p class="deck">Whether its licence is active.</p>
+      {finding}
       {stamp}
-      <div class="figs">{figures_top}</div>
-      <div class="figs two">{figures_second}</div>
-      <p class="note">The three registration figures are the price rows whose medicine carries a
-      registration number. {reg["matched_no_registration_number"]} of the
-      {overview["matched_listings"]} matched rows carry none.</p>
     </div>
     <figure class="hero-figure">
       <img src="assets/dora/{PORTRAIT_FILE}" width="480" height="600" alt="">
@@ -1657,218 +1871,15 @@ class Page:
 <main id="main">
 <div class="wrap">
 
-<nav class="pagenav" aria-label="Pages">
-  <a href="dashboard.html"><strong>Every price, explorable</strong><span>All {overview["latest_listings"]:,} prices, filterable, each row linking to its source</span></a>
-  <a href="about.html"><strong>How this was built</strong><span>The eight stages, what each cost, and what it cannot claim</span></a>
-  <a href="#data"><strong>Get the data</strong><span>The frozen vintage, as a database dump and as CSV</span></a>
-</nav>
+<div class="placeholder-row">
+  <div class="ph"><span>Placeholder &mdash; animation of the dashboard in use</span></div>
+</div>
+<p class="dl"><strong>Take the data.</strong> <span class="fig">{ABOUT["exported_tables"]}</span> tables,
+<span class="fig">{ABOUT["exported_rows"]:,}</span> rows, one checksum per file.
+<a href="https://github.com/batestguy/NaijaDrugWatch/releases/tag/vintage-2026-11-16">Release</a>
+&middot; <a href="https://huggingface.co/datasets/JBZABC/naijadrugwatch-vintage-2026-11-16">Hugging Face</a>
+&middot; <a href="data.json">data.json</a></p>
 {banner}
-
-<section class="body">
-<h2 id="prices">Prices</h2>
-<p>Each row below is one product, and the price shown is the lowest one quoted for it by the shops
-this project reads. Two kinds of row are kept apart, because they mean different things:</p>
-<ul>
-<li><strong>A comparison</strong> - two online shops both published a price for the same product, so
-the two prices can be set against each other. Every one of those rows carries a count of shops.</li>
-<li><strong>A single-shop price</strong> - one shop published this price and nobody else quoted the
-same product. It is a real price from a real page. It is not a comparison, and this page does not
-call it the lowest price in any market.</li>
-</ul>
-<p class="note">Stock is reported only where the shop's own page said something we could read. Where
-it says <strong>not read</strong>, the page we fetched carried no stock signal we could parse; that is
-a gap in our reading, not a statement that the item is out of stock. The licence column is the NAFDAC
-status of the product's registration: <strong>active</strong>, <strong>not active</strong>, or
-<strong>not read</strong> where no status was ever scraped. A medicine whose licence reads
-<em>not active</em> is still a priced medicine; the label is the finding.</p>
-
-<h3 id="comparisons">Two shops, compared</h3>
-<p class="tablelabel">{esc(COMPARISON_CAPTION)}</p>
-<div class="tablewrap" role="region" aria-labelledby="comparisons" tabindex="0">
-<table>
-<caption>One product per row.</caption>
-<thead><tr>
-<th scope="col">Product</th><th scope="col">Shop with the lower price</th>
-<th scope="col">Price</th><th scope="col">Stock</th><th scope="col">Registration</th>
-<th scope="col">Price per unit</th>
-</tr></thead>
-<tbody>
-{price_rows(comparison, with_state=False)}
-</tbody>
-</table>
-</div>
-<p class="note">{len(comparison)} rows. Every one comes from two shops quoting the same product; the
-largest number of shops quoting a single product here is
-{shops_text}. A unit price is shown only where the pack size could be read from the page, and it
-carries the unit it is priced in - per tablet, per capsule or per millilitre - because one row here is
-a 100 ml syrup priced per millilitre and would otherwise read as a per-tablet price beside a
-per-tablet row. Where no unit was recorded the money is left without one. On a narrow screen the table
-scrolls sideways inside its own box; the rest of the page does not move.</p>
-
-<h3 id="single">One shop only</h3>
-<p class="tablelabel">Single-shop prices: one shop's price for one product, not a comparison</p>
-<div class="tablewrap" role="region" aria-labelledby="single" tabindex="0">
-<table>
-<caption>Quoted by one shop only.</caption>
-<thead><tr>
-<th scope="col">Product</th><th scope="col">Where</th><th scope="col">Shop</th>
-<th scope="col">Price</th><th scope="col">Stock</th><th scope="col">Registration</th>
-</tr></thead>
-<tbody>
-{single_rows(single)}
-</tbody>
-</table>
-</div>
-<p class="note">{len(single)} rows. Drugstore.ng is recorded as a single shop covering the whole
-country, so a Drugstore price can never pair with another shop's price in the same state and can
-never form a comparison. On a narrow screen this table scrolls sideways inside its own box.</p>
-</section>
-
-<section class="band" aria-label="A tribute to Dora Akunyili">
-  <div class="band-inner">
-    <figure class="band-photo">
-      <img src="assets/dora/{BAND_FILE}" width="640" height="305" alt="">
-      <figcaption class="photocaption">{dedication}</figcaption>
-    </figure>
-    <div class="band-text">
-      <h2>The register she led</h2>
-      <p>NAFDAC keeps the register these prices are checked against. Where our reading of it falls
-      short, the page says so. <a href="about.html">How this was built</a></p>
-    </div>
-  </div>
-</section>
-
-<section class="body">
-<h2 id="registration">Registration status of what is sold</h2>
-<div class="fact">
-<p><strong>{reg["flagged_listings"]} shop listings</strong> carry a registration that is not Active:
-{reg["flagged_inactive"]} on an inactive registration and {reg["flagged_expired"]} on a registration
-whose expiry date has passed. Only listings that were matched to a product with a registration number
-can be checked at all.</p>
-<p class="note">Coverage, in the same breath: this project holds a status for
-<strong>{reg["registrations_status_read"]} of {reg["registrations_total"]} registrations</strong> in the
-register list it holds ({reg["coverage_pct"]}%). The other
-{reg["registrations_status_unread"]} have never had their detail page read. A partial sweep of the
-register is not the register, so the count above is a count of what was checked, not a national
-tally.</p>
-</div>
-<p>How the {overview["matched_listings"]} shop listings that carry a product divide up:</p>
-<p class="tablelabel">Every listing matched to a product, by the registration behind that product</p>
-<div class="tablewrap" role="region" aria-labelledby="registration" tabindex="0">
-<table>
-<caption>Adds up to the listings carrying a product.</caption>
-<thead><tr><th scope="col">What the registration says</th><th scope="col">Listings</th></tr></thead>
-<tbody>
-<tr><th scope="row">Active</th><td class="num">{reg["matched_active"]}</td></tr>
-<tr><th scope="row">Not Active, or past its expiry date</th>
-<td class="num">{reg["matched_flagged"]}</td></tr>
-<tr><th scope="row">A registration number, but no status ever read</th>
-<td class="num">{reg["matched_status_not_read"]}</td></tr>
-<tr><th scope="row">No registration number linked to the product</th>
-<td class="num">{reg["matched_no_registration_number"]}</td></tr>
-</tbody>
-</table>
-</div>
-<p class="note">Those four numbers add up to {reg["matched_buckets_sum"]}, which is the number of shop
-listings that carry a product. The {overview["unmatched_listings"]} listings without a product are not
-in any of the rows above and do not appear in the price tables: a price nobody can name is not a price
-anybody can use.</p>
-<p><strong>What a status means here.</strong> It is what the NAFDAC register said when it was read,
-not a ruling on the medicine: <em>not active</em> records a lapsed or inactive registration, and is not
-evidence that the medicine is fake or illegal. How far these records have been checked against the live
-register, and what that check can and cannot prove, is written out in the project README.</p>
-
-<h2 id="data">The data behind this page</h2>
-<p>This page is generated from a database, and that database is published. It is a frozen vintage dated
-16 November 2026 &mdash; {VINTAGE_TABLES} tables, {VINTAGE_ROWS:,} rows &mdash; as a PostgreSQL dump, a CSV
-for every table, a written schema record, and a manifest carrying a checksum for every file.</p>
-<ul class="limits">
-<li><a href="{HF_URL}">The dataset on Hugging Face</a> &mdash; the copy to cite and reuse, with a dataset
-card that states what the data does not claim.</li>
-<li><a href="{RELEASE_URL}">The same files as a release on GitHub</a> &mdash; the copy the restore check
-downloads and tests.</li>
-</ul>
-<p>Restoring it is one command and it is proven on every push: the dump is loaded into an empty
-PostgreSQL 17 database and compared against the manifest and against every figure on this page. Both
-published copies are checksum-compared to the same manifest on each push, so the copy you download is the
-copy that was tested.</p>
-<p class="note">Data CC-BY-4.0, code MIT. Credit it as <em>NaijaDrugWatch, frozen vintage of 16 November
-2026</em>. The medicine list descends from #FixMedPrices, also CC-BY-4.0.</p>
-
-<h2 id="health">Pipeline health</h2>
-<p>This panel is about the machinery, not the medicines, and it says what did not happen as loudly as
-what did. A source with no row in the run log at all is printed as <strong>never run</strong> - zero
-rows is not "fine". A source is called <strong>stale</strong> after
-{health["stale_hours_threshold"]:g} hours without a successful run.{health_note}</p>
-<p class="tablelabel">Last successful run of each source, as the run log records it (times UTC)</p>
-<div class="tablewrap" role="region" aria-labelledby="health" tabindex="0">
-<table>
-<caption>One source per row.</caption>
-<thead><tr>
-<th scope="col">Source</th><th scope="col">Status</th>
-<th scope="col">Last success</th><th scope="col">{age_header}</th><th scope="col">What it does</th>
-</tr></thead>
-<tbody>
-{health_rows(health)}
-</tbody>
-</table>
-</div>
-<p class="note">{health["runs_logged"]} runs are logged in total, the first at
-{esc(health["first_run_utc"])} and the most recent finish at {esc(health["last_run_utc"])}. A failed
-run is logged too, and a failed run is why a source can have rows in the log and still read
-<em>never run</em> here: nothing has succeeded yet.</p>
-{extras_line}
-
-<h2 id="limits">What this page does not claim</h2>
-<ol class="limits">
-<li><strong>It is not the market.</strong> Prices come from {len(pharmacies)} online shops, and a
-comparison needs two of them to publish the same product. Pharmacies that do not publish prices on a
-website are not in this data at all, and nothing here is a national average or an index of what
-medicines cost.</li>
-<li><strong>A single-shop row is one shop's price.</strong> {overview["cells_single"]} of the
-{overview["cells_total"]} priced products on this page were quoted by one shop only. They are shown
-in their own table and are never described as a comparison.</li>
-<li><strong>Registration coverage is partial.</strong> A status exists for
-{reg["registrations_status_read"]} of {reg["registrations_total"]} registrations
-({reg["coverage_pct"]}%). A product whose registration was never read carries
-<a href="#registration">no status</a>, and that is a gap in this project's reading, not a finding
-about the medicine.</li>
-<li><strong>"Not active" describes a registration, not a medicine.</strong> A registration that has
-lapsed or been marked inactive is recorded here as exactly that. It is not evidence that the medicine
-is fake or illegal, and this project has not inspected, tested or bought any product.</li>
-<li><strong>Brand and generic names count as separate products.</strong> The same medicine sold under
-two names appears as two rows and is never compared with itself. {overview["unmatched_listings"]} of
-{overview["latest_listings"]} shop listings could not be matched to any product and are absent from
-the price tables.</li>
-<li><strong>Prices are what a site displayed when it was read.</strong> Delivery, card fees,
-counter discounts and what is on the shelf when you ask are all outside this data. The newest price
-here is from {esc(overview["newest_scrape_utc"])}. Drugstore.ng is recorded as one shop covering the
-whole country, so its price is a single national listing and can never form a comparison.</li>
-</ol>
-
-<h2 id="sources">Sources, licences and independence</h2>
-<p>Prices are read from the public product pages of these shops, one page at a time, no faster than
-one request every two seconds:</p>
-<ul>
-{pharmacy_list}
-</ul>
-<p>Registration numbers, statuses and expiry dates come from the NAFDAC Greenbook
-({link(GREENBOOK_URL, "greenbook.nafdac.gov.ng")}). The medicines this project looks for come from
-the #FixMedPrices catalogue, released under CC-BY-4.0 and credited here as its licence requires. The
-Greenbook's certificate has expired, so its pages are fetched over plain HTTP and the integrity of
-what we store rests on checksums we keep ourselves, not on the connection.</p>
-<p><strong>This is an independent project.</strong> It is not endorsed by NAFDAC and it is not
-endorsed by, affiliated with or paid by any pharmacy named on this page. Code is MIT licensed; the
-data this page renders is CC-BY-4.0. The source, the schema and this page's generator are at
-{link(REPO_URL, "github.com/batestguy/NaijaDrugWatch")}.</p>
-
-<h2 id="check">How to check this page</h2>
-<p>Every number here was read from the database when the page was built, and the same script then read
-the database a second time and compared each value against what it had printed. If any value had
-failed to match, this page would not have been written and the build would have failed. The same
-numbers are in <a href="data.json">data.json</a>. The queries behind each figure are in the generator,
-and the views they read are in the repository, so a stranger can re-run the whole thing.</p>
-</section>
 </div>
 
 <div class="built">
@@ -1889,7 +1900,10 @@ and the views they read are in the repository, so a stranger can re-run the whol
         <li>Frozen vintage</li>
         <li>Open data</li>
       </ul>
-      <a class="dash" href="dashboard.html">Open the price dashboard</a>
+      <div class="dashrow">
+        <a class="dash" href="dashboard.html">Open the price dashboard</a>
+        <a class="dash" href="about.html">How this was built</a>
+      </div>
     </div>
   </div>
 </div>
@@ -1897,28 +1911,17 @@ and the views they read are in the repository, so a stranger can re-run the whol
 
 <footer>
   <div class="wrap">
-    <img class="footer-mark" src="assets/dora/{MARK_FILE}" width="220" height="220" alt="">
-    <p><strong>{DORA_NAME} {DORA_HONOURS}</strong>, {self.dates}.
-    <a href="about.html">How this was built</a>.</p>
-    <p>Built from a Postgres database by <code>scripts/build_site.py</code>. Prices in Nigerian naira
-    (&#8358;). Times in UTC unless a Lagos date is named. The page is one file and four local images:
-    no external stylesheet, script, font or image is fetched, so it works with no network.</p>
-    <div class="credits">
-    <p><strong>Images.</strong> The mark in this footer, the portrait in the hero and the wide crop in
-    the band are three crops of one photograph,
+    <p><strong>Licence.</strong> Prices from HealthPlus, MedPlus and Drugstore.ng, read from their public
+    product pages. Licence status from the NAFDAC Greenbook. The medicine list descends from the
+    #FixMedPrices catalogue, released CC-BY-4.0 and credited here as that licence requires. This page's
+    data is CC-BY-4.0; its code is MIT.</p>
+    <p><strong>Portrait.</strong>
     <a href="{esc(CREDIT_PORTRAIT['page'])}">{esc(CREDIT_PORTRAIT['title'])}</a> on Wikimedia Commons,
     credited to the {esc(CREDIT_PORTRAIT['author'])} and released under
     <a href="{esc(CREDIT_PORTRAIT['licence_url'])}">CC0 1.0</a>, a public domain dedication. That licence
-    requires no attribution; it is given here anyway, naming the file, the author and the change made to
-    it. A fourth photograph, a memorial to her, is carried in the repository but no longer appears on any
-    page: the methods page that used it was rewritten.</p>
-    <p><strong>Typefaces.</strong> The display face is Archivo Black and the text face is Inter, both
-    under the SIL Open Font License 1.1, embedded in this file so that the page needs no network.</p>
-    <p class="note">The CC0 file is a photograph from the National Library of Nigeria, the same
-    institution whose repository holds the dates and the NAFDAC dates used on the About page. The
-    photograph and the register data are different things: the photograph identifies the person the
-    register is named for, and nothing on this page is drawn from it.</p>
-    </div>
+    requires no attribution; it is given here anyway.</p>
+    <p class="built-by">Built by <a href="https://github.com/batestguy">batestguy</a>. Source and issue
+    tracker: <a href="https://github.com/batestguy/NaijaDrugWatch">github.com/batestguy/NaijaDrugWatch</a>.</p>
   </div>
 </footer>
 </body>
