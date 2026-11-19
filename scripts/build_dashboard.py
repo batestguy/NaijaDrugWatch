@@ -1814,8 +1814,7 @@ def page(rows: list[dict[str, Any]], meta: dict[str, Any]) -> str:
     <p class="vh" id="ask-live" aria-live="polite"></p>
   </div>
 </div>
-<p class="caption" id="ask-caption"><strong>{esc(default['name'])}</strong> &mdash; the medicine with the
-most shops ({default['shops']}). Type part of a name, arrows to move, Enter to pick.</p>
+<p class="caption" id="ask-caption">Type part of a name, arrows to move, Enter to pick.</p>
 
 <h3 class="ask-head" id="ask-title">{esc(default['name'])}</h3>
 <p class="ask-meta" id="ask-meta"></p>

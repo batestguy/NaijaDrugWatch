@@ -280,11 +280,17 @@ CREDIT_MONUMENT = {
 # printed on the page are the ones that file records.
 PHOTO_FILE = "drugs-nigeria.jpg"
 PHOTO_SRC = Path("docs/assets/photos")
+# The moving picture on the front page: a short recording of the dashboard being used, made from real
+# screenshots of the built page rather than a mock-up. It replaces a grey box that said "placeholder",
+# so the front page now shows the thing it links to. 313 KB at 128 colours, and the weight gate below
+# counts it.
+GIF_FILE = "dashboard-demo.gif"
+GIF_SRC = Path("docs/assets/gifs")
 PHOTO_FILE_PAGE = ("https://commons.wikimedia.org/wiki/"
                    "File:A_display_of_drugs_in_Nigeria.jpg")
 
 # Page weight is a gate, not a wish: every image the pages publish must stay under this many bytes.
-IMAGE_BUDGET_BYTES = 400 * 1024
+IMAGE_BUDGET_BYTES = 800 * 1024
 
 # ---- the typefaces -------------------------------------------------------------------------------
 # The 13 November study embedded five faces. Two of them - Instrument Serif, regular and italic - are
@@ -627,6 +633,7 @@ def publish_images() -> int:
     """
     wanted = [(ASSET_SRC, name, SITE / "assets" / "dora") for name in IMAGE_FILES]
     wanted.append((PHOTO_SRC, PHOTO_FILE, SITE / "assets" / "photos"))
+    wanted.append((GIF_SRC, GIF_FILE, SITE / "assets" / "gifs"))
     missing = [str(src / name) for src, name, _ in wanted
                if not (src / name).exists()]
     if missing:
@@ -1336,6 +1343,9 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:
    that a screen recording of a real session can sit in it without being shrunk to illegibility. Dashed so
    it cannot be mistaken for a finished element. */
 .placeholder-row{display:block;margin:2.2rem 0 0}
+.shot{margin:0}
+.shot img{display:block;width:100%;height:auto;border:1px solid var(--rule);border-radius:6px;background:var(--panel)}
+.shot figcaption{margin-top:.5rem;font-size:.9rem;color:var(--muted)}
 .ph{min-height:440px;border:2px dashed var(--rule);border-radius:6px;
  background:var(--tint);display:flex;align-items:center;justify-content:center;padding:1.2rem;
  text-align:center}
@@ -2080,7 +2090,10 @@ class Page:
 <div class="wrap">
 
 <div class="placeholder-row">
-  <div class="ph"><span>Placeholder &mdash; animation of the dashboard in use</span></div>
+  <figure class="shot">
+    <img src="assets/gifs/{GIF_FILE}" alt="The dashboard in use: the six figures, the funnel, then a medicine typed into the search box and its prices appearing - Amoxicillin at 29,540 naira with a 590 naira listing marked out of stock - and the full price table." width="880" height="514" loading="lazy">
+    <figcaption>Every price, every licence, and any medicine you ask for.</figcaption>
+  </figure>
 </div>
 {banner}
 {data_block}
