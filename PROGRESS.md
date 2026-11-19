@@ -2,12 +2,58 @@
 
 Single state file for NaijaDrugWatch. Last updated **2026-11-19**.
 
-## Handoff - 19 November 2026
+## Close-out - 19 November 2026, evening
 
-**Read this block first.** The 17 November block below is history, and three of its statements were
-wrong; the corrections are in this block, marked as corrections.
+**The project is closed here.** Nothing is deployed, so the only public copies are the data itself:
+Hugging Face `JBZABC/naijadrugwatch` and Zenodo `10.5281/zenodo.24356426`. Everything below the line was
+done after the morning handoff and is verified unless it says otherwise.
 
-### What changed today
+### What was built
+
+- **The dashboard** (`site/dashboard.html`, built by `scripts/build_dashboard.py`, 898 KB). Six figures in a
+  coloured band per section, a sticky jump bar, a funnel, a licence bar, a nine-night run chart, an
+  Ask-the-data block with a type-ahead over all 288 medicines, and a 2,800-row table with search, sort,
+  three row heights, filter chips, CSV export and a ten-row window. Text cut from about 1,100 words to 322.
+- **Her colours on the methods page**, the tool names moved into the side margins, and a licensed photograph
+  of Nigerian pharmacy shelves beneath the column (Tolalheart, CC BY-SA 4.0).
+- **The data published twice**, both copies checked with no credentials: a CSV checksum matching the
+  manifest on Hugging Face, and a byte-identical zip on Zenodo.
+- **A download block on the landing page**, rendered from `docs/published-vintage.json` rather than typed.
+- **A capsule pointer** on all three pages.
+
+### What is verified, and by what
+
+- Builds exit 0: landing page 3,787 numbers checked 0 unexplained; dashboard **3,837** rows and figures.
+- Dashboard measured in a browser: ten rows visible at 32, 36 and 44px row heights; header stays put while
+  the body scrolls; the frozen first column holds while the table scrolls sideways; the jump bar scrolls
+  inside itself at 375px with every item reachable; 0 console errors; no page overflow at 1440 or 375.
+- **Stock honesty**: the Ask-the-data figures use only prices a shop marked in stock - 227 of 288 medicines
+  have one. Amoxicillin shows ₦29,540 at the shop that has it, not the ₦590 out-of-stock listing.
+- The like-for-like count is **19 of 44**, defined in the query itself: same known pack size, joined on the
+  product key.
+- Jargon on the dashboard renders zero times: cheapest, dearest, median, lapsed, prices read, attached to.
+
+### What is not true, or not known
+
+- **Nothing is deployed.** There is no public page; the download links work only in a local build.
+- **No axe run** on the dashboard or the methods page. Contrast is measured at build time (worst 5.14:1)
+  and structure was checked by hand, which is not the same as an accessibility audit.
+- **No independent review** of any of today's page work. It shipped on the secretary's own verification.
+- Two footer caveats are still the longest prose on the dashboard, at 46 and 34 words.
+- The dashboard is one browser's worth of testing; the CSV and print buttons were exercised by the build
+  but not by a person.
+
+### If this is ever picked up again
+
+Serve `site/` over a local HTTP server, not `file://`, for anything involving downloads. Rebuild with
+`scripts/build_site.py` and `scripts/build_dashboard.py` against a live database, then publish the page.
+
+## Handoff - 19 November 2026, morning
+
+**Read the close-out above first.** This block covers the morning's work: the methods page restyle, the
+vintage published to Hugging Face and Zenodo, and the download block on the landing page.
+
+### What changed this morning
 
 1. **The methods page now wears her colours.** The twenty step boxes cycle navy `#161A64`, red
    `#9F2519` and the raw gold `#D7A320` - the colours sampled from her wrapper and headwrap - instead of

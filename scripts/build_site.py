@@ -1008,6 +1008,17 @@ CREAM_TOOLS = (
 # The cream sheet carries the display face it uses for the flow's headings and its watermark. The bytes
 # are the same embedded Archivo Black the front page uses, not a second copy of the font: only the
 # @font-face rule is repeated here, because a stylesheet cannot borrow another stylesheet's rules.
+# The pointer, on every page. A capsule, half her red, half white, dark rim so it stays visible on the
+# cream paper and on a white panel: 24x24 with the hotspot at the centre, and an arrow fallback for a
+# browser that refuses an SVG cursor. It is decoration, nothing depends on it, and it is set on the
+# document root so it is the default everywhere, tables included. The author will tune the artwork
+# later; this is applied as-is.
+CURSOR_CSS = """
+html{cursor:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cdefs%3E%3CclipPath id='c'%3E%3Crect x='4' y='8' width='16' height='8' rx='4'/%3E%3C/clipPath%3E%3C/defs%3E%3Cg transform='rotate(-45 12 12)'%3E%3Crect x='4' y='8' width='16' height='8' rx='4' fill='%23ffffff'/%3E%3Crect x='4' y='8' width='8' height='8' fill='%239F2519' clip-path='url(%23c)'/%3E%3Crect x='4' y='8' width='16' height='8' rx='4' fill='none' stroke='%231a1612' stroke-width='1.5'/%3E%3C/g%3E%3C/svg%3E") 12 12,auto}
+table,tbody,tr,td,th{cursor:inherit}
+a,button,summary,input[type=checkbox],select{cursor:pointer}
+"""
+
 CSS_CREAM = CREAM_PALETTE_CSS + (
     '@font-face{font-family:"Archivo Black";src:url(' + FONT_ARCHIVO_BLACK + ') '
     'format("woff2");font-weight:400;font-style:normal;font-display:swap}'
@@ -1650,7 +1661,7 @@ def about_page() -> str:
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>How this was built - NaijaDrugWatch</title>
 <link rel="icon" href="data:,">
-<style>{CSS_CREAM}</style>
+<style>{CSS_CREAM}{CURSOR_CSS}</style>
 </head>
 <body>
 <a class="skip" href="#main">Skip to the content</a>
@@ -2034,7 +2045,7 @@ class Page:
 <title>What a medicine costs, and whether its licence is active - NaijaDrugWatch</title>
 <link rel="icon" href="data:,">
 <style>{FONT_CSS}
-{CSS_ORANGE}</style>
+{CSS_ORANGE}{CURSOR_CSS}</style>
 </head>
 <body>
 <a class="skip" href="#main">Skip to the content</a>
