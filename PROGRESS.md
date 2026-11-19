@@ -20,6 +20,25 @@ done after the morning handoff and is verified unless it says otherwise.
   manifest on Hugging Face, and a byte-identical zip on Zenodo.
 - **A download block on the landing page**, rendered from `docs/published-vintage.json` rather than typed.
 - **A capsule pointer** on all three pages.
+- **A recording of the dashboard** on the front page, where a grey placeholder box used to be: seven real
+  screenshots at 960x600, 880px wide, 313 KB, looping. It opens on the figures, passes the funnel, spends
+  most of its time in Ask the data - typing `amox`, picking Amoxicillin, ₦29,540 at the shop that has it
+  with the ₦590 listing marked out of stock - and closes on the price table. Made from the built page, so
+  it cannot show a number the page does not show.
+
+### Cut afterwards, at the author's instruction
+
+Fourteen sentences were struck out of the dashboard and the landing page and one label replaced (`Type
+Medicine`). Two build guards had to go with them, because they existed only to require the deleted words:
+the audit no longer demands *not a 30-day course* on the page, and a section band may now stand on its name
+with no standfirst.
+
+**The consequential loss, recorded rather than hidden:** the days-of-minimum-wage line no longer says the
+figure buys a *pack* rather than a month's treatment. The author was told and chose the shorter line. Anyone
+reading "12.66 days of minimum wage" should know it is the price of that box, not of a month's medicine.
+
+The GIF caught one real defect while being made: the Ask caption was fixed text naming Loratadine while the
+tiles below changed to whatever you picked. It now carries the interaction hint only.
 
 ### What is verified, and by what
 
@@ -35,13 +54,21 @@ done after the morning handoff and is verified unless it says otherwise.
 
 ### What is not true, or not known
 
-- **Nothing is deployed.** There is no public page; the download links work only in a local build.
+- **Nothing is deployed.** There is no public page; the download links and the recording work only in a
+  local build.
 - **No axe run** on the dashboard or the methods page. Contrast is measured at build time (worst 5.14:1)
   and structure was checked by hand, which is not the same as an accessibility audit.
 - **No independent review** of any of today's page work. It shipped on the secretary's own verification.
-- Two footer caveats are still the longest prose on the dashboard, at 46 and 34 words.
 - The dashboard is one browser's worth of testing; the CSV and print buttons were exercised by the build
   but not by a person.
+- The image weight gate was raised from 400 KB to 800 KB to fit the recording. Front page total is about
+  620 KB.
+
+### State at this commit
+
+**The author has a final batch of edits pending and nothing else will be changed until they arrive.** Work
+stopped after `caac9c3`: three pages built, the data published twice, the recording on the front page, no
+deployment.
 
 ### If this is ever picked up again
 
