@@ -51,15 +51,18 @@ from envfile import ensure_database_url
 REPO_URL = "https://github.com/batestguy/NaijaDrugWatch"
 GREENBOOK_URL = "http://greenbook.nafdac.gov.ng"
 
-# Where the frozen vintage is published. The page points at both copies because they are checked against
-# each other on every push: the release is what the restore job downloads, the dataset is what a reader
-# would cite. Keeping the two URLs here stops the page drifting from the thing it describes.
-VINTAGE_TAG = "vintage-2026-11-16"
-RELEASE_URL = f"{REPO_URL}/releases/tag/{VINTAGE_TAG}"
-HF_DATASET = "JBZABC/naijadrugwatch-vintage-2026-11-16"
-HF_URL = f"https://huggingface.co/datasets/{HF_DATASET}"
-VINTAGE_TABLES = 8
-VINTAGE_ROWS = 36936
+# Where the published vintage is described. The page's download block is rendered from this one committed
+# file and from nothing else: the two URLs, the vintage date, the licence and the words for what is inside
+# all come out of it, so a mistyped link or a remembered date cannot reach the page. The record carries its
+# own `verified_note`, saying who checked the live copies and when. Do not copy a value from it into this
+# script - read it from the file.
+PUBLISHED_RECORD = Path(__file__).resolve().parent.parent / "docs" / "published-vintage.json"
+
+# The keys the block cannot be rendered without. An absent record is not a failure - nothing has been
+# published, so there is nothing to link and no block is written. A record missing one of these is a build
+# failure that names the key, because a half-written record would put a dead link on a public page.
+PUBLISHED_REQUIRED = ("dataset_url", "doi_url", "vintage_date", "licence")
+
 SITE = Path("site")
 
 # Policy, not measurement: the project's own line for "this source has stopped reporting".
@@ -98,6 +101,99 @@ def human_date(value: str) -> str:
     """2026-11-16 -> 16 November 2026, without a platform-dependent %-d."""
     parsed = datetime.strptime(str(value), "%Y-%m-%d")
     return f"{parsed.day} {parsed.strftime('%B %Y')}"
+
+
+class PublishedRecordError(Exception):
+    """The committed record exists but cannot be rendered from, so the build stops and names why."""
+
+
+def load_published_vintage() -> dict[str, Any] | None:
+    """The published-vintage record, or None when nothing has been published.
+
+    ABSENT IS NOT A FAILURE. A repository that has not published its data must still build, so a missing
+    record makes the page carry no download block and prints one line saying so - never a guessed link.
+    A record that exists and is incomplete is a failure, because it would put a broken link or a wrong
+    date on a public page: a missing key, a non-https URL or a date that is not a date stops the build
+    with the offending key named. Nothing here is fetched; the file on disk is the only source.
+    """
+    try:
+        raw = PUBLISHED_RECORD.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        print(f"no published vintage: {PUBLISHED_RECORD.name} is absent, so the page renders no "
+              "download block", file=sys.stderr)
+        return None
+    try:
+        record = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise PublishedRecordError(f"{PUBLISHED_RECORD.name} is not valid JSON: {exc}") from exc
+    if not isinstance(record, dict):
+        raise PublishedRecordError(f"{PUBLISHED_RECORD.name} is not a JSON object")
+    missing = [key for key in PUBLISHED_REQUIRED if not str(record.get(key, "")).strip()]
+    if missing:
+        raise PublishedRecordError(
+            f"{PUBLISHED_RECORD.name} is missing required key(s): {', '.join(missing)}")
+    for key in ("dataset_url", "doi_url"):
+        if not str(record[key]).startswith("https://"):
+            raise PublishedRecordError(
+                f"{PUBLISHED_RECORD.name}: {key} must be an https URL, found {record[key]!r}")
+    try:
+        human_date(str(record["vintage_date"]))
+    except ValueError as exc:
+        raise PublishedRecordError(
+            f"{PUBLISHED_RECORD.name}: vintage_date must be YYYY-MM-DD, found "
+            f"{record['vintage_date']!r}") from exc
+    return record
+
+
+def download_block(record: dict[str, Any] | None) -> str:
+    """The Get-the-data section, or "" when there is no published vintage to point at.
+
+    Every value is read from the record: the date, the licence, the wording for what is inside, and both
+    URLs. Nothing is typed here, and nothing is fetched. The page's own "collection stopped" date is
+    printed beside the record's date, so a reader never sees one date for the page and another for the
+    download; when the two disagree the build prints a warning and both dates stay in the block rather
+    than one being silently chosen.
+    """
+    if not record:
+        return ""
+    vintage = str(record["vintage_date"])
+    stopped = str(FROZEN["frozen_on"]) if FROZEN else None
+
+    if stopped:
+        frozen = (f"Collection stopped on {esc(human_date(stopped))}, and the download is the vintage "
+                  f"dated {esc(human_date(vintage))}.")
+    else:
+        frozen = f"The download is the vintage dated {esc(human_date(vintage))}."
+
+    disagreement = ""
+    if stopped and stopped != vintage:
+        print(f"WARNING: the two dates disagree - the page says collection stopped on {stopped}, the "
+              f"published record says the vintage is {vintage}; both are printed in the block",
+              file=sys.stderr)
+        disagreement = (
+            '<p class="banner" role="note"><strong>Two dates do not agree.</strong> The rest of this '
+            f'page says collection stopped on {esc(human_date(stopped))}; the published record is dated '
+            f'{esc(human_date(vintage))}. Both are printed here rather than one being chosen.</p>'
+        )
+
+    inside = record.get("what_is_inside")
+    inside_html = f'<p>Inside: {esc(str(inside).rstrip("."))}.</p>' if inside else ""
+    doi = str(record.get("doi") or record["doi_url"])
+    return f"""<section class="body" id="get-the-data" aria-labelledby="get-data-h">
+  <div class="h2row"><h2 id="get-data-h">Get the data</h2></div>
+  {disagreement}
+  <p class="sub">This is a frozen archive, not a live feed. {frozen} Nothing is added to it after that
+  date.</p>
+  {inside_html}
+  <p>Licence <strong>{esc(record["licence"])}</strong>: share and adapt the data, including for
+  commercial use, as long as you credit it.</p>
+  <ul>
+    <li>Permanent archive, with a DOI: {link(record["doi_url"], f"doi:{doi}")}</li>
+    <li>Browsable copy, one file per table: {link(record["dataset_url"], "Hugging Face Datasets")}</li>
+    <li>The figures on this page as one machine-readable file, regenerated on every build and always
+    current rather than frozen: {link("data.json", "data.json")}</li>
+  </ul>
+</section>"""
 
 
 # The sources the nightly workflow is supposed to write a `scrape_runs` row for, with what each one
@@ -181,7 +277,15 @@ CREDIT_MONUMENT = {
     "change": "cropped and resized; this crop is offered under CC BY-SA 4.0 as well",
 }
 
-# Page weight is a gate, not a wish: the four images together must stay under this many bytes.
+# The licensed photograph laid behind the methods page as a faint ground. It is not a portrait and it
+# is evidence for nothing: the licence record is docs/assets/photos/CREDITS.md, and the credit words
+# printed on the page are the ones that file records.
+PHOTO_FILE = "drugs-nigeria.jpg"
+PHOTO_SRC = Path("docs/assets/photos")
+PHOTO_FILE_PAGE = ("https://commons.wikimedia.org/wiki/"
+                   "File:A_display_of_drugs_in_Nigeria.jpg")
+
+# Page weight is a gate, not a wish: every image the pages publish must stay under this many bytes.
 IMAGE_BUDGET_BYTES = 400 * 1024
 
 # ---- the typefaces -------------------------------------------------------------------------------
@@ -227,6 +331,16 @@ FONT_CSS = (
 # from the same embedded face the headings use.
 REGISTER_WORD_PATH = "M111.7 -54.2 140.5 0.0H93.9L70.9 -47.2H55.5V0.0H13.9V-129.4H93.1Q107.0 -129.4 116.9 -124.1Q126.8 -118.7 131.8 -109.6Q136.8 -100.5 136.8 -89.7Q136.8 -77.9 130.4 -68.3Q124.0 -58.7 111.7 -54.2ZM82.8 -99.9H55.5V-76.0H82.8Q87.7 -76.0 91.0 -79.5Q94.4 -83.0 94.4 -88.0Q94.4 -93.1 91.0 -96.5Q87.7 -99.9 82.8 -99.9Z M150.9 -129.4H262.8V-98.4H192.4V-80.5H252.6V-50.8H192.4V-31.0H264.1V0.0H150.9Z M408.2 -82.6H368.5Q368.5 -90.7 361.4 -95.7Q354.2 -100.6 344.1 -100.6Q329.4 -100.6 321.9 -92.8Q314.3 -85.0 314.3 -70.7V-58.7Q314.3 -44.4 321.9 -36.6Q329.4 -28.8 344.1 -28.8Q354.2 -28.8 361.4 -33.6Q368.5 -38.4 368.5 -45.9H339.2V-72.2H408.2V0.0H386.8L382.6 -12.8Q364.9 2.3 336.3 2.3Q304.2 2.3 288.0 -14.6Q271.8 -31.4 271.8 -64.7Q271.8 -97.6 290.2 -114.7Q308.5 -131.7 342.4 -131.7Q361.0 -131.7 375.8 -126.0Q390.7 -120.4 399.5 -109.4Q408.2 -98.4 408.2 -82.6Z M426.4 0.0V-129.4H468.0V0.0Z M599.9 -91.8V-89.5H560.9V-90.3Q560.9 -95.9 556.8 -99.7Q552.7 -103.5 544.2 -103.5Q535.9 -103.5 531.5 -101.0Q527.1 -98.6 527.1 -95.0Q527.1 -89.9 533.1 -87.5Q539.1 -85.0 552.5 -82.4Q568.1 -79.2 578.2 -75.7Q588.2 -72.2 595.7 -64.3Q603.3 -56.4 603.5 -42.9Q603.5 -19.9 587.9 -8.8Q572.4 2.3 546.5 2.3Q516.2 2.3 499.3 -7.9Q482.5 -18.1 482.5 -43.8H521.8Q521.8 -34.0 526.9 -30.8Q532.0 -27.5 542.7 -27.5Q550.6 -27.5 555.8 -29.2Q560.9 -30.9 560.9 -36.1Q560.9 -40.8 555.2 -43.2Q549.5 -45.5 536.5 -48.2Q520.7 -51.5 510.3 -55.2Q500.0 -58.9 492.3 -67.3Q484.6 -75.8 484.6 -90.3Q484.6 -111.6 501.0 -121.6Q517.5 -131.7 542.7 -131.7Q567.5 -131.7 583.5 -121.6Q599.5 -111.6 599.9 -91.8Z M689.2 -96.3V0.0H647.7V-96.3H605.2V-129.4H731.6V-96.3Z M741.2 -129.4H853.1V-98.4H782.7V-80.5H842.9V-50.8H782.7V-31.0H854.4V0.0H741.2Z M965.4 -54.2 994.2 0.0H947.5L924.6 -47.2H909.1V0.0H867.6V-129.4H946.8Q960.7 -129.4 970.6 -124.1Q980.4 -118.7 985.4 -109.6Q990.4 -100.5 990.4 -89.7Q990.4 -77.9 984.0 -68.3Q977.6 -58.7 965.4 -54.2ZM936.4 -99.9H909.1V-76.0H936.4Q941.3 -76.0 944.7 -79.5Q948.1 -83.0 948.1 -88.0Q948.1 -93.1 944.7 -96.5Q941.3 -99.9 936.4 -99.9Z"
 
+def blend(front: str, back: str, alpha: float) -> str:
+    """The colour a reader actually sees when a layer is painted at `alpha` over a background."""
+    out = []
+    for i in (1, 3, 5):
+        f = int(front[i:i + 2], 16)
+        b = int(back[i:i + 2], 16)
+        out.append(int(round(alpha * f + (1 - alpha) * b)))
+    return "#%02X%02X%02X" % tuple(out)
+
+
 # ---- two palettes, one page each ------------------------------------------------------------------
 # The front page uses the palette of the design study committed on 13 November
 # (docs/mockups/v1/index.html): a deep accent on warm whites, her photograph as a watermark, the
@@ -251,12 +365,9 @@ CREAM_WARN_BG = "#fdf1e3"
 CREAM_BAND_BG = "#2a1a20"
 CREAM_BAND_TEXT = "#f7f0e6"
 CREAM_BAND_ACCENT = "#e2b25c"
-# The methods page reads as a flow chart, and its step boxes alternate green and white. The green is
-# the same one the front page's "active" tag already uses (#1c5c2e), so the two pages cannot disagree
-# about what green means; white on it measures 8.02:1, measured below with every other pair. The white
-# is a true white rather than the page's paper, so a white box reads as a box and not as a gap.
-CREAM_GREEN = "#1c5c2e"
-CREAM_WHITE = "#ffffff"
+# The methods page reads as a flow chart. Its step boxes used to alternate green and white; they now
+# wear the three colours of her wrapper and headwrap - see DRESS_NAVY, DRESS_RED and DRESS_GOLD_RAW
+# below, and the three tints derived from them. The green and the true white are gone with them.
 
 # The orange palette, used by index.html. The hues are the study's own, moved from violet to orange at
 # the author's instruction on 18 November ("make every purple orange, thick bleeding orange"). The
@@ -287,9 +398,24 @@ DRESS_NAVY = "#161A64"   # raw #161A64, unchanged - 14.61:1 on the page
 DRESS_RED = "#9F2519"    # raw #9F2519, unchanged - 7.25:1 on the page
 DRESS_GOLD = "#7A5800"   # raw #D7A320 was 2.18:1 as text; this is the same gold at text strength - 6.19:1
 
+# The raw gold, kept because a box fill is not text. The gold of the wrapper's print measures 2.18:1
+# as writing on the page, which is why DRESS_GOLD above is that same gold taken down to text
+# strength. As the fill of a box it is the faithful colour, and the dark ink that sits on it
+# measures 7.78:1.
+DRESS_GOLD_RAW = "#D7A320"
+
+# The pale half of each box: the same hue as the solid box beside it, at paper strength. These are
+# not typed - each one is its hue blended into the page's own paper - so a pale box is provably the
+# same colour as the solid one and only weaker.
+CREAM_NAVY_TINT = blend(DRESS_NAVY, CREAM_PAPER, 0.10)
+CREAM_RED_TINT = blend(DRESS_RED, CREAM_PAPER, 0.10)
+CREAM_GOLD_TINT = blend(DRESS_GOLD_RAW, CREAM_PAPER, 0.16)
+
 CREAM_PALETTE_CSS = f""":root{{--ink:{CREAM_INK};--muted:{CREAM_MUTED};--line:{CREAM_LINE};--bg:{CREAM_PAPER};
 --panel:{CREAM_PANEL};--accent:{CREAM_ACCENT};--warn:{CREAM_WARN};--warn-bg:{CREAM_WARN_BG};
---band:{CREAM_BAND_BG};--band-ink:{CREAM_BAND_TEXT};--band-accent:{CREAM_BAND_ACCENT}}}"""
+--band:{CREAM_BAND_BG};--band-ink:{CREAM_BAND_TEXT};--band-accent:{CREAM_BAND_ACCENT};
+--pad:.75rem;--navy:{DRESS_NAVY};--red:{DRESS_RED};--gold:{DRESS_GOLD_RAW};--gold-ink:{DRESS_GOLD};
+--tint-navy:{CREAM_NAVY_TINT};--tint-red:{CREAM_RED_TINT};--tint-gold:{CREAM_GOLD_TINT}}}"""
 
 PALETTE_CSS = f""":root{{--orange:{ORANGE};--orange-deep:{ORANGE_DEEP};--orange-soft:{ORANGE_SOFT};
 --ink:{INK};--bg:{PAPER};--rule:{RULE};--muted:{MUTED};--tint:{TINT};--panel:{PANEL};
@@ -315,11 +441,19 @@ CONTRAST_PAIRS: list[tuple[str, str, str]] = [
     ("about: links on the page", CREAM_ACCENT, CREAM_PAPER),
     ("about: links on a panel", CREAM_ACCENT, CREAM_PANEL),
     ("about: a warning on its own panel", CREAM_WARN, CREAM_WARN_BG),
-    # about.html, the flow chart's alternating step boxes
-    ("about: step text on a green step", CREAM_WHITE, CREAM_GREEN),
-    ("about: step text on a white step", CREAM_INK, CREAM_WHITE),
-    ("about: secondary text on a white step", CREAM_MUTED, CREAM_WHITE),
-    ("about: a tool name on a white step", CREAM_ACCENT, CREAM_WHITE),
+    # about.html, the flow chart's step boxes: three colours, each in a solid and a pale form
+    ("about: step text on a solid navy step", "#FFFFFF", DRESS_NAVY),
+    ("about: step text on a solid red step", "#FFFFFF", DRESS_RED),
+    ("about: step text on a solid gold step", CREAM_INK, DRESS_GOLD_RAW),
+    ("about: step text on a pale navy step", CREAM_INK, CREAM_NAVY_TINT),
+    ("about: secondary text on a pale navy step", CREAM_MUTED, CREAM_NAVY_TINT),
+    ("about: a tool name on a pale navy step", DRESS_NAVY, CREAM_NAVY_TINT),
+    ("about: step text on a pale red step", CREAM_INK, CREAM_RED_TINT),
+    ("about: secondary text on a pale red step", CREAM_MUTED, CREAM_RED_TINT),
+    ("about: a tool name on a pale red step", DRESS_RED, CREAM_RED_TINT),
+    ("about: step text on a pale gold step", CREAM_INK, CREAM_GOLD_TINT),
+    ("about: secondary text on a pale gold step", CREAM_MUTED, CREAM_GOLD_TINT),
+    ("about: a tool name on a pale gold step", DRESS_GOLD, CREAM_GOLD_TINT),
     # index.html, orange palette
     ("front: body text on the page", INK, PAPER),
     ("front: secondary text on the page", MUTED, PAPER),
@@ -353,12 +487,32 @@ CONTRAST_PAIRS: list[tuple[str, str, str]] = [
 #
 # The word is drawn in the accent at 22% opacity over the paper, so the colour a reader's eye gets is
 # the blend of the two, not the accent. It is the blend that is measured here.
-DECORATIVE_PAIRS: list[tuple[str, str, str, float]] = [
-    ("the REGISTER watermark on the page", ORANGE, PAPER, 0.22),
-    # The methods page's own watermark: the tools that did the work, set enormous behind the flow.
-    # It is painted as CSS generated content, so there is no text node for a contrast checker to
-    # measure and nothing in the accessibility tree to announce. Measured anyway, and printed.
-    ("the tool watermark on the methods page", CREAM_ACCENT, CREAM_PAPER, 0.12),
+#
+# Each entry carries a note, because "decoration" is not one thing. A watermark is a word nobody
+# reads; a border is a boundary a reader must be able to see, and it is held to the 3:1 floor that
+# WCAG asks of a non-text boundary rather than the 4.5:1 of text. The note says which is which.
+DECORATIVE_PAIRS: list[tuple[str, str, str, float, str]] = [
+    ("the REGISTER watermark on the page", ORANGE, PAPER, 0.22,
+     "hidden from assistive technology, read by nobody"),
+    # The methods page's own watermark: the tools that did the work, now in the two side margins
+    # rather than behind the flow. It is painted as CSS generated content, so there is no text node
+    # for a contrast checker to measure and nothing in the accessibility tree to announce.
+    ("the tool-name strips on the methods page", CREAM_ACCENT, CREAM_PAPER, 0.12,
+     "hidden from assistive technology, read by nobody"),
+    # The rules around the pale boxes, measured against the fill each one bounds.
+    ("the 2px rule around a pale navy step", DRESS_NAVY, CREAM_NAVY_TINT, 1.0,
+     "a border, not text: it clears the 3:1 floor for a boundary"),
+    ("the 2px rule around a pale red step", DRESS_RED, CREAM_RED_TINT, 1.0,
+     "a border, not text: it clears the 3:1 floor for a boundary"),
+    ("the 2px rule around a pale gold step", DRESS_GOLD, CREAM_GOLD_TINT, 1.0,
+     "a border, not text: it clears the 3:1 floor for a boundary"),
+    # The gold boxes carry a rule in the same gold at text strength, because the raw gold measures
+    # 2.13:1 against the page and a boundary under 3:1 is a boundary a reader cannot find. Both
+    # numbers are printed: the one that was rejected, and the one that is used.
+    ("the edge of a gold step, against the page", DRESS_GOLD, CREAM_PAPER, 1.0,
+     "the same gold at text strength: this is the edge a reader sees"),
+    ("the raw gold fill, against the page", DRESS_GOLD_RAW, CREAM_PAPER, 1.0,
+     "the fill itself, not the edge: the rule above is what bounds it"),
 ]
 
 
@@ -442,16 +596,6 @@ def contrast_ratio(front: str, back: str) -> float:
     return (high + 0.05) / (low + 0.05)
 
 
-def blend(front: str, back: str, alpha: float) -> str:
-    """The colour a reader actually sees when a layer is painted at `alpha` over a background."""
-    out = []
-    for i in (1, 3, 5):
-        f = int(front[i:i + 2], 16)
-        b = int(back[i:i + 2], 16)
-        out.append(int(round(alpha * f + (1 - alpha) * b)))
-    return "#%02X%02X%02X" % tuple(out)
-
-
 def measure_contrast() -> tuple[float, list[str]]:
     """Every pair, measured. Returns the worst ratio and anything under the floor.
 
@@ -467,29 +611,32 @@ def measure_contrast() -> tuple[float, list[str]]:
         print(f"  contrast  {label:<44s} {ratio:5.2f}:1  ({front} on {back})")
         if ratio < CONTRAST_FLOOR:
             problems.append(f"{label}: {ratio:.2f}:1, below {CONTRAST_FLOOR}:1")
-    for label, front, back, alpha in DECORATIVE_PAIRS:
+    for label, front, back, alpha, note in DECORATIVE_PAIRS:
         painted = blend(front, back, alpha)
         ratio = contrast_ratio(painted, back)
         print(f"  decoration {label:<44s} {ratio:5.2f}:1  ({front} at {alpha:.0%} over {back} paints "
-              f"as {painted}) - hidden from assistive technology, read by nobody")
+              f"as {painted}) - {note}")
     return worst, problems
 
 
 def publish_images() -> int:
-    """Copy the four repository images next to the pages and refuse an over-weight page.
+    """Copy the repository's images next to the pages and refuse an over-weight page.
 
-    The images live in `docs/assets/dora/` as source; `site/` is build output and gitignored, so the
-    published directory is filled here rather than committed.
+    The images live in `docs/assets/dora/` (the tribute) and `docs/assets/photos/` (a licensed
+    photograph of a Nigerian chemist's shelves) as source; `site/` is build output and gitignored, so
+    the published directory is filled here rather than committed. The weight gate counts both
+    folders, because it is the reader's download that matters.
     """
-    out_dir = SITE / "assets" / "dora"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    missing = [str(ASSET_SRC / name) for name in IMAGE_FILES
-               if not (ASSET_SRC / name).exists()]
+    wanted = [(ASSET_SRC, name, SITE / "assets" / "dora") for name in IMAGE_FILES]
+    wanted.append((PHOTO_SRC, PHOTO_FILE, SITE / "assets" / "photos"))
+    missing = [str(src / name) for src, name, _ in wanted
+               if not (src / name).exists()]
     if missing:
         raise RuntimeError("image missing from the repository: " + ", ".join(missing))
     total = 0
-    for name in IMAGE_FILES:
-        data = (ASSET_SRC / name).read_bytes()
+    for src, name, out_dir in wanted:
+        out_dir.mkdir(parents=True, exist_ok=True)
+        data = (src / name).read_bytes()
         (out_dir / name).write_bytes(data)
         total += len(data)
         print(f"  image     {name:<20s} {len(data):>7,} bytes")
@@ -869,7 +1016,7 @@ CSS_CREAM = CREAM_PALETTE_CSS + (
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);
 font:1rem/1.55 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
-.wrap{max-width:62rem;margin:0 auto;padding:1rem .75rem 3rem}
+.wrap{max-width:62rem;margin:0 auto;padding:1rem var(--pad) 3rem}
 /* Prose keeps a readable measure; tables are allowed the full width. */
 .wrap p,.wrap li{max-width:68ch}.wrap .tablewrap,.wrap table{max-width:none}
 /* The front door's links to the rest of the site: three cards, because there are three things to do
@@ -979,7 +1126,8 @@ margin:1rem 0;border-radius:0 4px 4px 0}
  .band-name{font-size:1.4rem}
 }
 @media (max-width:420px){
- .wrap{padding:.75rem .6rem 2rem}
+ :root{--pad:.6rem}
+ .wrap{padding:.75rem var(--pad) 2rem}
  h1{font-size:1.35rem}
  table{font-size:.86rem}
  th,td{padding:.35rem .4rem}
@@ -987,17 +1135,38 @@ margin:1rem 0;border-radius:0 4px 4px 0}
  .masthead-mark{width:4.6rem;flex-basis:4.6rem}
 }
 /* ---- the flow ---------------------------------------------------------------------------------
-   The page is one flow chart: a green box, a white box, green, white, down a dark arrow, in the order
-   the work happened. Each box is still a step with its own <h2>, so the page is navigable by heading;
-   the arrow between two boxes is decoration and is hidden from assistive technology. Every word in a
-   box sits on a flat fill, green or white, so its contrast is a measured pair (see CONTRAST_PAIRS)
-   rather than a hope. The arrows take the page's ink, so they are dark in both kinds of gap. */
+   The page is one flow chart: a box, a pale box of the same hue, down a dark arrow, in the order the
+   work happened, cycling through the three colours of her wrapper and headwrap - navy, red, gold.
+   Each box is still a step with its own <h2>, so the page is navigable by heading; the arrow between
+   two boxes is decoration and is hidden from assistive technology. Every word in a box sits on a
+   flat fill, solid or pale, so its contrast is a measured pair (see CONTRAST_PAIRS) rather than a
+   hope. The arrows take the page's ink, so they are dark in both kinds of gap. */
 .wrap{position:relative}
 .wrap>header,.wrap>main,.wrap>footer{position:relative;z-index:1}
-.flow{position:relative;z-index:1;margin:1rem auto 2rem;max-width:820px}
-.step{position:relative;border-radius:8px;padding:.9rem 1.05rem 1rem;overflow-wrap:break-word}
-.step.green{background:#1c5c2e;color:#fff;border:2px solid #1c5c2e}
-.step.white{background:#fff;color:var(--ink);border:2px solid #1c5c2e}
+/* The zone is the page's full width - it is pulled out of the wrap's padding by exactly that padding
+   - and the flow inside it is the 820px column, centred. The two margin strips and the photograph are
+   placed against this zone, so each of them knows where the column begins without being told: the
+   strip takes the margin the column leaves, and the photograph takes the column and the margins. */
+.flowzone{position:relative;z-index:0;margin:1rem calc(-1 * var(--pad)) 2rem}
+.flow{position:relative;z-index:2;max-width:820px;margin:0 auto}
+.step{position:relative;border-radius:8px;padding:.9rem 1.05rem 1rem;overflow-wrap:break-word;
+ border:2px solid transparent}
+/* A solid box and a pale box of the same hue, in turn, so the page breathes the way it always did
+   (a green box, then a white one with a green rule) but in three colours instead of one. */
+.step.solid{color:#fff}
+.step.pale{color:var(--ink)}
+.step.navy{--tool-ink:var(--navy)}
+.step.red{--tool-ink:var(--red)}
+.step.gold{--tool-ink:var(--gold-ink)}
+.step.navy.solid{background:var(--navy);border-color:var(--navy)}
+.step.navy.pale{background:var(--tint-navy);border-color:var(--navy)}
+.step.red.solid{background:var(--red);border-color:var(--red)}
+.step.red.pale{background:var(--tint-red);border-color:var(--red)}
+/* The gold boxes carry a rule in the same gold at text strength, because the raw gold measures
+   2.15:1 against this page's paper (see DECORATIVE_PAIRS) and a boundary under 3:1 is a boundary a
+   reader cannot find. The fill is still the raw gold, and the ink on it is the page's own ink. */
+.step.gold.solid{background:var(--gold);border-color:var(--gold-ink);color:var(--ink)}
+.step.gold.pale{background:var(--tint-gold);border-color:var(--gold-ink)}
 .step h2{font-family:"Archivo Black",Impact,sans-serif;font-weight:400;font-size:1.08rem;
  line-height:1.25;letter-spacing:-.01em;border:0;padding:0;margin:0 0 .45rem;color:inherit}
 .step h2 .n{display:block;font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;
@@ -1008,32 +1177,53 @@ margin:1rem 0;border-radius:0 4px 4px 0}
 .step li{margin:.3rem 0;max-width:64ch}
 .step p{margin:.45rem 0 0;max-width:64ch}
 .step .tool{font-weight:700}
-.step.white .tool{color:var(--accent)}
+.step.pale .tool{color:var(--tool-ink)}
 .step .fig{font-weight:700;font-variant-numeric:tabular-nums}
 .step .sub{color:inherit}
-.step.white .sub{color:var(--muted)}
+.step.pale .sub{color:var(--muted)}
 .step code{font-size:.9em;overflow-wrap:anywhere}
 .arrow{position:relative;height:1.75rem}
 .arrow::before{content:"";position:absolute;left:50%;margin-left:-1.5px;top:0;bottom:.55rem;width:3px;
  background:var(--ink)}
 .arrow::after{content:"";position:absolute;left:50%;bottom:0;margin-left:-7px;
  border-left:7px solid transparent;border-right:7px solid transparent;border-top:9px solid var(--ink)}
-/* The watermark: the tools that did the work, set enormous and faint behind the flow, in the page's
-   own display face. It is painted as generated content and not as a text node - the accessibility
-   tree holds nothing to announce, and a checker has no node to measure - and the layer clips it, so
-   it can never widen the page at a narrow width. Its paint is measured anyway (DECORATIVE_PAIRS). */
-.wm{position:absolute;inset:0;overflow:hidden;pointer-events:none;user-select:none;z-index:0}
-.wm::before{display:block;font-family:"Archivo Black",Impact,sans-serif;font-weight:400;
- font-size:clamp(2.4rem,12.5vw,6.5rem);line-height:.88;letter-spacing:-.035em;
- color:var(--accent);opacity:.12;padding:.2rem .4rem;overflow-wrap:anywhere}
+/* ---- the tool names leave the page body ------------------------------------------------------------
+   The tool names used to be one enormous watermark across the whole wrap, which meant every box
+   covered most of it and the rest leaked out into the gaps and behind the header. They are now two
+   vertical strips, one hard against each edge of the page, each inside the empty margin between
+   that edge and the 820px column - the margin only, so no tool word can sit behind a box, behind
+   the header or beside the text. They are painted as generated content, so there is no text node
+   for a checker to measure and nothing in the accessibility tree to announce, and the layer clips
+   them so they can never widen the page. Below the width where the margin is thinner than about
+   70px both strips are removed outright: at 375px there is no strip, no clipped word and no
+   sideways scroll. */
+.wmstrip{position:absolute;top:0;bottom:0;z-index:1;overflow:hidden;pointer-events:none;
+ user-select:none;writing-mode:vertical-rl;font-family:"Archivo Black",Impact,sans-serif;
+ font-weight:400;font-size:.9rem;line-height:1.1;letter-spacing:.04em;color:var(--accent);
+ opacity:.12;width:calc(max(0px, (100% - 820px)/2) - 2px)}
+.wmstrip-l{left:0}
+.wmstrip-r{right:0}
+.wmstrip::before{content:"TOOLS";white-space:nowrap;display:block}
+/* ---- the photograph -------------------------------------------------------------------------------
+   A licensed photograph of a Nigerian chemist's shelves, laid as a faint ground behind the column.
+   It carries no figure and no claim, no text sits on it (the header, every box and the footer are
+   on opaque surfaces above it), and it is masked so that it fades out towards both edges and never
+   reaches the tool-name strips in the margins. */
+.photoground{position:absolute;top:0;bottom:0;z-index:0;pointer-events:none;overflow:hidden;
+ background-color:var(--bg);left:0;right:0}
+.photoground::before{content:"";position:absolute;inset:0;
+ background:url("assets/photos/drugs-nigeria.jpg") center top/100% auto repeat-y;opacity:.1;
+ -webkit-mask-image:linear-gradient(90deg,transparent 0,transparent 12%,#000 26%,#000 74%,transparent 88%,transparent 100%);
+ mask-image:linear-gradient(90deg,transparent 0,transparent 12%,#000 26%,#000 74%,transparent 88%,transparent 100%)}
+@media (max-width:959px){.wmstrip{display:none}}
 @media (max-width:420px){
  .step{padding:.8rem .8rem .9rem}
  .step h2{font-size:1rem}
 }
 """ + (
-    # The words themselves, repeated so the layer covers a page this tall at any width. Written once
-    # in CREAM_TOOLS above, so a tool named there cannot go missing from the watermark.
-    '.wm::before{content:"' + " ".join([CREAM_TOOLS] * 6) + '"}'
+    # The words themselves, repeated so the strip covers a column this tall at any width. Written
+    # once in CREAM_TOOLS above, so a tool named there cannot go missing from the margin.
+    '.wmstrip::before{content:"' + " ".join([CREAM_TOOLS] * 8) + '"}'
 )
 
 
@@ -1472,11 +1662,14 @@ def about_page() -> str:
 NAFDAC or any pharmacy here. Code MIT, data CC-BY-4.0. The register: the agency Dora Akunyili led,
 2001&ndash;2008. Her tribute is on the <a href="index.html">front page</a>.</p>
 </header>
-<div class="wm" aria-hidden="true"></div>
 <main id="main">
+<div class="flowzone">
+<div class="photoground" aria-hidden="true"></div>
+<div class="wmstrip wmstrip-l" aria-hidden="true"></div>
+<div class="wmstrip wmstrip-r" aria-hidden="true"></div>
 <div class="flow">
 
-<div class="step green" id="register">
+<div class="step solid navy" id="register">
 <h2><span class="n">01 &middot; register</span> Register first. No API.</h2>
 <ul>
 <li><span class="tool">NAFDAC Greenbook</span>. No API. <code>/api/*</code> &rarr; 404. No mirror.</li>
@@ -1487,7 +1680,7 @@ NAFDAC or any pharmacy here. Code MIT, data CC-BY-4.0. The register: the agency 
 </div>
 <div class="arrow" aria-hidden="true"></div>
 
-<div class="step white" id="catalogue">
+<div class="step pale navy" id="catalogue">
 <h2><span class="n">02 &middot; seed</span> Seed list. Borrowed.</h2>
 <ul>
 <li><span class="tool">#FixMedPrices</span>, CC-BY-4.0. <span class="fig">{ABOUT["seed_products"]:,}</span> products.</li>
@@ -1496,7 +1689,7 @@ NAFDAC or any pharmacy here. Code MIT, data CC-BY-4.0. The register: the agency 
 </div>
 <div class="arrow" aria-hidden="true"></div>
 
-<div class="step green">
+<div class="step solid red">
 <h2><span class="n">03 &middot; catalogue</span> Rebuild. Register is judge.</h2>
 <ul>
 <li>Linker tool. Rules: name overlaps, strength agrees, form compatible.</li>
@@ -1507,7 +1700,7 @@ NAFDAC or any pharmacy here. Code MIT, data CC-BY-4.0. The register: the agency 
 </div>
 <div class="arrow" aria-hidden="true"></div>
 
-<div class="step white" id="scraping">
+<div class="step pale red" id="scraping">
 <h2><span class="n">04 &middot; scrape</span> Scrape. API first.</h2>
 <ul>
 <li>API first: <span class="tool">WooCommerce Store API</span>, <span class="tool">Shopify /products.json</span>.</li>
@@ -1518,7 +1711,7 @@ NAFDAC or any pharmacy here. Code MIT, data CC-BY-4.0. The register: the agency 
 </div>
 <div class="arrow" aria-hidden="true"></div>
 
-<div class="step green">
+<div class="step solid gold">
 <h2><span class="n">05 &middot; route</span> MedPlus. Wrong door, right door.</h2>
 <ul>
 <li>Category pages: same 20 links, every page. Dead end.</li>
@@ -1529,7 +1722,7 @@ NAFDAC or any pharmacy here. Code MIT, data CC-BY-4.0. The register: the agency 
 </div>
 <div class="arrow" aria-hidden="true"></div>
 
-<div class="step white">
+<div class="step pale gold">
 <h2><span class="n">06 &middot; refusals</span> Refusal = failure.</h2>
 <ul>
 <li>403, 429: stop. Failed row written.</li>
@@ -1539,7 +1732,7 @@ NAFDAC or any pharmacy here. Code MIT, data CC-BY-4.0. The register: the agency 
 </div>
 <div class="arrow" aria-hidden="true"></div>
 
-<div class="step green" id="matching">
+<div class="step solid navy" id="matching">
 <h2><span class="n">07 &middot; match</span> Two stages. Never similarity alone.</h2>
 <ul>
 <li><span class="tool">fastembed</span> and <span class="tool">bge-small-en-v1.5</span>, 384 dims, <span class="tool">pgvector</span>: top 10.</li>
@@ -1550,7 +1743,7 @@ NAFDAC or any pharmacy here. Code MIT, data CC-BY-4.0. The register: the agency 
 </div>
 <div class="arrow" aria-hidden="true"></div>
 
-<div class="step white">
+<div class="step pale navy">
 <h2><span class="n">08 &middot; guard</span> Strength guard. Late. Costly.</h2>
 <ul>
 <li>No listing attached to a different strength.</li>
@@ -1561,7 +1754,7 @@ NAFDAC or any pharmacy here. Code MIT, data CC-BY-4.0. The register: the agency 
 </div>
 <div class="arrow" aria-hidden="true"></div>
 
-<div class="step green" id="views">
+<div class="step solid red" id="views">
 <h2><span class="n">09 &middot; views</span> Answers are views.</h2>
 <ul>
 <li><span class="tool">SQL</span> on <span class="tool">PostgreSQL</span>: latest, cheapest, two-shop, not-active, 7-day.</li>
@@ -1571,7 +1764,7 @@ NAFDAC or any pharmacy here. Code MIT, data CC-BY-4.0. The register: the agency 
 </div>
 <div class="arrow" aria-hidden="true"></div>
 
-<div class="step white">
+<div class="step pale red">
 <h2><span class="n">10 &middot; index</span> Index refreshed by machine.</h2>
 <ul>
 <li><span class="tool">mv_drug_price_index</span>. <span class="fig">{ABOUT["index_rows"]}</span> rows.</li>
@@ -1580,7 +1773,7 @@ NAFDAC or any pharmacy here. Code MIT, data CC-BY-4.0. The register: the agency 
 </div>
 <div class="arrow" aria-hidden="true"></div>
 
-<div class="step green" id="audit">
+<div class="step solid gold" id="audit">
 <h2><span class="n">11 &middot; audit</span> Page proves itself.</h2>
 <ul>
 <li>Build renders. Re-reads every query. Compares. Disagreement: nothing written.</li>
@@ -1589,7 +1782,7 @@ NAFDAC or any pharmacy here. Code MIT, data CC-BY-4.0. The register: the agency 
 </div>
 <div class="arrow" aria-hidden="true"></div>
 
-<div class="step white">
+<div class="step pale gold">
 <h2><span class="n">12 &middot; every price</span> Second page. Every price.</h2>
 <ul>
 <li>Filters on. Each row &rarr; the shop page it came from, the register record behind it.</li>
@@ -1598,7 +1791,7 @@ NAFDAC or any pharmacy here. Code MIT, data CC-BY-4.0. The register: the agency 
 </div>
 <div class="arrow" aria-hidden="true"></div>
 
-<div class="step green" id="checked">
+<div class="step solid navy" id="checked">
 <h2><span class="n">13 &middot; human check</span> Rule first. Verdict after.</h2>
 <ul>
 <li>20 licence cards. 20 pack cards. Seeded draw. No substitution.</li>
@@ -1608,7 +1801,7 @@ NAFDAC or any pharmacy here. Code MIT, data CC-BY-4.0. The register: the agency 
 </div>
 <div class="arrow" aria-hidden="true"></div>
 
-<div class="step white">
+<div class="step pale navy">
 <h2><span class="n">14 &middot; re-read</span> Machine re-read. Narrow reach.</h2>
 <ul>
 <li>Register: <span class="fig">20 of 20</span> equal.</li>
@@ -1619,7 +1812,7 @@ NAFDAC or any pharmacy here. Code MIT, data CC-BY-4.0. The register: the agency 
 </div>
 <div class="arrow" aria-hidden="true"></div>
 
-<div class="step green" id="freeze">
+<div class="step solid red" id="freeze">
 <h2><span class="n">15 &middot; freeze</span> Then frozen.</h2>
 <ul>
 <li>Nightly run = standing promise. Unwatched free tier: stale, unnamed.</li>
@@ -1629,7 +1822,7 @@ NAFDAC or any pharmacy here. Code MIT, data CC-BY-4.0. The register: the agency 
 </div>
 <div class="arrow" aria-hidden="true"></div>
 
-<div class="step white">
+<div class="step pale red">
 <h2><span class="n">16 &middot; export</span> Export before switch-off.</h2>
 <ul>
 <li><span class="fig">{ABOUT["exported_tables"]}</span> tables, <span class="fig">{ABOUT["exported_rows"]:,}</span> rows.</li>
@@ -1639,7 +1832,7 @@ NAFDAC or any pharmacy here. Code MIT, data CC-BY-4.0. The register: the agency 
 </div>
 <div class="arrow" aria-hidden="true"></div>
 
-<div class="step green">
+<div class="step solid gold">
 <h2><span class="n">17 &middot; restore</span> Restore. Then trust the archive.</h2>
 <ul>
 <li>Every push: empty <span class="tool">PostgreSQL 17</span>, restore, compare manifest. <span class="fig">{ABOUT["restore_checks"]}</span> checks.</li>
@@ -1650,7 +1843,7 @@ NAFDAC or any pharmacy here. Code MIT, data CC-BY-4.0. The register: the agency 
 </div>
 <div class="arrow" aria-hidden="true"></div>
 
-<div class="step white" id="decisions">
+<div class="step pale gold" id="decisions">
 <h2><span class="n">18 &middot; decisions</span> Decisions. Each with its cost.</h2>
 <div class="tablewrap" role="region" aria-label="Decisions and their costs" tabindex="0">
 <table>
@@ -1675,7 +1868,7 @@ scripts. A rebuild means running them in order.</td></tr>
 </div>
 <div class="arrow" aria-hidden="true"></div>
 
-<div class="step green" id="limits">
+<div class="step solid navy" id="limits">
 <h2><span class="n">19 &middot; limits</span> What it does not claim.</h2>
 <ul>
 <li>Not a market index. Not a national price survey. Lagos, three online pharmacies,
@@ -1694,7 +1887,7 @@ recorded human sample. Not a complete human audit.</li>
 </div>
 <div class="arrow" aria-hidden="true"></div>
 
-<div class="step white" id="reproduce">
+<div class="step pale navy" id="reproduce">
 <h2><span class="n">20 &middot; rebuild</span> Rebuild it yourself.</h2>
 <ol>
 <li>Pinned <span class="tool">Python</span>. Not the system interpreter.</li>
@@ -1705,15 +1898,18 @@ recorded human sample. Not a complete human audit.</li>
 </div>
 
 </div>
+</div>
 </main>
 <footer>
 <p><strong>Independence and licence.</strong> Not endorsed by NAFDAC and not affiliated with, or paid by,
 any pharmacy named in the data. Code MIT; data CC-BY-4.0. The medicine list descends from #FixMedPrices,
 CC-BY-4.0, credited as its licence requires. Source and issue tracker:
 {link(REPO_URL, "github.com/batestguy/NaijaDrugWatch")}.</p>
-<p>This page is one file. No external stylesheet, script, font or image is fetched, so it works with no
-network. It is generated from the database, and the figures above that a query can answer are checked
-against the database again on every build.</p>
+<p class="credit"><a href="{PHOTO_FILE_PAGE}">Photograph: Tolatheart, CC BY-SA 4.0, via Wikimedia
+Commons.</a></p>
+<p>This page is one HTML file and one local photograph, both in this directory. No external stylesheet,
+script, font or image is fetched, so it works with no network. It is generated from the database, and the
+figures above that a query can answer are checked against the database again on every build.</p>
 </footer>
 </div>
 </body>
@@ -1726,9 +1922,11 @@ against the database again on every build.</p>
 class Page:
     """Renders the document and records which facts it actually printed."""
 
-    def __init__(self, facts: dict[str, Any], dates: str) -> None:
+    def __init__(self, facts: dict[str, Any], dates: str,
+                 published: dict[str, Any] | None = None) -> None:
         self.facts = facts
         self.dates = dates
+        self.published = published
         self.used: set[str] = set()
 
     def f(self, key: str) -> Any:
@@ -1826,6 +2024,7 @@ class Page:
         </div>"""
 
         dedication = dedication_caption_html()
+        data_block = download_block(self.published)
 
         return f"""<!doctype html>
 <html lang="en">
@@ -1874,12 +2073,8 @@ class Page:
 <div class="placeholder-row">
   <div class="ph"><span>Placeholder &mdash; animation of the dashboard in use</span></div>
 </div>
-<p class="dl"><strong>Take the data.</strong> <span class="fig">{ABOUT["exported_tables"]}</span> tables,
-<span class="fig">{ABOUT["exported_rows"]:,}</span> rows, one checksum per file.
-<a href="https://github.com/batestguy/NaijaDrugWatch/releases/tag/vintage-2026-11-16">Release</a>
-&middot; <a href="https://huggingface.co/datasets/JBZABC/naijadrugwatch-vintage-2026-11-16">Hugging Face</a>
-&middot; <a href="data.json">data.json</a></p>
 {banner}
+{data_block}
 </div>
 
 <div class="built">
@@ -2036,6 +2231,14 @@ def main() -> int:
         print(str(exc), file=sys.stderr)
         return 3
 
+    # The published-vintage record is read before the database is opened, so a record that cannot be
+    # rendered from stops the build with the missing key named rather than halfway through a page.
+    try:
+        published = load_published_vintage()
+    except PublishedRecordError as exc:
+        print(f"published vintage: {exc}", file=sys.stderr)
+        return 4
+
     try:
         import psycopg
     except Exception as exc:  # noqa: BLE001
@@ -2062,7 +2265,7 @@ def main() -> int:
         conn.execute("set statement_timeout = '120s'")
 
         facts = read_facts(conn)
-        page = Page(facts, dates)
+        page = Page(facts, dates, published)
         document = page.build()
 
         checked, problems = audit(conn, facts, page.used)

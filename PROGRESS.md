@@ -1,8 +1,87 @@
 # Progress
 
-Single state file for NaijaDrugWatch. Last updated **2026-11-18**.
+Single state file for NaijaDrugWatch. Last updated **2026-11-19**.
 
-## Handoff — 17 November 2026
+## Handoff - 19 November 2026
+
+**Read this block first.** The 17 November block below is history, and three of its statements were
+wrong; the corrections are in this block, marked as corrections.
+
+### What changed today
+
+1. **The methods page now wears her colours.** The twenty step boxes cycle navy `#161A64`, red
+   `#9F2519` and the raw gold `#D7A320` - the colours sampled from her wrapper and headwrap - instead of
+   green and white. The tool-name watermark is **out of the page body**: two 84px strips run down the
+   outer margins, hidden below 960px. A licensed photograph of Nigerian pharmacy shelves sits faintly
+   beneath the column, credited on the page: Tolatheart, CC BY-SA 4.0, via Wikimedia Commons.
+2. **The frozen vintage is published, twice, and both copies were checked anonymously.** Hugging Face
+   `JBZABC/naijadrugwatch` (browsable, one file per table) and Zenodo **DOI 10.5281/zenodo.24356426**
+   (one 5,419,983-byte zip, version 1.0.0, CC-BY-4.0, open). The Hugging Face copy of
+   `pharmacy_listings.csv` downloaded with no credentials and its SHA-256 matched the manifest
+   (`a06dfe8c...`); the Zenodo zip downloaded anonymously and was byte-identical (`209fe7ae...`).
+3. **The landing page offers the data.** A "Get the data" section, rendered entirely from
+   `docs/published-vintage.json`: the freeze date, the licence, what is inside, the DOI, the Hugging
+   Face copy, and `data.json` for the page's own figures. With the record absent the build still
+   succeeds and renders no block; with a required key missing it stops and names the key.
+
+### Corrections to the 17 November block
+
+- **It claimed the vintage was published to a GitHub release `vintage-2026-11-16` and a Hugging Face
+  dataset `JBZABC/naijadrugwatch-vintage-2026-11-16`.** Neither existed. The page carried two hand-typed
+  links to them, so the public page advertised two dead downloads. Both are now built from the record
+  and both resolve.
+- **The front page and the methods page sizes in that block are stale** (78,699 and 40,261 bytes). They
+  are 79,502 and 44,531 today.
+- **The old "Take the data" line is gone**, replaced by the section described above.
+
+### What ships today
+
+| what | where | state |
+|---|---|---|
+| **The front page** - hero, the 154, the tally, the dashboard frame, **Get the data**, the deep block, the licence footer | `site/index.html` | **79,502 bytes**, self-contained, **3,787 numbers checked 0 unexplained** |
+| **Every price, explorable** | `site/dashboard.html` | 787,250 bytes, 2,800 rows; axe 0 violations measured before 18 November |
+| **How this was built** - her colours on the boxes, tool names in the margins, the pharmacy photograph beneath | `site/about.html` | **44,531 bytes**, 20 step boxes, 40 contrast pairs passing (worst 5.13:1; the new worst is 5.44:1) |
+| **The frozen vintage** - 8 tables, 36,936 rows, dump, schema, manifest | Hugging Face `JBZABC/naijadrugwatch`; Zenodo `10.5281/zenodo.24356426` | published and checksum-verified against `docs/published-vintage.json` |
+| **The verification desk** | `site/verify/` | 21 of 40 cards carry recorded judgements; not published |
+| **The Streamlit app** | `dashboard/app.py` | built, not deployed, redundant |
+
+Nothing is deployed. There is still no public URL, so the two download links are only visible in a
+locally built copy of the page.
+
+### What is verified, and by what
+
+- Build exits 0, prints `3,787 numbers checked, 0 unexplained`, and `about.html` is byte-identical on
+  rebuild (hash `039FAA3D...` before and after the landing-page change).
+- Geometry measured in a browser, not eyeballed: 0 intersections between a tool-name strip and any step
+  box at 1440, 1280 and 1024; strips `display:none` at 375; `scrollWidth == clientWidth` at every width;
+  0 console errors.
+- The photograph is never behind text: it starts below the header and stops above the footer, and every
+  text surface stays opaque.
+- Both download links were **clicked** from the built page and land on the right records, logged out.
+- Negative tests run and pasted: record absent -> exit 0, no block; `doi_url` removed -> exit 4 naming it.
+
+### What is not true, or not known
+
+- **No accessibility sweep on the new work.** axe is not installed here. Structural checks were done by
+  hand (headings, hidden decoration, contrast, overflow), which is not the same thing.
+- **No independent review of today's two page changes.** 305 lines changed in `scripts/build_site.py`
+  across the two tickets. Review was offered and not run before this commit.
+- **Whether the photograph is the right strength is the author's call, not a measured fact.** 10% under
+  a paper veil was chosen to be readable-but-ignorable; nobody has judged it on a real screen.
+- **No GitHub release mirror.** Two copies exist; a third was proposed and not made.
+- The 154 not-active listings and 86 products figures in the dataset card were not re-queried by hand;
+  they come from the page's audited build, which does query them.
+
+### What to do next
+
+1. Decide whether to deploy: the page has no host, and the downloads are unreachable by anyone else until
+   it does. GitHub Pages needs the publish job in `.github/workflows/daily.yml`, which is still held back.
+2. Look at the methods page and say whether the photograph should be fainter, one band, or repeated.
+3. Run the independent review on today's page changes before anything else is layered on top.
+4. If a third copy is wanted, cut a GitHub release from `vintage/2026-11-16/` and add its URL to
+   `docs/published-vintage.json` - the page will pick it up with no code change.
+
+## Handoff - 17 November 2026 (history; read the corrections above first)
 
 Read this block and `FROZEN.md`, and you know where everything stands. Everything below it is history:
 the freeze record, the 16 November verification, the pauses, the earlier handoffs. They are kept because
@@ -23,7 +102,7 @@ index, and not endorsed by NAFDAC or any pharmacy in the data. Code MIT, data CC
 | **The front page** — pruned to a landing page on 18 November: hero (headline, the 154, the tally), the word REGISTER, one large placeholder frame for a dashboard recording, a data-download line, the deep block with two buttons, the licence footer | `site/index.html` | **78,699 bytes**, self-contained, **3,787 numbers checked 0 unexplained**, contrast 30 pairs all passing (worst 5.13:1). **No limitations block and no sources section** — both were removed with the sections on 18 November; only the licence line in the footer remains. axe not re-run since the purple build |
 | **Every price, explorable** — all 2,800 prices, filterable by shop, medicine and licence, each row linking to the shop page and the register record. Reached only from the deep block's button; the card that used to point at it is gone | `site/dashboard.html` | 787,250 bytes, 2,800 rows, axe **0 violations** (measured before 18 November) |
 | **How this was built** — a **flowchart**: a wordless tool watermark behind 20 green/white step boxes, dark arrows, cave-speech copy, the decisions table and the limits list, and a rebuild recipe | `site/about.html` | **40,261 bytes**, 21 figures re-queried on every build; no file paths or script names on the page (removed 18 November) |
-| **The frozen vintage** — 8 tables, 36,936 rows | GitHub release `vintage-2026-11-16`; Hugging Face `JBZABC/naijadrugwatch-vintage-2026-11-16` | published twice, both checksum-compared to the same manifest on every push |
+| **The frozen vintage** - 8 tables, 36,936 rows | GitHub release `vintage-2026-11-16`; Hugging Face `JBZABC/naijadrugwatch-vintage-2026-11-16` | **WRONG when written** - neither existed; see the 19 November corrections. Published on 19 November to Hugging Face `JBZABC/naijadrugwatch` and Zenodo `10.5281/zenodo.24356426` |
 | **The verification desk** — the 40-card human check | `site/verify/`, not published | 21 of 40 cards carry recorded judgements |
 | **The Streamlit app** | `dashboard/app.py` | built, **not deployed, and now redundant**: the explorable page does its job with no server |
 

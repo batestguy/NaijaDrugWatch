@@ -1,0 +1,99 @@
+{
+  "batchcomplete": "",
+  "query": {
+    "pages": {
+      "103554865": {
+        "pageid": 103554865,
+        "ns": 6,
+        "title": "File:A display of drugs in Nigeria.jpg",
+        "imagerepository": "local",
+        "imageinfo": [
+          {
+            "size": 5296782,
+            "width": 4160,
+            "height": 3120,
+            "url": "https://upload.wikimedia.org/wikipedia/commons/f/f8/A_display_of_drugs_in_Nigeria.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:A_display_of_drugs_in_Nigeria.jpg",
+            "descriptionshorturl": "https://commons.wikimedia.org/wiki/Special:Redirect/page/103554865",
+            "sha1": "2662ec637791125084805316a7b73733e55b7155",
+            "extmetadata": {
+              "DateTime": {
+                "value": "2021-04-13 09:42:57",
+                "source": "mediawiki-metadata",
+                "hidden": ""
+              },
+              "ObjectName": {
+                "value": "A display of drugs in Nigeria",
+                "source": "mediawiki-metadata"
+              },
+              "CommonsMetadataExtension": {
+                "value": 1.2,
+                "source": "extension",
+                "hidden": ""
+              },
+              "Categories": {
+                "value": "Pharmaceutical drugs|Shops in Nigeria|Images from Wiki Loves Africa 2021|Self-published work|Pharmaceutical product packaging|Images from Wiki Loves Africa 2021 to check|Uploaded via Campaign:wlafrica|Images from Wiki Loves Africa 2021 in Nigeria|Taken with Infinix S4",
+                "source": "commons-categories",
+                "hidden": ""
+              },
+              "Assessments": {
+                "value": "",
+                "source": "commons-categories",
+                "hidden": ""
+              },
+              "ImageDescription": {
+                "value": "This is an image with the theme \"<i>Health and Wellness in Africa</i>\" from:",
+                "source": "commons-desc-page"
+              },
+              "DateTimeOriginal": {
+                "value": "2021-03-19 14:01:49",
+                "source": "commons-desc-page"
+              },
+              "Credit": {
+                "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                "source": "commons-desc-page"
+              },
+              "Artist": {
+                "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:Tolatheart&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Tolatheart (page does not exist)\">Tolatheart</a>",
+                "source": "commons-desc-page"
+              },
+              "LicenseShortName": {
+                "value": "CC BY-SA 4.0",
+                "source": "commons-desc-page",
+                "hidden": ""
+              },
+              "UsageTerms": {
+                "value": "Creative Commons Attribution-Share Alike 4.0",
+                "source": "commons-desc-page"
+              },
+              "AttributionRequired": {
+                "value": "true",
+                "source": "commons-desc-page",
+                "hidden": ""
+              },
+              "LicenseUrl": {
+                "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                "source": "commons-desc-page"
+              },
+              "Copyrighted": {
+                "value": "True",
+                "source": "commons-desc-page",
+                "hidden": ""
+              },
+              "Restrictions": {
+                "value": "",
+                "source": "commons-desc-page",
+                "hidden": ""
+              },
+              "License": {
+                "value": "cc-by-sa-4.0",
+                "source": "commons-templates",
+                "hidden": ""
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

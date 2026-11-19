@@ -1,0 +1,21 @@
+{
+  "_what_this_is": "One record of the published, frozen vintage. Committed so the page renders the download from a fact rather than from memory, and so a reader can check the page against the archive. Nothing here is typed by hand twice: every value below was read from vintage/2026-11-16/MANIFEST.json and confirmed against the live copies.",
+  "vintage_date": "2026-11-16",
+  "exported_at_utc": "2026-11-16T02:59:52Z",
+  "collection_stopped": "2026-11-16",
+  "dataset_url": "https://huggingface.co/datasets/JBZABC/naijadrugwatch",
+  "doi": "10.5281/zenodo.24356426",
+  "doi_url": "https://doi.org/10.5281/zenodo.24356426",
+  "archive_filename": "naiijadrugwatch-vintage-2026-11-16.zip",
+  "archive_bytes": 5419983,
+  "archive_sha256": "209fe7ae2fbdf556201cf419ebc7cf1e9219afdb5280964cb5a424e596d00f1e",
+  "base_tables": 8,
+  "base_rows": 36936,
+  "files": 10,
+  "file_bytes": 12284353,
+  "licence": "CC-BY-4.0",
+  "code_licence": "MIT",
+  "what_is_inside": "every base table as a readable CSV, a PostgreSQL dump for an exact restore, the schema as it stood at the freeze, and a manifest giving a checksum and byte count for every file",
+  "verified_utc": "2026-11-19",
+  "verified_note": "Anonymous checks on 2026-11-19: the Hugging Face copy of pharmacy_listings.csv downloaded with no credentials and its SHA-256 matched the manifest byte for byte; the DOI resolved to the Zenodo record; the Zenodo zip downloaded anonymously and was byte-identical to the uploaded one."
+}
