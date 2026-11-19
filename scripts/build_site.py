@@ -182,8 +182,6 @@ def download_block(record: dict[str, Any] | None) -> str:
     return f"""<section class="body" id="get-the-data" aria-labelledby="get-data-h">
   <div class="h2row"><h2 id="get-data-h">Get the data</h2></div>
   {disagreement}
-  <p class="sub">This is a frozen archive, not a live feed. {frozen} Nothing is added to it after that
-  date.</p>
   {inside_html}
   <p>Licence <strong>{esc(record["licence"])}</strong>: share and adapt the data, including for
   commercial use, as long as you credit it.</p>

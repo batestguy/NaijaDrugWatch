@@ -15,7 +15,7 @@
   "file_bytes": 12284353,
   "licence": "CC-BY-4.0",
   "code_licence": "MIT",
-  "what_is_inside": "every base table as a readable CSV, a PostgreSQL dump for an exact restore, the schema as it stood at the freeze, and a manifest giving a checksum and byte count for every file",
+  "what_is_inside": "every base table as a readable CSV, a PostgreSQL dump for an exact restore, the schema as it stood at the freeze",
   "verified_utc": "2026-11-19",
   "verified_note": "Anonymous checks on 2026-11-19: the Hugging Face copy of pharmacy_listings.csv downloaded with no credentials and its SHA-256 matched the manifest byte for byte; the DOI resolved to the Zenodo record; the Zenodo zip downloaded anonymously and was byte-identical to the uploaded one."
 }

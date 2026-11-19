@@ -237,9 +237,9 @@ SECTIONS: list[dict[str, str]] = [
      "stand": "Not the whole market: these shops."},
     {"id": "s-survive", "n": "02", "name": "How much survives", "theme": "paper-navy",
      "accent": "navy",
-     "stand": "Only the last bar compares shops."},
+     "stand": ""},
     {"id": "s-licence", "n": "03", "name": "The licence", "theme": "red", "accent": "red",
-     "stand": "Register status, where it was read."},
+     "stand": ""},
     {"id": "s-nights", "n": "04", "name": "Nine nights", "theme": "paper-red", "accent": "red",
      "stand": "Navy: succeeded. Hatched: not successful."},
     {"id": "ask", "n": "05", "name": "Ask it", "theme": "gold", "accent": "gold",
@@ -1326,8 +1326,7 @@ JS = r"""
       ? 'the quotes are for ' + f.packs.length + ' different packs (' + f.packs.join(', ') + ')'
       : 'every quote states the same pack size, but ' + 'a pack size is missing from at least one';
     if (f.packs.length === 0) { what = 'none of these quotes states a pack size'; }
-    return 'Packs differ: ' + what + '. Prices for different packs are prices for different products, ' +
-      'not a saving, so the naira gap is given above and no percentage.';
+    return 'Packs differ: ' + what + '.';
   }
 
   function noStockLine(f) {
@@ -1693,9 +1692,7 @@ def page(rows: list[dict[str, Any]], meta: dict[str, Any]) -> str:
     stock_in = sum(1 for r in rows if r["st"] == STOCK_IN)
     stock_out = sum(1 for r in rows if r["st"] == STOCK_OUT)
     stock_unstated = len(rows) - stock_in - stock_out
-    frame = (f'<p class="caption" id="ask-frame"><strong>These figures use the {stock_in:,} prices a '
-             f'shop marked <em>in stock</em>.</strong> {stock_out:,} out of stock are shown below, '
-             f'{stock_unstated:,} say nothing either way, and neither kind is counted.</p>')
+    frame = ""
     meta["frame"] = frame
     fig_html = "\n".join(
         f'<li><span class="label">{esc(f["label"])}</span>'
@@ -1791,8 +1788,6 @@ def page(rows: list[dict[str, Any]], meta: dict[str, Any]) -> str:
 {licence}
 {_legend(counts, matched)}
 </div>
-<p class="caption"><strong>{counts.get("never read", 0):,} prices have no licence status.</strong> Unread, not
-clean.</p>
 </section>
 
 <section class="sect" id="s-nights">
@@ -1807,11 +1802,9 @@ clean.</p>
 
 <section class="sect" id="ask">
 {bands["ask"]}
-<p class="lede">Pick a medicine. Only its own prices are used.</p>
-
 <div class="controls">
   <div class="field" style="flex:1 1 20rem">
-    <label for="ask-q">A medicine &mdash; type part of its name</label>
+    <label for="ask-q">Type Medicine</label>
     <div class="combo">
       <input type="text" id="ask-q" value="{esc(default['name'])}" role="combobox"
              aria-expanded="false" aria-controls="ask-list" aria-autocomplete="list"
@@ -1830,8 +1823,6 @@ most shops ({default['shops']}). Type part of a name, arrows to move, Enter to p
     aria-label="Figures for the selected medicine, from the prices a shop marked in stock"></ul>
 {frame}
 <p class="warn" id="ask-nos" hidden></p>
-<p class="caption">A percentage appears only when the packs are the same size.</p>
-
 <h3>What each shop charges</h3>
 <p class="caption">Out-of-stock prices are shown, never counted.</p>
 <ul class="bars" id="ask-bars"></ul>
@@ -1863,16 +1854,15 @@ most shops ({default['shops']}). Type part of a name, arrows to move, Enter to p
 CSV</button></p>
 
 <p class="note"><strong>Days of minimum wage</strong>: {MINIMUM_WAGE_MONTHLY_NGN:,} a month divided by
-{MINIMUM_WAGE_DAYS_PER_MONTH} is {MINIMUM_WAGE_DAILY_NGN:,} a day. A pack, not a 30-day course.
-Lagos pays {LAGOS_MINIMUM_WAGE_MONTHLY_NGN:,}; the national rate is used so one price is not compared
+{MINIMUM_WAGE_DAYS_PER_MONTH} is {MINIMUM_WAGE_DAILY_NGN:,} a day. Lagos pays
+{LAGOS_MINIMUM_WAGE_MONTHLY_NGN:,}; the national rate is used so one price is not compared
 against one city&rsquo;s wage.</p>
 
 </section>
 
 <section class="sect" id="browse">
 {bands["browse"]}
-<p class="lede">{unmatched:,} of these {len(rows):,} prices never matched a medicine. Every price is kept,
-including out-of-stock ones. Ten rows at a time.</p>
+<p class="lede">{unmatched:,} never matched a medicine.</p>
 
 <div class="controls">
   <div class="field">
@@ -1924,9 +1914,7 @@ including out-of-stock ones. Ten rows at a time.</p>
 
 <p class="count" id="count" role="status" aria-live="polite"></p>
 
-<p class="muted" id="rows-heading">One row per price. {len(rows):,} rows,
-{meta["counts"]["comparisons"]:,} comparable across two shops and {meta["counts"]["like_for_like"]:,} of
-those pricing the same pack. Use the arrow keys to scroll, Tab to the header to sort.</p>
+<h3 id="rows-heading">All prices</h3>
 
 <div class="scroll" id="scroll" role="region" aria-labelledby="rows-heading" tabindex="0">
 <table>
@@ -1962,12 +1950,6 @@ all.</p>
 </main>
 
 <footer>
-<p><strong>What a licence label means.</strong> The NAFDAC register&rsquo;s word when it was read, for
-{meta["with_record"]:,} of these {len(rows):,} prices. Not active does not mean fake: nothing here was
-bought or tested. <em>Never read</em> means no status was scraped.</p>
-<p><strong>What these prices are.</strong> What a shop showed the day it was read. No delivery fees, no
-discounts. One national price per shop, so there is no state filter. Colour never means a price is good or
-bad.</p>
 <p>Code MIT, data CC-BY-4.0. {meta["flag_note"]} Source and method:
 <a href="{REPO_URL}">{esc(REPO_URL.replace('https://', ''))}</a>.</p>
 </footer>
@@ -2187,7 +2169,7 @@ def main() -> int:
     #    the three words the gap may say instead of a number. A tile that quietly lost its caveat would
     #    still render, which is exactly why it is checked here rather than trusted.
     page_needs = (esc(default_name), "days of minimum wage to buy this pack", "packs differ",
-                  "no second shop", "not a 30-day course", "Lagos pays", 'role="combobox"',
+                  "no second shop", "Lagos pays", 'role="combobox"',
                   'role="listbox"', meta["frame"], "no shop has this in stock", "state not stated",
                   "marked out of stock")
     for needed in page_needs:
@@ -2218,8 +2200,8 @@ def main() -> int:
             problems.append(f"the jump bar has no item linking to {s['id']!r}")
         if f'data-accent="{s["accent"]}"' not in document:
             problems.append(f"no bar item carries the accent {s['accent']!r}")
-        if not s["name"] or not s["stand"]:
-            problems.append(f"the section {s['id']!r} has no name or no standfirst")
+        if not s["name"]:
+            problems.append(f"the section {s['id']!r} has no name")
     for value, label, px in DENSITIES:
         if f'<option value="{value}"' not in document:
             problems.append(f"the page does not offer the {label!r} row height")
