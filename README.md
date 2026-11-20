@@ -24,6 +24,8 @@ NAFDAC is Nigeria's National Agency for Food and Drug Administration and Control
 
 The figures below describe the frozen vintage only. “Latest per URL” means the most recent stored price row for each source page in the archive. It does not mean the page still shows that price. A listing appears as matched only when the matching process assigns it to a catalogue product.
 
+The scope is narrow, and belongs before the figures: three online pharmacies, two of them pricing in Lagos and one nationally. No source carries a per-state price, so nothing here is a national survey. Every row still falls inside one nine-day window, but it is not an even sample of it — 2,482 of the 2,800 latest prices (88.6%) were last recorded on 7 or 8 November and five were recorded on 15 November. The date on a row is the day that price was last written, not the day the medicine was first seen.
+
 | Measure | Frozen-vintage value | What it means |
 |---|---:|---|
 | Collection period | 7–15 November 2026; stopped on 16 November | At least one recorded price on each of the 9 days, with no gaps |
@@ -37,11 +39,11 @@ The figures below describe the frozen vintage only. “Latest per URL” means t
 | Listings on a registration not marked Active | 154 across 86 products | Stored status only; not a product-safety finding |
 | Rows in the cheapest-per-state view | 261 | Only 44 are genuine two-pharmacy comparisons |
 | Rows in the materialised price index | 428 | A derived view of the collected records |
-| Products with a recorded price move in the last 7 days | 3 | Change within the frozen period, not a current trend |
+| Products with a price from seven days earlier to compare | 3 | None of the three changed (0.00%). The view pairs listings; a pair is not a movement |
 
 Read `is_comparison` before calling a row a comparison. It is true only when separate pharmacies quote the same product in the same state. Other rows are single-source prices.
 
-Of the 154 listings attached to a registration not marked Active, the stored status is a reason to check the record, not a verdict about the medicine. Most registrations have no scraped status; unknown remains unknown. The price index summarises the collected records, not the market.
+Of the 154 listings attached to a registration not marked Active, the stored status is a reason to check the record, not a verdict about the medicine. That 154 is a fraction of a fraction and not an estimate for the register: most registrations have no scraped status, and unknown stays unknown. The price index summarises the collected records, not the market.
 
 The generated page builds re-check their numbers before writing the pages:
 
@@ -111,7 +113,7 @@ The source catalogue comes from the #FixMedPrices file. It provides product name
 - **Listing matching:** use an embedding-based shortlist, then apply deterministic rules for ingredient, strength and form.
 - **Derived views:** refresh the SQL views and materialised price index after matching.
 
-Before the freeze, the pipeline completed successfully on every configured source across consecutive nights. The schedule is now disabled.
+Before the freeze, the pipeline finished green on every configured source on each night from 9 to 15 November. The two earlier nights were not clean: the register detail sweep failed twice on 7 November and MedPlus failed on 7, 8 and 12 November, each time followed by a successful retry the same night. The schedule is now disabled, and re-enabling it would make the first night find the day missing and run the whole pipeline, scrapers included.
 
 The specification called for Prefect. This repository instead used a GitHub Actions schedule, which avoided a separate service and fit the project's free public-repository setup. The trade-off is real: there is no retry engine, run history is limited to the Actions interface, and there is no backfill control. The schedule is off, and nothing in this README should be read as a promise that collection continues.
 
@@ -149,12 +151,14 @@ set -a
 set +a
 ```
 
-Apply every numbered SQL file in its filename order, then load the seed catalogue:
+Apply every numbered SQL file, in filename order, **to an empty database** — the files build the schema, they are not migrations for a database that already has it. `schema/003` re-creates the views, and `006` to `008` add columns to one of them, so replaying `003` on a migrated database is expected to fail; the loop below stops at the first error rather than carrying on.
 
 ```bash
+set -e
 for f in schema/*.sql; do
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
 done
+set +e
 
 python scripts/load_seed.py --dry-run
 python scripts/load_seed.py
@@ -176,11 +180,11 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
 
 These commands contact source websites. Run them only for an intentional collection with a configured database. A new scrape writes the newest URL row with `product_id` unset. The latest-listing view selects that row, so run the matcher before relying on linked-price views.
 
-Keep `DATABASE_URL` in an ignored local `.env` file or a protected environment variable. Never put a database password in a committed file.
+Keep `DATABASE_URL` in an ignored local `.env` file or a protected environment variable. Never put a database password in a committed file. Use the **direct** host, not the `-pooler` one: the scrapers take session-level advisory locks and the pipeline runs `REFRESH MATERIALIZED VIEW CONCURRENTLY`, and both break under transaction pooling. Quote the value — a connection string containing `&` is cut in half by an unquoted `. ./.env`.
 
 ## Data, licence and attribution
 
-The published object is a frozen vintage, not an updating dataset. It contains 8 source tables and 36,936 rows. The frozen archive has 10 files totalling 12,284,353 bytes; the compressed archive is 5,419,983 bytes. Its SHA-256 is:
+The published object is a frozen vintage, not an updating dataset. It contains 8 source tables and 36,936 rows. The frozen archive holds ten data files totalling 12,284,353 bytes, plus a manifest and a readme; the compressed archive is 5,419,983 bytes. Its SHA-256 is:
 
 `209fe7ae2fbdf556201cf419ebc7cf1e9219afdb5280964cb5a424e596d00f1e`
 
@@ -196,7 +200,7 @@ The archive does not change when a pharmacy edits a page or NAFDAC updates the r
 
 **Code:** MIT, in [`LICENSE`](LICENSE). **Data:** CC-BY-4.0, subject to the terms of each source. The #FixMedPrices catalogue is CC-BY-4.0 and must be credited to Code for Nigeria via openAFRICA. NAFDAC publishes the Greenbook; this project is independent and is not endorsed by NAFDAC or by any pharmacy.
 
-Pharmacy scrapers read public product and price fields; the Greenbook supplies registration references and status. No personal data, reviews, prescription information or login-only material is collected. Scrapers respect `robots.txt`, identify the project, space requests by domain and do not work around blocks or access controls.
+Pharmacy scrapers read public product and price fields; the Greenbook supplies registration references and status. No personal data, reviews, prescription information or login-only material is collected. Scrapers respect `robots.txt`, identify the project, and allow **one request every two seconds per domain**. MedPlus and Drugstore.ng publish Cloudflare content signals (`ai-train=no`, `use=reference`); this project aggregates and cites, and does not train on the data. No block, rate limit or access control is worked around.
 
 ## Limitations
 
