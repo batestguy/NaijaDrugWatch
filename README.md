@@ -1,111 +1,139 @@
 # NaijaDrugWatch
 
-An open, daily-refreshed database that joins **NAFDAC drug registration status** to **live
-Nigerian pharmacy prices** — so a patient, pharmacist or researcher can answer: *is this drug
-genuine, is it in stock, and where is it cheapest?*
+NaijaDrugWatch pairs prices shown on Nigerian pharmacy websites with registration records from NAFDAC's Greenbook, so a reader can see a recorded price beside the licence information collected for that product.
 
-**Status: frozen on 16 November 2026, and only a small part of it has been checked by eye.** The
-schedule is disabled and the data is a dated vintage, not a live service. Before the freeze the
-nightly job ran green on all six sources for seven consecutive days. Afterwards, 20 sampled register
-records were re-read against the live register and all 20 matched on every field, and all 44
-comparisons were re-read once — but through the same channels the scrapers use. That proves the pages
-have not drifted; it cannot prove the parsers read them correctly. Per-line judgements exist for 18 of
-20 licence cards and 3 of 20 pack cards. So **do not cite this as a price source**. Start with
-[`FROZEN.md`](FROZEN.md), then [`PROGRESS.md`](PROGRESS.md); the numbers below are the frozen vintage's.
+**Status: frozen vintage.** Collection ran from 7 to 15 November 2026 and stopped on 16 November. This is not a current price source. No page or service is deployed.
 
-Every figure below is as of **2026-11-15**, the last collection, and does not move again.
+NAFDAC is Nigeria's National Agency for Food and Drug Administration and Control. Its Greenbook is the public source for the registration records used here. The project does not inspect, test or buy medicines. A name match or registration status cannot establish what is inside a pack.
+
+## The pages at a glance
+
+![Landing page showing the registration finding, price tally and portrait.](docs/readme/01-front-page.webp)
+
+*The finding page places a registration result beside the tally of prices that could be linked to the register.*
+
+![Dashboard figures and the funnel beneath them.](docs/readme/04-dashboard-figures.webp)
+
+*The price page opens with its figures and a funnel showing how collected listings pass through matching.*
+
+![A medicine query with shop quotes and a pack-size warning.](docs/readme/07-dashboard-ask.webp)
+
+*The Ask section shows a medicine search, its shop quotes and a warning that pack size matters.*
 
 ## What the data says
 
-| Object | Value | Meaning |
-|---|---|---|
-| `pharmacy_listings` (latest per URL) | 2,800 | three pharmacies, all Lagos except Drugstore.ng |
-| …matched to a product | 559 | 2,241 are unmatched: no product to attach them to |
-| `products` | 1,433 | of which **335** are cited by a live price; 1,097 never are |
-| `nafdac_registrations` | 10,967 | the Greenbook index |
-| …with a status scraped | 1,856 | **16.9% of the register** — the restricted scope, not the full sweep |
-| `v_cheapest_per_product_state` | 261 cells, **44 comparisons** | only 44 are genuine two-pharmacy comparisons |
-| `v_suspicious_listings` | 154 (86 products) | matched to a registration that is not Active, or has expired |
-| `mv_drug_price_index` | 428 rows | refreshed by the pipeline, never by hand |
-| price change over 7 days | 3 products | the feature works; the market was quiet |
+The figures below describe the frozen vintage only. “Latest per URL” means the most recent stored price row for each source page in the archive. It does not mean the page still shows that price. A listing appears as matched only when the matching process assigns it to a catalogue product.
 
+| Measure | Frozen-vintage value | What it means |
+|---|---:|---|
+| Collection period | 7–15 November 2026; stopped on 16 November | At least one recorded price on each of the 9 days, with no gaps |
+| Prices on the first price day | 2,709 | Initial full sweep |
+| Prices on the last price day | 5 | Final day's records |
+| Prices collected, latest per URL | 2,800 | Most recent stored row for each source URL |
+| Prices matched to a medicine | 559 | Listings attached to a catalogue product |
+| Products in the catalogue | 1,433 | Of these, 335 are cited by at least one recorded price |
+| NAFDAC registrations held | 10,967 | Registration records in the frozen vintage |
+| Registrations with a scraped status | 1,856 (16.9%) | Status coverage is partial |
+| Listings on a registration not marked Active | 154 across 86 products | Stored status only; not a product-safety finding |
+| Rows in the cheapest-per-state view | 261 | Only 44 are genuine two-pharmacy comparisons |
+| Rows in the materialised price index | 428 | A derived view of the collected records |
+| Products with a recorded price move in the last 7 days | 3 | Change within the frozen period, not a current trend |
 
-**A "cheapest" cell is only a comparison when `is_comparison` is true** — two or more independent
-pharmacies quoting the same product in the same state. Every other cell is one pharmacy's price, and
-the dashboard shows the two in separate tables for that reason.
+Read `is_comparison` before calling a row a comparison. It is true only when separate pharmacies quote the same product in the same state. Other rows are single-source prices.
 
-Each row also carries **two answers**, because they differ once packs differ in size:
+Of the 154 listings attached to a registration not marked Active, the stored status is a reason to check the record, not a verdict about the medicine. Most registrations have no scraped status; unknown remains unknown. The price index summarises the collected records, not the market.
 
-- `cheapest_pack_*` — the lowest sticker price.
-- `best_unit_*` — the lowest **known** cost per unit.
+The generated page builds re-check their numbers before writing the pages:
 
-The second is NULL wherever the pack size could not be parsed, and it ranks only the rows that could
-be. It is therefore **not** "best value" and must never be labelled that way: where the cheapest pack
-has an unknown size, the lowest *known* unit price can belong to a more expensive pack.
+| Build | Rows or figures re-checked | Unexplained |
+|---|---:|---:|
+| Finding page | 3,791 | 0 |
+| Price page | 3,838 | 0 |
 
-## Data
+These checks show that the page agrees with the values its build reads. They do not prove that an upstream site was parsed correctly or that the displayed registration is the current one.
 
-The frozen vintage is published twice: as a [GitHub release](https://github.com/batestguy/NaijaDrugWatch/releases/tag/vintage-2026-11-16)
-and as the Hugging Face dataset [`JBZABC/naijadrugwatch-vintage-2026-11-16`](https://huggingface.co/datasets/JBZABC/naijadrugwatch-vintage-2026-11-16),
-which carries a dataset card stating what the data does and does not claim. Restoring it is one command
-(`scripts/verify_restore.py`), and CI runs that command on every push.
+## The built pages
 
-Two generated pages accompany the data. **How this was built** explains the eight stages, the decisions
-and their costs, and the limits, with eleven of its figures re-checked against the database on every
-build. **Every price, explorable** lists all 2,800 prices in one self-contained file, filterable by shop,
-medicine and licence, with each row linking to the pharmacy page it came from and the NAFDAC record
-behind it.
+The repository can generate 3 static pages under `site/`. They are generated files, not hand-edited pages, and they are not published. The images in this README show the page designs; they are not public page links.
 
-## Layout
+### The finding
 
-```
-schema/             numbered, idempotent .sql — run in order against an empty database
-scrapers/           NAFDAC Greenbook (index + details) and three pharmacies
-scripts/            seed loader, product→registration linker, two-stage matcher
-seed/               vendored #FixMedPrices CSV (CC-BY-4.0)
-dashboard/          Streamlit app over the contract views
-.github/workflows/  the daily pipeline
-docs/               schema, views, phases reference
-research/           the live probe log behind every volume and status claim
-.agent/             per-ticket brief, progress and report files
-PLAN.md             project map: sources, pipeline, risks, build order, open decisions
-PROGRESS.md         single state file — read this before anything else
-```
+The navigation label is **The finding**. Its file is `site/index.html`, titled “What a medicine costs. Whether its licence is active.” It leads with the registration result and explains what the numbers count. Its “Get the data” block points to the frozen vintage and describes what is in the archive.
 
-## How it runs
+![The Get the data block on the landing page.](docs/readme/02-front-data.webp)
 
-**It no longer runs.** The `daily` workflow is disabled by hand (id 410978489); `gh workflow enable
-410978489` would switch it back on, and the first night would find the day missing and run the whole
-pipeline. The freeze record is [`FROZEN.md`](FROZEN.md).
+*The download block names the frozen vintage and its public copies.*
 
-`.github/workflows/daily.yml`, one job, at **03:00 UTC (04:00 Lagos)** while it was live:
+![The finding page arranged for a phone screen.](docs/readme/03-phone-front.webp)
 
-```
-nafdac_index → nafdac_details → link_product_nrn → healthplus → medplus → drugstore
-             → match_listings → refresh mv_drug_price_index
-```
+*The same finding and data links are arranged for a narrow screen.*
 
-Steps fail individually and the job still exits non-zero, because each scraper writes its own
-`scrape_runs` row on success **and** failure — that row is what `v_pipeline_health` reads.
+### Every price
 
-**A deliberate deviation from the specification:** the spec names `flows/` as a Prefect
-deployment. This repo uses GitHub Actions cron instead — free and unlimited on a public repo, and no
-second account or API key. The cost is real and belongs in the limitations: **no retry engine** (a
-transient failure waits for tomorrow), run history only in the Actions UI, and **no backfill button**.
+The navigation label is **Every price**. Its file is `site/dashboard.html`, titled “Every price, and what the data can say.” It brings together summary figures, a funnel, registration coverage, a medicine search and a browsable table. The search and table are views of the frozen vintage, not a way to request a fresh quote.
 
-**Required secret:** `DATABASE_URL` in *Settings → Secrets and variables → Actions*. Use the
-**direct** host, not the `-pooler` one: the scrapers take session-level advisory locks and the
-pipeline runs `REFRESH MATERIALIZED VIEW CONCURRENTLY`, and both break under PgBouncer transaction
-pooling.
+![Funnel bars showing how much of the collected data remains after matching.](docs/readme/05-dashboard-survive.webp)
 
-**Durations, measured 2026-11-08 and updated 2026-11-12:** index ~20 s, details (restricted) ~45 min,
-healthplus ~1 min, drugstore ~1 min, and medplus now walks its whole drug catalogue — 1,396 products
-over 70 pages, about 68 minutes, where six category pages used to yield 128 rows. A full run is
-therefore ~2 h 50 m, inside the 6-hour job cap. The complete Greenbook sweep (~14 h) does **not** fit
-and must be sharded across days. GitHub delivers scheduled fires hours late: 03:00Z has arrived
-between 10:21Z and 10:54Z, which is why the workflow fires three times and lets a gate decide.
+*The funnel separates the listings that could be matched from those that could not.*
+
+![The dashboard's registration-licence section.](docs/readme/06-dashboard-licence.webp)
+
+*The licence section describes the status information available in the frozen vintage.*
+
+The “Browse it” table contains 2,800 price rows. Rows retain references to the source listing and registration record so that a reader can see what each price was linked to.
+
+![The dashboard's browsable table of collected prices.](docs/readme/08-dashboard-table.webp)
+
+*The table is searchable and filterable, but its rows remain a dated record.*
+
+### How this was made
+
+The navigation label is **How this was made**. Its file is `site/about.html`, titled “How this was made.” It explains the collection path, the matching decisions, the costs of those decisions and the limitations. It is the methods page, not a current service.
+
+![Opening steps on the methods page.](docs/readme/09-methods-top.webp)
+
+*The methods page starts with the first part of the collection path.*
+
+![Further steps on the methods page.](docs/readme/10-methods-steps.webp)
+
+*Later stages: the price index, the page's own audit and the human check that followed it.*
+
+A redundant Streamlit app remains in `dashboard/app.py`; it is not the dashboard described above.
+
+## How it was made
+
+The source catalogue comes from the #FixMedPrices file. It provides product names, strengths, forms and brand aliases, but it does not provide NAFDAC registration numbers or status. The collection path then ran in this order:
+
+- **Greenbook index:** collect names, forms, strengths and registration numbers.
+- **Registration details:** collect status and expiry information within the project's restricted scope.
+- **Product-to-registration linking:** attach catalogue products to registration numbers after detail records are available.
+- **Pharmacy collection:** read public product and price fields from HealthPlus, MedPlus and Drugstore.ng.
+- **Listing matching:** use an embedding-based shortlist, then apply deterministic rules for ingredient, strength and form.
+- **Derived views:** refresh the SQL views and materialised price index after matching.
+
+Before the freeze, the pipeline completed successfully on every configured source across consecutive nights. The schedule is now disabled.
+
+The specification called for Prefect. This repository instead used a GitHub Actions schedule, which avoided a separate service and fit the project's free public-repository setup. The trade-off is real: there is no retry engine, run history is limited to the Actions interface, and there is no backfill control. The schedule is off, and nothing in this README should be read as a promise that collection continues.
+
+## What it is built with
+
+| Technique | Role |
+|---|---|
+| PostgreSQL and SQL | Store source records and define the views used by the pages |
+| pgvector | Store product-name embeddings and retrieve likely candidates |
+| pg_trgm and unaccent | Help match names despite spelling, spacing or accent differences |
+| FastEmbed with `BAAI/bge-small-en-v1.5` on CPU | Produce the embeddings used to shortlist candidates |
+| Deterministic matching rules | Reject candidates with incompatible ingredient, strength or form |
+| Python and psycopg | Run the loaders, scrapers, matchers and page builders |
+| Numbered SQL files | Apply database changes in order; the files are safe to re-run |
+| GitHub Actions | Run the collection workflow when its schedule is enabled |
+| Generated static HTML with inline SVG | Render the pages without a front-end framework or a page-time network request |
+
+The model and embedding field have to stay in step. A similarity score only proposes candidates; the ingredient, strength and form rules decide whether a match stands. Python generates the pages from stored data, so hand edits to generated output do not persist.
 
 ## Quickstart
+
+These commands set up a local database and show the order of the collection steps. They do not enable the schedule, update the frozen vintage or publish the generated pages. Use the pinned Python version and activate `.venv` before running `python` (`.venv\Scripts\Activate.ps1` in PowerShell; `source .venv/bin/activate` in POSIX shells). The remaining commands use a POSIX shell.
 
 ```bash
 git clone https://github.com/batestguy/NaijaDrugWatch
@@ -114,99 +142,108 @@ uv venv --python 3.12 .venv
 uv pip install --python .venv/Scripts/python.exe -r requirements.txt   # Windows
 # POSIX: uv pip install --python .venv/bin/python -r requirements.txt
 
-cp .env.example .env        # paste the Neon connection string into DATABASE_URL
+cp .env.example .env
+# Put DATABASE_URL in .env, then load it into this shell:
+set -a
+. ./.env
+set +a
 ```
 
-Python **3.12** is required: `psycopg[binary]` has no wheel for 3.14.
+Apply every numbered SQL file in its filename order, then load the seed catalogue:
 
 ```bash
-for f in schema/001_extensions.sql schema/002_tables.sql schema/003_views.sql \
-         schema/004_materialized.sql schema/005_suspect_prices.sql; do
+for f in schema/*.sql; do
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
 done
 
-python scripts/load_seed.py --dry-run   # inspect the SQL, no database needed
-python scripts/load_seed.py             # upsert products + drug_match_rules
+python scripts/load_seed.py --dry-run
+python scripts/load_seed.py
 ```
 
-Then, in dependency order — details before linking, listings before matching:
+For an intentional local collection run, keep the dependency order: registration details before product-to-registration linking, and pharmacy listings before matching.
 
 ```bash
 python -X utf8 scrapers/nafdac_index.py
-python -X utf8 scrapers/nafdac_details.py --min-similarity 0.50
-python -X utf8 scripts/link_product_nrn.py --refresh --min-similarity 0.35
+python -X utf8 scrapers/nafdac_details.py
+python -X utf8 scripts/link_product_nrn.py --refresh
 python -X utf8 scrapers/healthplus.py
-python -X utf8 scrapers/medplus.py            # full drugs catalogue, ~1,396 products, ~68 min
-python -X utf8 scrapers/drugstore.py --limit 200
+python -X utf8 scrapers/medplus.py
+python -X utf8 scrapers/drugstore.py
 python -X utf8 scripts/match_listings.py
-python -X utf8 -c "import os,psycopg; psycopg.connect(os.environ['DATABASE_URL'],autocommit=True).execute('refresh materialized view concurrently mv_drug_price_index')"
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+  -c 'REFRESH MATERIALIZED VIEW CONCURRENTLY mv_drug_price_index;'
 ```
 
-Matching is not optional. A scrape inserts new rows with `product_id` NULL, and `v_latest_listings`
-takes the newest row per URL — so **re-scraping silently un-matches what it re-inserts** until the
-matcher runs again, and the views shrink.
+These commands contact source websites. Run them only for an intentional collection with a configured database. A new scrape writes the newest URL row with `product_id` unset. The latest-listing view selects that row, so run the matcher before relying on linked-price views.
 
-`005_suspect_prices.sql` flags prices below ₦20 and keeps them out of the views. Re-running `003` on
-its own reverts that exclusion; a full rebuild is safe because `005` sorts after `003`.
+Keep `DATABASE_URL` in an ignored local `.env` file or a protected environment variable. Never put a database password in a committed file.
 
-## Data sourcing disclosure
+## Data, licence and attribution
 
-This project reads **publicly listed product and price data** from Nigerian pharmacy websites and the
-publicly published NAFDAC Greenbook. Specifically:
+The published object is a frozen vintage, not an updating dataset. It contains 8 source tables and 36,936 rows. The frozen archive has 10 files totalling 12,284,353 bytes; the compressed archive is 5,419,983 bytes. Its SHA-256 is:
 
-- It collects product names, prices, pack sizes, stock status, pharmacy location at city/state level,
-  and NAFDAC registration number, status and dates.
-- It does **not** collect personal data, customer reviews, prescription information, or anything
-  behind a login. The NDP Act 2023 governs personal data; none is processed here.
-- `robots.txt` is honoured per domain, requests are limited to **one every two seconds per domain**,
-  and the User-Agent identifies the project.
-- No attempt is made to circumvent a block, rate limit or access control. If a source blocks access,
-  it is reported stale rather than worked around.
-- MedPlus and Drugstore.ng publish Cloudflare content signals (`ai-train=no`, `use=reference`). This
-  project aggregates and cites; it does not train on the data.
+`209fe7ae2fbdf556201cf419ebc7cf1e9219afdb5280964cb5a424e596d00f1e`
 
-## Attribution and licence
+The public copies are:
 
-- **Code:** MIT — see [`LICENSE`](LICENSE).
-- **Data:** CC-BY-4.0, respecting each upstream licence.
-- **#FixMedPrices** (Code for Nigeria, via openAFRICA) is CC-BY-4.0 and must be credited wherever its
-  data appears.
-- NAFDAC Greenbook data is published by the National Agency for Food and Drug Administration and
-  Control. This project is independent and is not endorsed by NAFDAC.
+| Copy | What it contains |
+|---|---|
+| [GitHub release `vintage-2026-11-16`](https://github.com/batestguy/NaijaDrugWatch/releases/tag/vintage-2026-11-16) | Frozen archive and 11 attached files |
+| [Hugging Face `JBZABC/naijadrugwatch`](https://huggingface.co/datasets/JBZABC/naijadrugwatch) | Browsable copy, with one file per table |
+| [Zenodo DOI `10.5281/zenodo.24356426`](https://doi.org/10.5281/zenodo.24356426) | Record for the compressed archive |
+
+The archive does not change when a pharmacy edits a page or NAFDAC updates the register. Cite the frozen vintage and its collection period when reusing a figure.
+
+**Code:** MIT, in [`LICENSE`](LICENSE). **Data:** CC-BY-4.0, subject to the terms of each source. The #FixMedPrices catalogue is CC-BY-4.0 and must be credited to Code for Nigeria via openAFRICA. NAFDAC publishes the Greenbook; this project is independent and is not endorsed by NAFDAC or by any pharmacy.
+
+Pharmacy scrapers read public product and price fields; the Greenbook supplies registration references and status. No personal data, reviews, prescription information or login-only material is collected. Scrapers respect `robots.txt`, identify the project, space requests by domain and do not work around blocks or access controls.
 
 ## Limitations
 
-- **Prices are observed, not guaranteed.** A listing is what a website displayed at scrape time;
-  stock can change before purchase.
-- **`unit_price` is unknown for roughly half of the listings.** Pack sizes are parsed from titles, and
-  many titles state a count with no unit (`* 10 STRIPS`). The parser returns NULL rather than guessing,
-  which is why `best_unit_*` is NULL so often. Two consequences are live in the published tables: 18 of
-  the 88 listings behind a comparison row carry a pack count with no unit recorded, and **one published
-  unit price is per millilitre** — the Vitamin B Complex syrup is stored with pack size 100 and no unit,
-  so its ₦12.50 "per pack unit" is per millilitre and sits directly above a ₦2.30-per-tablet row. Of the
-  30 comparison rows carrying a unit price, 26 are tablets, 3 capsules and 1 is millilitres.
-- **Two product names appear twice each on the comparison table**, at very different prices, because
-  they are different products: Amlodipine 5 mg (₦950) and 10 mg (₦400); a Vitamin B Complex 100 ml
-  syrup (₦1,250) and a 1,000-tablet pack (₦2,300). Both are correct as separate rows and both will be
-  read by a stranger as a price cut.
-- **Registration coverage is 17%.** Status and expiry exist for 1,856 of 10,925 registrations — the
-  scope matching the catalogue we price, not the register. A product with no status has *unknown*
-  status, which `v_suspicious_listings` does not treat as suspicious, so the 163 rows it returns are
-  a fraction of a fraction and not an estimate of the whole register.
-- **Drugstore.ng carries a single national price**, not a per-state one, and is registered with
-  `state = 'National'`. It can never create a comparison. Its product pages name one seller each.
-- **The scheduler has no retries.** A transient failure loses that day's run.
-- **What has been checked against the live sources, and what that check can prove.** On 16 November
-  2026, before the vintage was frozen, the register pages behind the 20 sampled licence records were
-  re-read from the live Greenbook and all 20 matched on status, expiry, approval
-  date, name and strength; 18 of those 20 were also answered line by line by a person against the live
-  page. The pages behind all 44 comparison rows were re-read the same day — 88 page reads, no
-  differences — **but through the same channels the scrapers use**: HealthPlus refused its independent
-  storefront JSON endpoint with repeated `429 local_rate_limited` over more than an hour of attempts,
-  so the fallback was the catalogue feed `scrapers/healthplus.py` itself reads, and MedPlus has no
-  second server-side source at all. That check therefore shows a page has not drifted since collection.
-  It cannot show that the parser read the page correctly. The author also reviewed all 44 comparisons
-  informally and reported no disagreement; 3 of the 20 scored pack cards carry recorded per-line
-  answers and the other 17 were not marked, so the recorded pack sample is 3 cards and is not
-  presented as 20.
-- Registration status reflects the last successful scrape of the Greenbook, not NAFDAC's live state.
+- **Prices and stock are observations, not guarantees.** A page may change its price or stock label before a person tries to buy the product.
+- **A unit price is often unknown.** Titles do not always make pack count and unit clear, so the parser leaves uncertain prices blank. “Best unit” compares only interpretable pack sizes; it is not always best value.
+- **Some displayed units need extra care.** A Vitamin B Complex syrup is shown per millilitre beside tablet prices, though its stored pack size has no unit. Read units and pack descriptions, not amount alone.
+- **Similar names can refer to different products.** Amlodipine entries vary by strength; Vitamin B Complex entries vary by form and pack. A difference is not automatically a price change for the same product.
+- **Registration coverage is partial.** A status is available for 1,856 of 10,967 registrations (16.9%). Missing status means unknown. A status other than Active is not a product-quality or safety test; it is the last successful scrape, not the current register state.
+- **This is not a census of pharmacies or prices.** Selected online listings do not cover every shop, region or medicine. Drugstore.ng posts a national price, not a state-specific quote, so it cannot support a state comparison.
+- **The comparison count is small relative to the view.** Only 44 of the 261 cheapest-per-state rows are genuine two-pharmacy comparisons. Treat the others as single-source prices; check `is_comparison`.
+- **The source re-read was not an independent parser test.** Sampled register records and price pages matched on re-read, but the same channels were used as for scraping. This checks for drift, not parser accuracy.
+- **The human pack-card review is incomplete.** Recorded line-by-line checks cover only a small subset. Informal review is not a scored check.
+- **There are no automatic retries or backfills.** Actions provides run history, but the schedule is disabled.
+- **A minimum-wage comparison refers to the pack.** It is the pack's price, not the cost of a month's treatment.
+
+## What is not true, or not checked
+
+Nothing is deployed: the public copies are data only, while the generated `site/` pages are not published. This is not a current price service.
+
+The final page work had no accessibility audit or independent review. The build checks compare page values with data read during each build; they do not test usability, source accuracy or status freshness.
+
+Re-reads and recorded human checks are narrow. They do not establish that every listing was parsed correctly, that every medicine is registered, or that any product is safe or unsafe. Check the pharmacy and NAFDAC source directly for current information.
+
+## Repository layout
+
+`schema/` — numbered SQL files for tables, views and indexes.
+
+`scrapers/` — Greenbook and pharmacy collection scripts.
+
+`scripts/` — seed loading, linking, matching, export and page-building tools.
+
+`seed/` — the credited #FixMedPrices catalogue file.
+
+`dashboard/` — the redundant Streamlit app.
+
+`docs/` — schema, view, phase and publication records.
+
+`docs/readme/` — the supplied reference images used above.
+
+`research/` — source-probe notes.
+
+`.github/workflows/` — workflow definitions; the collection schedule is disabled.
+
+`vintage/` — local frozen archive, gitignored; use the public copies linked above.
+
+`site/` — generated HTML output, gitignored and not published.
+
+`.agent/` — task briefs, progress notes and handoff reports.
+
+At the top level, [`FROZEN.md`](FROZEN.md) records the freeze and its limits; [`PROGRESS.md`](PROGRESS.md) is the project's current state file.

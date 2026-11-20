@@ -1,6 +1,65 @@
 # Progress
 
-Single state file for NaijaDrugWatch. Last updated **2026-11-19**.
+Single state file for NaijaDrugWatch. Last updated **2026-11-20**.
+
+## 20 November 2026 — the navigation, the README, and one self-inflicted revert
+
+**Read this block before touching `scripts/build_site.py`.** It was briefly overwritten today and the loss was
+caught only because a build printed an unexpected size.
+
+### What changed
+
+- **Navigation on all three pages** (owner's request, done in the generators):
+  landing page — the three destinations sit inside the existing masthead row, to the left of the map, and a
+  four-item quick index strip runs under it (`scripts/build_site.py`); price page and methods page — a 49 px
+  sticky bar replacing the single `← Medicine prices…` line, with the dashboard's jump bar reading its height
+  (`scripts/build_dashboard.py`). One name for the methods page everywhere: **How this was made**.
+- **Phone**: the outlined map is hidden below 560 px (it cost ~85 px above the headline), and the quick index
+  is one 44 px row of labels with a 24 px masked fade at its right edge while there is more to scroll.
+- **The landing page dates its collection**: `Collected 7 to 15 November 2026. Collection stopped on
+  16 November 2026.` Both ends queried from `price_history`, both audited; `scripts/build_site.py:1039`.
+- **The audit count on the methods page can no longer drift**: it is a literal (`ABOUT["audit_numbers"]`,
+  `scripts/build_site.py:1779`) because it quotes a count that cannot exist until the audit has run, so the
+  build now fails when the literal and the count disagree. Proved by setting it back to 3,787: exit 1,
+  `the methods page states 3,787 numbers checked; this build checked 3,791`.
+- **README rewritten** (1,758 words, ten WebP screenshots in `docs/readme/`, 420 KB) against a table of
+  figures measured from the database that day.
+- **Repository topics**: 13 added, 19 total, each checked against a file in the repo first.
+
+### The incident, recorded because it will happen again
+
+T1120-e was told to edit `scripts/build_site.py` while T1120-b/T1120-c's changes were uncommitted in the same
+file. It restored a stale copy, so the navigation and the phone fixes vanished from the generator and the
+rebuilt pages reverted to the 19 November design (80,456 bytes, no bar, no strip). **Cause: two agents writing
+one file, which this project's own rules forbid.** Detection was accidental — a rebuilt `index.html` came back
+at 80,489 bytes after being 86,568.
+
+Recovered by replaying, in order, against `HEAD`: `.agent/T1120-b-patch.py` (11 anchored replacements, stops if
+an anchor is not found exactly once), then `.agent/T1120-c-fix.py` → `fix2` → `fix3` → `fix4`, then
+`.agent/recover/e-stamp.patch`. Proof of recovery: the rebuilt `site/index.html` is byte-identical to
+`.agent/T1120-c-index-good.html` apart from one relocated CSS comment, and it now carries all of it — stamp,
+bar, strip, fade, one name.
+
+### Verified, and by what
+
+- `scripts/build_site.py` → `3,791 numbers checked, 0 unexplained`; `scripts/build_dashboard.py` → `3,838 rows
+  and figures checked, 0 unexplained`.
+- `about.html` byte-identical across two consecutive builds (`093FFEE2…`).
+- In a browser, refreshed with a cache-busting string: no sideways scroll at 375 or 1440 on any page; three
+  masthead links with the current page marked; stamp correct; four strip items; map `display:none` at 375 and
+  the phone headline up from 264 px to 203 px; the methods page bar 49 px at 1440 with the h1 below it.
+- Dashboard: bar 0–49 px and jump bar 49–97 px after a 900 px scroll, zero overlap.
+
+### Not true, or not known
+
+- **Nothing is committed.** Three tracked files are modified (`README.md`, `scripts/build_site.py`,
+  `scripts/build_dashboard.py`) and `docs/readme/` is new.
+- No axe run on the new bar or strip; contrast is measured at build time, which is not an audit.
+- The README is under independent review; it has not been reviewed yet.
+- `.agent/` now holds several patch and backup scripts from today's tickets. They are untracked and should be
+  read before being trusted: `T1120-c-fix3.py` is a report printer, not a patcher, and `T1120-c-fix4.py`
+  applied nothing.
+
 
 ## Close-out - 19 November 2026, evening
 

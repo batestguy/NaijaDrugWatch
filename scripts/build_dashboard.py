@@ -208,6 +208,9 @@ CONTRAST_PAIRS: list[tuple[str, str, str]] = [
     ("row: text on the row under the pointer", CREAM_INK, HOVER_TINT),
     ("chip: the chip's text on its tint", CREAM_INK, TINT_NAVY),
     ("chip: the clear-all label on the panel", CREAM_INK, CREAM_PANEL),
+    # the site bar above the jump bar: its links, and the rule under the current page
+    ("nav: a link on the bar", CREAM_INK, CREAM_PAPER),
+    ("nav: the current page's rule on the bar", DRESS_RED, CREAM_PAPER),
 ]
 
 # Measured and printed, and held to the floor in the fourth column: 3.0 for a boundary a reader has to
@@ -784,7 +787,7 @@ CSS = """
 --zebra:""" + ZEBRA + """;--hover:""" + HOVER_TINT + """;--white:""" + PAPER_WHITE + """;
 --gold-raw:""" + DRESS_GOLD_RAW + """;
 --row-h:36px;--head-h:38px;--rows:10;
---pad-x:.75rem;--jump-h:56px;--s1:8px;--s2:16px;--s3:24px;--s4:32px;--s5:48px}
+--pad-x:.75rem;--jump-h:56px;--sb-h:49px;--s1:8px;--s2:16px;--s3:24px;--s4:32px;--s5:48px}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 /* The pointer: a capsule, one half her red and one half white, over the page and over every table.
@@ -941,12 +944,50 @@ color:var(--ink);text-decoration:none;font-weight:600;white-space:nowrap}
 .jump a[aria-current="true"]{color:var(--c);font-weight:800;box-shadow:inset 0 -3px 0 var(--c)}
 .jump a[aria-current="true"] .jn{color:var(--c)}
 @media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+
+/* ---- the site bar: one row of links, on every page but the front one --------------------
+   The front page carries its three links inside its own masthead, so this bar is for the two
+   inner pages. It is a fixed 49px, and `--sb-h` is that height and nothing else: the dashboard's
+   jump bar is told to stick directly under it with no script, because a number that is written
+   down cannot drift from the number that was measured. */
+.sitebar{--nav-max:76rem;--nav-pad:var(--pad-x);background:var(--bg);border-bottom:1px solid var(--line);
+ position:sticky;top:0;z-index:8;height:var(--sb-h)}
+.sb-inner{max-width:var(--nav-max);margin:0 auto;padding:0 var(--nav-pad);height:100%;
+ display:flex;align-items:center;justify-content:space-between;gap:16px}
+.sb-mark{font-family:"Archivo Black",Impact,sans-serif;font-size:11.5px;letter-spacing:.13em;
+ text-transform:uppercase;color:var(--ink);text-decoration:none;white-space:nowrap;line-height:1}
+.sb-mark:hover{color:var(--red)}
+.sb-links{list-style:none;display:flex;align-items:center;margin:0;padding:0;overflow-x:auto;
+ overscroll-behavior-x:contain;scrollbar-width:none}
+.sb-links::-webkit-scrollbar{display:none}
+.sb-links li{margin:0;padding:0;flex:0 0 auto}
+.sb-links a{position:relative;display:block;padding:12px 11px;min-height:44px;line-height:20px;
+ font-size:13.5px;font-weight:600;color:var(--ink);text-decoration:none;white-space:nowrap}
+.sb-links a::after{content:"";position:absolute;left:11px;right:11px;bottom:9px;height:3px;
+ background:transparent}
+.sb-links a:hover{color:var(--red)}
+.sb-links a[aria-current="page"]{font-weight:700}
+.sb-links a[aria-current="page"]::after{background:var(--red)}
+.sitebar a:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+@media (max-width:560px){
+ /* The bar stacks on a phone: the wordmark on one row, the links on the next, the links
+    scrolling inside themselves rather than wrapping, so the bar's height stays the height the
+    jump bar is told to sit under. */
+ :root{--sb-h:76px}
+ .sb-inner{flex-direction:column;align-items:stretch;justify-content:flex-start;gap:0}
+ .sb-mark{height:31px;display:flex;align-items:center}
+ .sb-links{height:44px}
+}
+
+/* The jump bar sticks directly under the site bar, and a section's scroll margin grows by
+   the same amount, so a jumped-to heading still lands below the jump bar and not under it. */
+.jump{top:var(--sb-h)}
 /* ---- the bands ---------------------------------------------------------------------------------
    The band is what separates one section from the next: a full-width field of colour carrying the
    number, the name and the standfirst, with the section's content sitting on the page ground beneath
    it. Six bands, four measured pairs, alternating so no two neighbours are the same colour. */
-.sect{margin:0 0 var(--s5);scroll-margin-top:calc(var(--jump-h) + var(--s1))}
-main{scroll-margin-top:calc(var(--jump-h) + var(--s1))}
+.sect{margin:0 0 var(--s5);scroll-margin-top:calc(var(--sb-h) + var(--jump-h) + var(--s1))}
+main{scroll-margin-top:calc(var(--sb-h) + var(--jump-h) + var(--s1))}
 .sect:first-child{margin-top:var(--s4)}
 .band{display:grid;grid-template-columns:auto 1fr;align-items:baseline;
 column-gap:var(--s2);row-gap:var(--s1);
@@ -1751,9 +1792,18 @@ def page(rows: list[dict[str, Any]], meta: dict[str, Any]) -> str:
 </head>
 <body>
 <a class="skip" href="#main">Skip to the prices</a>
+<nav class="sitebar" aria-label="Site">
+  <div class="sb-inner">
+    <a class="sb-mark" href="index.html" aria-label="NaijaDrugWatch, home page">NaijaDrugWatch</a>
+    <ul class="sb-links">
+      <li><a href="index.html">The finding</a></li>
+      <li><a href="dashboard.html" aria-current="page">Every price</a></li>
+      <li><a href="about.html">How this was made</a></li>
+    </ul>
+  </div>
+</nav>
 <div class="wrap">
 <header>
-<p class="muted"><a href="index.html">&larr; Medicine prices and registration status in Nigeria</a></p>
 <h1>Every price, and what the data can say</h1>
 <p class="lede">All {len(rows):,} prices, collected up to {datetime.strptime(FREEZE["frozen_on"], "%Y-%m-%d").strftime("%d %B %Y")}. Nothing here is live.</p>
 <p class="muted">Newest price {datetime.strptime(meta["newest"], "%Y-%m-%d").strftime("%d %B %Y")}. Built {still}, reads nothing from a server.</p>

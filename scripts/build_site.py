@@ -957,6 +957,69 @@ def derive_pharmacies(rows: list[tuple]) -> list[dict[str, Any]]:
             for name, website, state in rows]
 
 
+# ---- the collection range ---------------------------------------------------
+# WHEN COLLECTION STARTED, AND WHEN IT STOPPED. The front page's stamp says both ends of the range:
+# the day the first price was recorded and the day the last one was. Neither end is typed.
+# `price_history` is append-only, so `min(recorded_at)` is the moment collection started and
+# `max(recorded_at)` is the moment it stopped. The two calendar days are those two values read in
+# Lagos time - the clock the rest of this page speaks in - and the page prints the days.
+COLLECTION_RANGE_SQL = """
+select
+    min(recorded_at)                                      as first_price,
+    max(recorded_at)                                      as last_price,
+    (min(recorded_at) at time zone 'Africa/Lagos')::date  as first_day,
+    (max(recorded_at) at time zone 'Africa/Lagos')::date  as last_day
+from price_history
+"""
+
+
+class MissingRange(RuntimeError):
+    """Raised when the collection range cannot be read. The page will not print a guessed date."""
+
+
+def derive_collection_range(rows: list[tuple]) -> dict[str, Any]:
+    """Both ends of the collection range: the stored timestamps and the days they fall on.
+
+    WHY FOUR VALUES AND NOT TWO. The two timestamps are what the table actually holds, rendered the
+    way every other stored timestamp on this page is rendered (`iso()`), and they are compared on the
+    re-read at zero tolerance, like every other timestamp here. The two days are the same two values
+    read in Lagos time, and they are what the stamp prints. Keeping both means the page cannot print
+    a day that the stored timestamp does not support, and neither value is typed.
+
+    AN EMPTY TABLE IS A FAILURE, NOT A BLANK. A range with no end is not a range, and a page that
+    says nothing about the range would be hiding the one thing it was asked to say.
+    """
+    first, last, first_day, last_day = rows[0]
+    if first_day is None or last_day is None:
+        raise MissingRange(
+            "the collection range is empty: price_history holds no price row, so the page cannot say "
+            "when collection started."
+        )
+    return {
+        "first_price_utc": iso(first),
+        "last_price_utc": iso(last),
+        "first_day_lagos": str(first_day),
+        "last_day_lagos": str(last_day),
+    }
+
+
+def human_range(first_day: str, last_day: str) -> str:
+    """Two ISO days as the range the page prints: 2026-11-07 and 2026-11-15 -> "7 to 15 November 2026".
+
+    WHY THE SHAPE FOLLOWS THE SPAN. Two days in the same month read as "7 to 15 November 2026",
+    because the month and the year are shared and naming them twice is noise. Two days in different
+    months have to name both months, and two days in different years have to name both years. The
+    days themselves come from the query; only this shape is decided here.
+    """
+    start = datetime.strptime(str(first_day), "%Y-%m-%d")
+    end = datetime.strptime(str(last_day), "%Y-%m-%d")
+    if (start.year, start.month) == (end.year, end.month):
+        return f"{start.day} to {end.day} {end.strftime('%B %Y')}"
+    if start.year == end.year:
+        return f"{start.day} {start.strftime('%B')} to {end.day} {end.strftime('%B %Y')}"
+    return f"{start.day} {start.strftime('%B %Y')} to {end.day} {end.strftime('%B %Y')}"
+
+
 SPECS: list[Spec] = [
     Spec("overview", OVERVIEW_SQL, derive_overview, time_tolerance=300.0, float_tolerance=1.0),
     Spec("registration", REG_SQL, lambda rows: rows, time_tolerance=300.0),
@@ -967,6 +1030,13 @@ SPECS: list[Spec] = [
     Spec("ledger", LEDGER_SQL, lambda rows: rows, time_tolerance=300.0),
     Spec("pharmacies", PHARMACY_SQL, derive_pharmacies),
 ]
+
+# The collection range is a statement about a period that has closed, so it is collected - and the
+# page prints it - only while the page describes a frozen vintage. While the pipeline is live the
+# stamp already says when the newest price was recorded and how old it is; a range would be a range
+# with no end, and the live page must not say what it cannot support.
+if FROZEN:
+    SPECS.append(Spec("collection_range", COLLECTION_RANGE_SQL, derive_collection_range))
 
 
 def read_facts(conn: Any) -> dict[str, Any]:
@@ -1024,10 +1094,11 @@ table,tbody,tr,td,th{cursor:inherit}
 a,button,summary,input[type=checkbox],select{cursor:pointer}
 """
 
-CSS_CREAM = CREAM_PALETTE_CSS + (
-    '@font-face{font-family:"Archivo Black";src:url(' + FONT_ARCHIVO_BLACK + ') '
-    'format("woff2");font-weight:400;font-style:normal;font-display:swap}'
-) + """
+CSS_CREAM = r""":root{--ink:#1a1612;--muted:#4a423d;--line:#d7cfbe;--bg:#faf7f1;
+--panel:#f1ebdf;--accent:#5f2a54;--warn:#7a2e00;--warn-bg:#fdf1e3;
+--band:#2a1a20;--band-ink:#f7f0e6;--band-accent:#e2b25c;
+--pad:.75rem;--navy:#161A64;--red:#9F2519;--gold:#D7A320;--gold-ink:#7A5800;
+--tint-navy:#E3E1E3;--tint-red:#F1E2DB;--tint-gold:#F4EAD0}@font-face{font-family:"Archivo Black";src:url(data:font/woff2;base64,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) format("woff2");font-weight:400;font-style:normal;font-display:swap}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);
@@ -1236,11 +1307,42 @@ margin:1rem 0;border-radius:0 4px 4px 0}
  .step{padding:.8rem .8rem .9rem}
  .step h2{font-size:1rem}
 }
-""" + (
-    # The words themselves, repeated so the strip covers a column this tall at any width. Written
-    # once in CREAM_TOOLS above, so a tool named there cannot go missing from the margin.
-    '.wmstrip::before{content:"' + " ".join([CREAM_TOOLS] * 8) + '"}'
-)
+:root{--sb-h:49px}
+
+/* ---- the site bar: one row of links, on every page but the front one --------------------
+   The front page carries its three links inside its own masthead, so this bar is for the two
+   inner pages. It is a fixed 49px, and `--sb-h` is that height and nothing else: the dashboard's
+   jump bar is told to stick directly under it with no script, because a number that is written
+   down cannot drift from the number that was measured. */
+.sitebar{--nav-max:62rem;--nav-pad:.75rem;background:var(--bg);border-bottom:1px solid var(--line);
+ position:sticky;top:0;z-index:8;height:var(--sb-h)}
+.sb-inner{max-width:var(--nav-max);margin:0 auto;padding:0 var(--nav-pad);height:100%;
+ display:flex;align-items:center;justify-content:space-between;gap:16px}
+.sb-mark{font-family:"Archivo Black",Impact,sans-serif;font-size:11.5px;letter-spacing:.13em;
+ text-transform:uppercase;color:var(--ink);text-decoration:none;white-space:nowrap;line-height:1}
+.sb-mark:hover{color:var(--red)}
+.sb-links{list-style:none;display:flex;align-items:center;margin:0;padding:0;overflow-x:auto;
+ overscroll-behavior-x:contain;scrollbar-width:none}
+.sb-links::-webkit-scrollbar{display:none}
+.sb-links li{margin:0;padding:0;flex:0 0 auto}
+.sb-links a{position:relative;display:block;padding:12px 11px;min-height:44px;line-height:20px;
+ font-size:13.5px;font-weight:600;color:var(--ink);text-decoration:none;white-space:nowrap}
+.sb-links a::after{content:"";position:absolute;left:11px;right:11px;bottom:9px;height:3px;
+ background:transparent}
+.sb-links a:hover{color:var(--red)}
+.sb-links a[aria-current="page"]{font-weight:700}
+.sb-links a[aria-current="page"]::after{background:var(--red)}
+.sitebar a:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+@media (max-width:560px){
+ /* The bar stacks on a phone: the wordmark on one row, the links on the next, the links
+    scrolling inside themselves rather than wrapping, so the bar's height stays the height the
+    jump bar is told to sit under. */
+ :root{--sb-h:76px}
+ .sb-inner{flex-direction:column;align-items:stretch;justify-content:flex-start;gap:0}
+ .sb-mark{height:31px;display:flex;align-items:center}
+ .sb-links{height:44px}
+}
+.wmstrip::before{content:"Neon Postgres · PostgreSQL · pgvector · pg_trgm · unaccent · SQL · Python · psycopg · fastembed · bge-small-en-v1.5 · GitHub Actions · NAFDAC Greenbook · #FixMedPrices · Hugging Face · Wikimedia Commons · Streamlit (unused) ·  Neon Postgres · PostgreSQL · pgvector · pg_trgm · unaccent · SQL · Python · psycopg · fastembed · bge-small-en-v1.5 · GitHub Actions · NAFDAC Greenbook · #FixMedPrices · Hugging Face · Wikimedia Commons · Streamlit (unused) ·  Neon Postgres · PostgreSQL · pgvector · pg_trgm · unaccent · SQL · Python · psycopg · fastembed · bge-small-en-v1.5 · GitHub Actions · NAFDAC Greenbook · #FixMedPrices · Hugging Face · Wikimedia Commons · Streamlit (unused) ·  Neon Postgres · PostgreSQL · pgvector · pg_trgm · unaccent · SQL · Python · psycopg · fastembed · bge-small-en-v1.5 · GitHub Actions · NAFDAC Greenbook · #FixMedPrices · Hugging Face · Wikimedia Commons · Streamlit (unused) ·  Neon Postgres · PostgreSQL · pgvector · pg_trgm · unaccent · SQL · Python · psycopg · fastembed · bge-small-en-v1.5 · GitHub Actions · NAFDAC Greenbook · #FixMedPrices · Hugging Face · Wikimedia Commons · Streamlit (unused) ·  Neon Postgres · PostgreSQL · pgvector · pg_trgm · unaccent · SQL · Python · psycopg · fastembed · bge-small-en-v1.5 · GitHub Actions · NAFDAC Greenbook · #FixMedPrices · Hugging Face · Wikimedia Commons · Streamlit (unused) ·  Neon Postgres · PostgreSQL · pgvector · pg_trgm · unaccent · SQL · Python · psycopg · fastembed · bge-small-en-v1.5 · GitHub Actions · NAFDAC Greenbook · #FixMedPrices · Hugging Face · Wikimedia Commons · Streamlit (unused) ·  Neon Postgres · PostgreSQL · pgvector · pg_trgm · unaccent · SQL · Python · psycopg · fastembed · bge-small-en-v1.5 · GitHub Actions · NAFDAC Greenbook · #FixMedPrices · Hugging Face · Wikimedia Commons · Streamlit (unused) · "}"""
 
 
 # The front page's stylesheet: the design study of 13 November, ported and recoloured orange.
@@ -1283,6 +1385,10 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:
 .brand b{font-weight:400;color:var(--ink)}
 .tagline{font-size:14px;color:var(--muted);max-width:52ch;margin-top:8px;line-height:1.45}
 .map{width:58px;height:auto;fill:var(--orange);flex:0 0 auto}
+/* The map is decoration. On a phone it sat on a line of its own under the tagline, about 85 px
+   of nothing between the reader and the headline, so it goes below this width, the same way the
+   methods page hides its tool-name strips below 960 px. The desktop keeps it. This rule has to
+   come after the base .map rule above, or the base rule wins and the map stays. */
 
 /* ---- the hero: headline and figures on the left, her photograph fading in on the right -------- */
 .hero{position:relative;overflow:hidden;background:var(--bg);border-bottom:1px solid var(--rule)}
@@ -1473,6 +1579,75 @@ footer .wrap{max-width:1240px;margin:0 auto;padding:0 24px}
   .wrap{padding-left:16px;padding-right:16px}
   .hero-grid{padding-left:16px;padding-right:16px}
 }
+
+/* ---- the navigation on the front page: three links in the masthead row, and a quick index
+   under it. No second wordmark: the masthead already carries the name, so the links join the
+   row that is already there, to the left of the map. */
+.mast-right{display:flex;align-items:center;gap:28px}
+.mastnav ul{list-style:none;display:flex;align-items:center;margin:0;padding:0;overflow-x:auto;
+ overscroll-behavior-x:contain;scrollbar-width:none}
+.mastnav ul::-webkit-scrollbar{display:none}
+.mastnav li{margin:0;padding:0;flex:0 0 auto}
+.mastnav a{position:relative;display:block;padding:12px 11px;min-height:44px;line-height:20px;
+ font-size:13.5px;font-weight:600;color:var(--ink);text-decoration:none;white-space:nowrap}
+.mastnav a::after{content:"";position:absolute;left:11px;right:11px;bottom:9px;height:3px;
+ background:transparent}
+.mastnav a:hover{color:var(--dress-red)}
+.mastnav a[aria-current="page"]{font-weight:700}
+.mastnav a[aria-current="page"]::after{background:var(--dress-red)}
+.mastnav a:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
+/* ---- the quick index: four places to go from the front page, one row under the masthead --- */
+.quickidx{background:var(--bg);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.qi-inner{max-width:1240px;margin:0 auto;padding:0 24px}
+.qi-list{list-style:none;display:flex;flex-wrap:wrap;margin:0;padding:0}
+.qi-list li{margin:0;padding:0;border-left:1px solid var(--rule)}
+.qi-list li:first-child{border-left:0}
+.qi-list a{display:block;padding:10px 14px;min-height:44px;text-decoration:none;line-height:1.5}
+.qi-t{font-size:11px;letter-spacing:.11em;text-transform:uppercase;font-weight:700;color:var(--ink)}
+.qi-d{font-size:12.5px;color:var(--muted)}
+.qi-d::before{content:"\u00a0\u2014\u00a0"}
+.quickidx a:hover .qi-t{color:var(--dress-red)}
+.quickidx a:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
+@media (max-width:560px){
+ /* On a phone the masthead stacks, so the three links move into the quick index, which becomes
+    one row of four labels that scrolls inside itself - the pattern the dashboard's jump bar
+    already uses - and the glosses go, because four of them cannot sit above the heading on a
+    phone without costing more room than the heading is worth. */
+ .mastnav{display:none}
+ .qi-inner{--qi-pad:16px;padding:0 var(--qi-pad);position:relative}
+     of nothing between the reader and the headline, so it goes below this width. The three nav
+     links have already moved into the quick index, so the right-hand block the map sat in is empty
+     without it, and the empty row and its gap go with it. This rule has to sit after the base
+     .mast-right rule below, or the base rule wins and the map stays. */
+     of nothing between the reader and the headline, so it goes below this width, the same way the
+ .qi-list{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none}
+     methods page hides its tool-name strips below 960 px. The desktop keeps it. The three nav
+ .qi-list::-webkit-scrollbar{display:none}
+     links have already moved into the quick index, so the right-hand block the map sat in is empty
+ .qi-list li{border-left:0;border-right:1px solid var(--rule)}
+     without it, and the empty row and its gap go with it. */
+ .qi-list a{height:44px;min-height:44px;padding:0 12px;display:flex;align-items:center;
+  white-space:nowrap}
+ .qi-d{display:none}
+  /* The map is decoration: on a phone it sat on a line of its own under the tagline, about 85 px
+     of nothing between the reader and the headline, so it goes below this width, the same way the
+     methods page hides its tool-name strips below 960 px. The desktop keeps it. The three nav
+     links have already moved into the quick index, so the right-hand block the map sat in is empty
+     without it, and the empty row and its gap go with it. */
+  .mast-right{display:none}
+  /* The strip scrolls inside itself, and the label at the cut used to be sliced through the middle
+     of a letter: a cut with nothing to say so reads as a bug, not as an invitation to scroll. This
+     is a 24 px fade over the last 24 px of the strip, in the ground colour the page already uses,
+     with no new colour and no shadow. It is drawn on the strip and not inside the scrolling list,
+     so it stays put while the list moves, and it is drawn at this width only: above it the list
+     wraps and nothing is cut. The script at the foot of the page puts the class on while there is
+     more to the right, and takes it off at the end of the list, where nothing is cut. */
+  .qi-inner::after{content:"";position:absolute;top:0;bottom:0;right:var(--qi-pad);width:24px;
+   background:var(--bg);pointer-events:none;opacity:0;
+   -webkit-mask-image:linear-gradient(to right,rgba(0,0,0,0),#000);
+   mask-image:linear-gradient(to right,rgba(0,0,0,0),#000)}
+  .qi-inner.qi-more::after{opacity:1}
+}
 """
 
 def esc(value: Any) -> str:
@@ -1613,7 +1788,7 @@ ABOUT: dict[str, Any] = {
     "added_products": 359,
     "cleared_links": 54,
     "lost_links": 28,
-    "audit_numbers": 3787,
+    "audit_numbers": 3791,
     "exported_rows": 36936,
     "exported_tables": 8,
     "restore_checks": 22,
@@ -1667,16 +1842,25 @@ def about_page() -> str:
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>How this was built - NaijaDrugWatch</title>
+<title>How this was made - NaijaDrugWatch</title>
 <link rel="icon" href="data:,">
 <style>{CSS_CREAM}{CURSOR_CSS}</style>
 </head>
 <body>
 <a class="skip" href="#main">Skip to the content</a>
+<nav class="sitebar" aria-label="Site">
+  <div class="sb-inner">
+    <a class="sb-mark" href="index.html" aria-label="NaijaDrugWatch, home page">NaijaDrugWatch</a>
+    <ul class="sb-links">
+      <li><a href="index.html">The finding</a></li>
+      <li><a href="dashboard.html">Every price</a></li>
+      <li><a href="about.html" aria-current="page">How this was made</a></li>
+    </ul>
+  </div>
+</nav>
 <div class="wrap">
 <header>
-<p class="subhead"><a href="index.html">&larr; Medicine prices and registration status in Nigeria</a></p>
-<h1>How this was built</h1>
+<h1>How this was made</h1>
 <p class="lede">NAFDAC status, joined to Nigerian pharmacy prices. Independent, $0 a month, not endorsed by
 NAFDAC or any pharmacy here. Code MIT, data CC-BY-4.0. The register: the agency Dora Akunyili led,
 2001&ndash;2008. Her tribute is on the <a href="index.html">front page</a>.</p>
@@ -1967,9 +2151,14 @@ class Page:
         shops_text = "not known" if shops is None else str(shops)
 
         if FROZEN:
+            # The range is queried, not typed: the days come out of `collection_range`, which the
+            # audit re-reads and compares at zero tolerance. The second sentence is the owner's,
+            # word for word.
+            span = self.f("collection_range")
+            collected = human_range(span["first_day_lagos"], span["last_day_lagos"])
             stamp = (
-                '<p class="stamp">Collection stopped on '
-                f'{esc(human_date(FROZEN["frozen_on"]))}.</p>'
+                f'<p class="stamp">Collected {esc(collected)}. '
+                f'Collection stopped on {esc(human_date(FROZEN["frozen_on"]))}.</p>'
             )
             health_note = (
                 f' Because collection stopped on {esc(human_date(FROZEN["frozen_on"]))}, every age '
@@ -2025,7 +2214,7 @@ class Page:
         # 298 + 154 + 46 = 498, and 498 + 61 (the matched rows that carry no licence number) = 559, so
         # the receipt closes. The figure is taken from the flagged set rather than typed.
         checkable = reg["matched_active"] + reg["matched_flagged"] + reg["matched_status_not_read"]
-        finding = f"""<div class="finding">
+        finding = f"""<div class="finding" id="finding">
         <p class="n">{reg["matched_flagged"]:,}</p>
         <p class="k">of the {checkable:,} prices we could trace to a licence record sit on a
         registration that is <strong>not active</strong>.</p>
@@ -2064,11 +2253,31 @@ class Page:
       <div class="brand">Naija<b>Drug</b>Watch</div>
       <p class="tagline">{masthead_line}</p>
     </div>
-    <svg class="map" viewBox="0 0 100 82" role="img" aria-label="Outline of Nigeria">
+    <div class="mast-right">
+      <nav class="mastnav" aria-label="Site">
+        <ul class="sb-links">
+          <li><a href="index.html" aria-current="page">The finding</a></li>
+          <li><a href="dashboard.html">Every price</a></li>
+          <li><a href="about.html">How this was made</a></li>
+        </ul>
+      </nav>
+      <svg class="map" viewBox="0 0 100 82" role="img" aria-label="Outline of Nigeria">
       <path d="{NIGERIA_MAP_PATH}"/>
     </svg>
+    </div>
   </div>
 </header>
+
+<nav class="quickidx" aria-label="Quick index">
+  <div class="qi-inner">
+    <ul class="qi-list">
+      <li><a href="#finding"><span class="qi-t">The finding</span><span class="qi-d">the {reg['matched_flagged']:,} on this page</span></a></li>
+      <li><a href="dashboard.html"><span class="qi-t">Every price</span><span class="qi-d">{overview['latest_listings']:,} prices, explorable</span></a></li>
+      <li><a href="#get-the-data"><span class="qi-t">Get the data</span><span class="qi-d">the frozen vintage</span></a></li>
+      <li><a href="about.html"><span class="qi-t">How this was made</span><span class="qi-d">the method and the limits</span></a></li>
+    </ul>
+  </div>
+</nav>
 
 <section class="hero" aria-label="What this page is about">
   <div class="hero-grid">
@@ -2119,13 +2328,33 @@ class Page:
       </ul>
       <div class="dashrow">
         <a class="dash" href="dashboard.html">Open the price dashboard</a>
-        <a class="dash" href="about.html">How this was built</a>
+        <a class="dash" href="about.html">How this was made</a>
       </div>
     </div>
   </div>
 </div>
 </main>
 
+<script>
+/* The quick index scrolls inside itself on a phone, and the label at the cut used to be sliced
+   through the middle of a letter. The fade over the last 24 px of the strip says there is more.
+   This is the only script on this page: it changes no text, no number and no layout. It only puts
+   the fade on while the list has more to the right, and takes it off at the end of the list,
+   where nothing is cut. */
+(function(){{
+  var strip=document.querySelector('.qi-inner');
+  var list=document.querySelector('.qi-list');
+  if(!strip||!list){{return;}}
+  function update(){{
+    var more=list.scrollWidth-list.clientWidth-list.scrollLeft>1;
+    if(strip.classList.contains('qi-more')!==more){{strip.classList.toggle('qi-more',more);}}
+  }}
+  list.addEventListener('scroll',update,{{passive:true}});
+  window.addEventListener('resize',update);
+  window.addEventListener('load',update);
+  update();
+}})();
+</script>
 <footer>
   <div class="wrap">
     <p><strong>Licence.</strong> Prices from HealthPlus, MedPlus and Drugstore.ng, read from their public
@@ -2286,14 +2515,27 @@ def main() -> int:
     with conn:
         conn.execute("set statement_timeout = '120s'")
 
-        facts = read_facts(conn)
-        page = Page(facts, dates, published)
-        document = page.build()
+        try:
+            facts = read_facts(conn)
+            page = Page(facts, dates, published)
+            document = page.build()
+        except MissingRange as exc:
+            print(str(exc), file=sys.stderr)
+            print("nothing written: the page will not print a date it cannot derive.", file=sys.stderr)
+            return 5
 
         checked, problems = audit(conn, facts, page.used)
         # The methods page states figures as prose, which the fact audit cannot see. These eleven queries
         # are the ones a query can answer; a stale number there fails the build like any other.
         problems += about_drift(conn)
+        # The methods page quotes the landing page's own audit count, which cannot be known until the
+        # audit has run - so it is a literal. Left unguarded it silently fell four behind when four
+        # dates were added to this build; it is now checked against the count this build actually made.
+        if checked != ABOUT["audit_numbers"]:
+            problems.append(
+                f"the methods page states {ABOUT['audit_numbers']:,} numbers checked; this build checked "
+                f"{checked:,}. Set ABOUT['audit_numbers'] to {checked:,}."
+            )
 
     if problems:
         print(f"{checked} numbers checked, {len(problems)} unexplained", file=sys.stderr)

@@ -1,0 +1,93 @@
+# Publishes the three generated pages to GitHub Pages.
+#
+# WHY THIS IS NOT IN daily.yml. That workflow's `publish` job is dormant by design: `daily` is a
+# scraping pipeline, its schedule is disabled because the project is frozen, and dispatching it would
+# collect fresh prices into a vintage that is meant to be closed. Publishing has to be reachable
+# without touching a scraper, so it lives here and runs only a page build.
+#
+# WHAT IT DOES. Reads the frozen database read-only, renders `site/`, re-reads every query and refuses
+# to write if a printed number does not match the second read, then uploads `site/` as the Pages
+# artefact. Nothing is committed: `site/` stays a build artefact and never enters git.
+#
+# COST. GitHub Pages and Actions are free on a public repository. The only requirement is the
+# repository's `DATABASE_URL` secret, which the pipeline already uses.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/build_site.py"
+      - "scripts/build_dashboard.py"
+      - "docs/assets/**"
+      - "docs/published-vintage.json"
+      - ".github/workflows/pages.yml"
+
+permissions:
+  contents: read
+
+# One deployment at a time, and never cancelled half-way: a cancelled run must not leave Pages with a
+# partial artefact.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      pages: write
+      id-token: write
+      contents: read
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      PYTHONIOENCODING: utf-8
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # psycopg only. The pages are HTML and numbers; they need no fastembed, no streamlit and no
+      # scraper dependency, and the build should not pay for them.
+      - name: Install psycopg
+        run: pip install "psycopg[binary]>=3.2,<3.3"
+
+      # Both pages, because the navigation links all three and a missing file would be a dead link.
+      # Each script exits non-zero if its own audit disagrees with a second read, and writes nothing
+      # in that case, so a failed run leaves the previous deployment serving rather than replacing it.
+      - name: Build the finding and methods pages, checking their numbers
+        run: python -X utf8 scripts/build_site.py
+
+      - name: Build the price page, checking its numbers
+        run: python -X utf8 scripts/build_dashboard.py
+
+      # A page that links to a file the build did not produce must fail here, not in a reader's face.
+      - name: Every page the navigation links must exist
+        run: |
+          set -eu
+          for f in site/index.html site/dashboard.html site/about.html site/data.json; do
+            test -s "$f" || { echo "missing or empty: $f"; exit 1; }
+          done
+          for target in dashboard.html about.html index.html; do
+            grep -q "href=\"$target\"" site/index.html site/dashboard.html site/about.html \
+              || { echo "no page links to $target"; exit 1; }
+          done
+          echo "pages present: $(ls -1 site/*.html | wc -l), data.json present"
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload the built site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
