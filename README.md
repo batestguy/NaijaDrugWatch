@@ -2,7 +2,7 @@
 
 NaijaDrugWatch pairs prices shown on Nigerian pharmacy websites with registration records from NAFDAC's Greenbook, so a reader can see a recorded price beside the licence information collected for that product.
 
-**Status: frozen vintage.** Collection ran from 7 to 15 November 2026 and stopped on 16 November. This is not a current price source. No page or service is deployed.
+**Status: frozen vintage, and published.** Collection ran from 7 to 15 November 2026 and stopped on 16 November. The three pages are live at **https://batestguy.github.io/NaijaDrugWatch/**, rebuilt from the frozen database whenever the page builders change, and showing what had been collected by 16 November. Nothing behind them updates, so this is not a current price source.
 
 NAFDAC is Nigeria's National Agency for Food and Drug Administration and Control. Its Greenbook is the public source for the registration records used here. The project does not inspect, test or buy medicines. A name match or registration status cannot establish what is inside a pack.
 
@@ -54,7 +54,7 @@ These checks show that the page agrees with the values its build reads. They do 
 
 ## The built pages
 
-The repository can generate 3 static pages under `site/`. They are generated files, not hand-edited pages, and they are not published. The images in this README show the page designs; they are not public page links.
+The repository builds 3 static pages into `site/`, and they are published at **https://batestguy.github.io/NaijaDrugWatch/** by `.github/workflows/pages.yml`. They are generated files, not hand-edited pages: a change to the HTML does not persist, because the next build replaces it. The screenshots below are of those published pages.
 
 ### The finding
 
@@ -214,7 +214,7 @@ Pharmacy scrapers read public product and price fields; the Greenbook supplies r
 
 ## What is not true, or not checked
 
-Nothing is deployed: the public copies are data only, while the generated `site/` pages are not published. This is not a current price service.
+The pages are published; the data behind them is not live. Both were rebuilt from a database that stopped collecting on 16 November 2026, so no page can show a price newer than that. This is not a current price service: a figure here records what a shop displayed at collection time, not an offer.
 
 The final page work had no accessibility audit or independent review. The build checks compare page values with data read during each build; they do not test usability, source accuracy or status freshness.
 
@@ -242,7 +242,7 @@ Re-reads and recorded human checks are narrow. They do not establish that every 
 
 `vintage/` — local frozen archive, gitignored; use the public copies linked above.
 
-`site/` — generated HTML output, gitignored and not published.
+`site/` — generated HTML output, gitignored; published to GitHub Pages by the `pages` workflow, never committed.
 
 `.agent/` — task briefs, progress notes and handoff reports.
 

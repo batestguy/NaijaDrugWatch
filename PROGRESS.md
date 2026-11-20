@@ -50,15 +50,33 @@ bar, strip, fade, one name.
   the phone headline up from 264 px to 203 px; the methods page bar 49 px at 1440 with the h1 below it.
 - Dashboard: bar 0–49 px and jump bar 49–97 px after a 900 px scroll, zero overlap.
 
+### Published, 20 November 2026
+
+The three pages are live at **https://batestguy.github.io/NaijaDrugWatch/**, served by GitHub Pages from
+`.github/workflows/pages.yml`. That workflow runs only the two page builders against the frozen database and
+deploys `site/`; it never scrapes, so publishing cannot thaw the vintage. It is separate from `daily.yml`
+because dispatching that workflow would collect new prices.
+
+Verified live, anonymously: `/`, `/dashboard.html`, `/about.html`, `/data.json` and all three asset files
+return 200. In a browser on the published site: the current page is marked in the bar on all three, the phone
+map is gone, the collection stamp reads 7 to 15 November, the dashboard's own section bar is 49 px and its
+search answers "amox" with "1 medicine matches", the methods page prints 3,791 numbers checked, and there are
+0 console errors on any page.
+
+**Still true, and now stated on the page:** the data is frozen at 16 November, so a published price is a
+record, not an offer. Nothing behind the site updates.
+
 ### Not true, or not known
 
-- **Nothing is committed.** Three tracked files are modified (`README.md`, `scripts/build_site.py`,
-  `scripts/build_dashboard.py`) and `docs/readme/` is new.
 - No axe run on the new bar or strip; contrast is measured at build time, which is not an audit.
-- The README is under independent review; it has not been reviewed yet.
+- The README has not been reviewed by anyone but its writer and the secretary. A review was dispatched and had
+  not returned when the pages were published.
 - `.agent/` now holds several patch and backup scripts from today's tickets. They are untracked and should be
   read before being trusted: `T1120-c-fix3.py` is a report printer, not a patcher, and `T1120-c-fix4.py`
   applied nothing.
+- `daily.yml` still carries a dormant `publish` job from before this deployment. It is harmless while the
+  schedule is disabled, but it should be deleted the next time that workflow is touched, so there is one
+  publisher rather than two.
 
 
 ## Close-out - 19 November 2026, evening
