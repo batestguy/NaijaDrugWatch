@@ -69,8 +69,20 @@ record, not an offer. Nothing behind the site updates.
 ### Not true, or not known
 
 - No axe run on the new bar or strip; contrast is measured at build time, which is not an audit.
-- The README has not been reviewed by anyone but its writer and the secretary. A review was dispatched and had
-  not returned when the pages were published.
+- The README went out before its review returned. The review (ship-reviewer, Haiku 5.5 max) said **do not
+  ship** with five blocking items; four were README claims and are fixed in `a75517f`, the fifth was "not
+  committed", which the publish commit closed. **The worst of them was a false statement**: "3 products with
+  a recorded price move in the last 7 days" — the view pairs listings, and the query returns 3 compared, 0
+  moved. It was live for eleven minutes.
+- **Still open, and the reviewer's strongest remaining point:** `mv_drug_price_index` is built from
+  `price_history` with no filter on `price_suspect`, so sub-₦20 prices feed the published index while the
+  views exclude them. The README does not mention the ₦20 rule at all. One index row has a minimum below
+  20. Publishing an index that includes a suspect price, with no relabel, contradicts the project's own note
+  that it must not be published as a market average.
+- Also unfixed from the review: the Greenbook certificate is expired and the scraper falls back to HTTP per
+  host, which no page discloses; the dashboard tile reads "288 medicines priced" beside the README's 335
+  products, different units with no explanation; the front page's "298 active, 46 never read" mixes matched
+  listings with registrations.
 - `.agent/` now holds several patch and backup scripts from today's tickets. They are untracked and should be
   read before being trusted: `T1120-c-fix3.py` is a report printer, not a patcher, and `T1120-c-fix4.py`
   applied nothing.
