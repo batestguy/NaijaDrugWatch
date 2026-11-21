@@ -48,3 +48,15 @@ Thumbs.db
 # A superseded manual eyeball sheet, kept on disk for provenance and never to be used. Tracked here
 # so the working tree stays clean: its replacement is the verification desk.
 .agent/eyeball-sheet.md
+
+# --- agent scratch (21 Nov 2026) ---
+# Screenshots, build logs, generated copies and replay patches are working material: the reports are the
+# record, and the images a reader needs live in docs/readme. Two patch scripts that PROGRESS.md names as
+# replayable are committed deliberately, so the ignore rules below are by pattern, not by folder.
+.agent/*.png
+.agent/*-shots/
+.agent/*.txt
+.agent/_*.py
+.agent/T1120-c-head.py
+.agent/T1120-c-broken.py
+.agent/T1120-c-about-good.html

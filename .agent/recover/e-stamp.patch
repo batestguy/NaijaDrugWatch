@@ -1,0 +1,145 @@
+diff --git a/scripts/build_site.py b/scripts/build_site.py
+index e1cebb9..196c3db 100644
+--- a/scripts/build_site.py
++++ b/scripts/build_site.py
+@@ -954,23 +954,93 @@ select name, website, state from pharmacies order by id
+ def derive_pharmacies(rows: list[tuple]) -> list[dict[str, Any]]:
+     return [{"name": name, "website": safe_url(website),
+              "state": state, "state_label": STATE_LABEL.get(state, state)}
+             for name, website, state in rows]
+ 
+ 
++# ---- the collection range ---------------------------------------------------
++# WHEN COLLECTION STARTED, AND WHEN IT STOPPED. The front page's stamp says both ends of the range:
++# the day the first price was recorded and the day the last one was. Neither end is typed.
++# `price_history` is append-only, so `min(recorded_at)` is the moment collection started and
++# `max(recorded_at)` is the moment it stopped. The two calendar days are those two values read in
++# Lagos time - the clock the rest of this page speaks in - and the page prints the days.
++COLLECTION_RANGE_SQL = """
++select
++    min(recorded_at)                                      as first_price,
++    max(recorded_at)                                      as last_price,
++    (min(recorded_at) at time zone 'Africa/Lagos')::date  as first_day,
++    (max(recorded_at) at time zone 'Africa/Lagos')::date  as last_day
++from price_history
++"""
++
++
++class MissingRange(RuntimeError):
++    """Raised when the collection range cannot be read. The page will not print a guessed date."""
++
++
++def derive_collection_range(rows: list[tuple]) -> dict[str, Any]:
++    """Both ends of the collection range: the stored timestamps and the days they fall on.
++
++    WHY FOUR VALUES AND NOT TWO. The two timestamps are what the table actually holds, rendered the
++    way every other stored timestamp on this page is rendered (`iso()`), and they are compared on the
++    re-read at zero tolerance, like every other timestamp here. The two days are the same two values
++    read in Lagos time, and they are what the stamp prints. Keeping both means the page cannot print
++    a day that the stored timestamp does not support, and neither value is typed.
++
++    AN EMPTY TABLE IS A FAILURE, NOT A BLANK. A range with no end is not a range, and a page that
++    says nothing about the range would be hiding the one thing it was asked to say.
++    """
++    first, last, first_day, last_day = rows[0]
++    if first_day is None or last_day is None:
++        raise MissingRange(
++            "the collection range is empty: price_history holds no price row, so the page cannot say "
++            "when collection started."
++        )
++    return {
++        "first_price_utc": iso(first),
++        "last_price_utc": iso(last),
++        "first_day_lagos": str(first_day),
++        "last_day_lagos": str(last_day),
++    }
++
++
++def human_range(first_day: str, last_day: str) -> str:
++    """Two ISO days as the range the page prints: 2026-11-07 and 2026-11-15 -> "7 to 15 November 2026".
++
++    WHY THE SHAPE FOLLOWS THE SPAN. Two days in the same month read as "7 to 15 November 2026",
++    because the month and the year are shared and naming them twice is noise. Two days in different
++    months have to name both months, and two days in different years have to name both years. The
++    days themselves come from the query; only this shape is decided here.
++    """
++    start = datetime.strptime(str(first_day), "%Y-%m-%d")
++    end = datetime.strptime(str(last_day), "%Y-%m-%d")
++    if (start.year, start.month) == (end.year, end.month):
++        return f"{start.day} to {end.day} {end.strftime('%B %Y')}"
++    if start.year == end.year:
++        return f"{start.day} {start.strftime('%B')} to {end.day} {end.strftime('%B %Y')}"
++    return f"{start.day} {start.strftime('%B %Y')} to {end.day} {end.strftime('%B %Y')}"
++
++
+ SPECS: list[Spec] = [
+     Spec("overview", OVERVIEW_SQL, derive_overview, time_tolerance=300.0, float_tolerance=1.0),
+     Spec("registration", REG_SQL, lambda rows: rows, time_tolerance=300.0),
+     Spec("breakdown", BREAKDOWN_SQL, lambda rows: rows),
+     Spec("comparison_cells", COMPARISON_SQL, derive_cells),
+     Spec("single_cells", SINGLE_SQL, derive_cells),
+     Spec("health", HEALTH_SQL, lambda rows: rows, time_tolerance=300.0, float_tolerance=1.0),
+     Spec("ledger", LEDGER_SQL, lambda rows: rows, time_tolerance=300.0),
+     Spec("pharmacies", PHARMACY_SQL, derive_pharmacies),
+ ]
+ 
++# The collection range is a statement about a period that has closed, so it is collected - and the
++# page prints it - only while the page describes a frozen vintage. While the pipeline is live the
++# stamp already says when the newest price was recorded and how old it is; a range would be a range
++# with no end, and the live page must not say what it cannot support.
++if FROZEN:
++    SPECS.append(Spec("collection_range", COLLECTION_RANGE_SQL, derive_collection_range))
++
+ 
+ def read_facts(conn: Any) -> dict[str, Any]:
+     facts: dict[str, Any] = {}
+     for spec in SPECS:
+         cursor = conn.execute(spec.sql)
+         rows = cursor.fetchall()
+@@ -1964,15 +2034,20 @@ class Page:
+         hours = overview["hours_since_newest_scrape"]
+         hours_text = "an unknown length of time" if hours is None else f"{hours:,.1f} hours"
+         shops = overview["shops_in_a_comparison"]
+         shops_text = "not known" if shops is None else str(shops)
+ 
+         if FROZEN:
++            # The range is queried, not typed: the days come out of `collection_range`, which the
++            # audit re-reads and compares at zero tolerance. The second sentence is the owner's,
++            # word for word.
++            span = self.f("collection_range")
++            collected = human_range(span["first_day_lagos"], span["last_day_lagos"])
+             stamp = (
+-                '<p class="stamp">Collection stopped on '
+-                f'{esc(human_date(FROZEN["frozen_on"]))}.</p>'
++                f'<p class="stamp">Collected {esc(collected)}. '
++                f'Collection stopped on {esc(human_date(FROZEN["frozen_on"]))}.</p>'
+             )
+             health_note = (
+                 f' Because collection stopped on {esc(human_date(FROZEN["frozen_on"]))}, every age '
+                 'below is measured to that moment, not to the day you are reading this.'
+             )
+             age_header = "Age at freeze"
+@@ -2283,15 +2358,20 @@ def main() -> int:
+         print(f"cannot connect: {type(exc).__name__}: {exc}".splitlines()[0], file=sys.stderr)
+         return 2
+ 
+     with conn:
+         conn.execute("set statement_timeout = '120s'")
+ 
+-        facts = read_facts(conn)
+-        page = Page(facts, dates, published)
+-        document = page.build()
++        try:
++            facts = read_facts(conn)
++            page = Page(facts, dates, published)
++            document = page.build()
++        except MissingRange as exc:
++            print(str(exc), file=sys.stderr)
++            print("nothing written: the page will not print a date it cannot derive.", file=sys.stderr)
++            return 5
+ 
+         checked, problems = audit(conn, facts, page.used)
+         # The methods page states figures as prose, which the fact audit cannot see. These eleven queries
+         # are the ones a query can answer; a stale number there fails the build like any other.
+         problems += about_drift(conn)
+ 
