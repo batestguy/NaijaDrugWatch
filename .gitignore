@@ -60,3 +60,4 @@ Thumbs.db
 .agent/T1120-c-head.py
 .agent/T1120-c-broken.py
 .agent/T1120-c-about-good.html
+.agent/recover/build_site.*.py
