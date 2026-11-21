@@ -69,6 +69,7 @@ The accessibility wording needs care. The new 20 November navigation bar and ind
 - Keep one writer per source file. On 20 November, T1120-e restored an older `scripts/build_site.py` while T1120-b/T1120-c changes were uncommitted, undoing the navigation fixes.
 - Check browser pages with a cache-busting query such as `?v=...`; a stale page caused a false alarm today.
 - Serve `site/` over HTTP, not `file://`, for anything involving downloads.
+- **Do not re-run a failed Pages job in place.** Build and deploy are one job, so a re-run uploads a second `github-pages` artifact and the deploy step then fails with "multiple artifacts named github-pages". Dispatch the workflow again instead (`gh workflow run pages.yml`), which starts a clean run. Observed on 21 November: the push-triggered deploy failed with "no artifacts found" although the artifact existed, the in-place re-run then failed with two of them, and a fresh dispatch deployed in 30 seconds.
 
 ### Where the evidence is
 
