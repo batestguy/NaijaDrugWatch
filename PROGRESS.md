@@ -2,6 +2,64 @@
 
 Single state file for NaijaDrugWatch. Last updated **2026-11-20**.
 
+## Handoff — 20 November 2026, end of session
+
+### What this is and where it is live
+
+NaijaDrugWatch puts recorded prices from HealthPlus, MedPlus and Drugstore.ng beside NAFDAC Greenbook registration records. It is a public, static record, not a shop or a current price service. The three pages are live at **https://batestguy.github.io/NaijaDrugWatch/**: `index.html` (The finding), `dashboard.html` (Every price) and `about.html` (How this was made). Collection covered 7–15 November 2026 and stopped on 16 November. Nothing behind the pages updates, so a price is a record of what a shop showed, not an offer today.
+
+The published vintage records 2,800 latest listings, of which 559 are matched to a product; 1,433 products, with 335 cited by a stored price; and 10,967 registrations, of which 1,856 have a scraped status (16.9%). It also records 154 listings on registrations not marked Active across 86 products, 261 cheapest-per-state rows with 44 genuine two-pharmacy comparisons, 428 index rows, and three week-over-week comparisons with no change. These are archive counts, not current market measures. See the README's “What the data says” table and `FROZEN.md`.
+
+The root `AGENTS.md` records the frozen, published state and warns that `daily.yml` must not be run. Read it with this file, not instead of it.
+
+### What is running and what is not
+
+`.github/workflows/pages.yml` builds the finding, methods and price pages from the database in read-only mode. It does not scrape. It runs on a manual dispatch or a push to `main` that touches one of its listed build or publication paths. A README-only push does not redeploy. The task brief records a green Pages run in 24 seconds on 20 November; that run was not independently checked in this session.
+
+Collection is off. `FROZEN.md` records workflow `daily`, id `410978489`, as manually disabled. The data is frozen at 16 November; its last collected prices are from 15 November. The YAML still contains cron triggers, but the workflow's GitHub-side disabled state prevents collection. Do not re-enable it: the first run would execute the collection pipeline, including scrapers. The separate `publish` job still in `daily.yml` is dormant; `pages.yml` is now the publisher.
+
+### Rebuild and deploy
+
+Use the pinned interpreter and a `DATABASE_URL` for the frozen database. These are the local build and inspection commands:
+
+```powershell
+.venv\Scripts\python.exe -X utf8 scripts\build_site.py
+.venv\Scripts\python.exe -X utf8 scripts\build_dashboard.py
+.venv\Scripts\python.exe scripts\dbq.py "<one SELECT>"      # read-only; refuses writes
+.venv\Scripts\python.exe -m http.server 8080 --directory site
+```
+
+Then open `http://localhost:8080/`. For a Pages-only deploy, run `gh workflow run pages.yml`, then check `gh run list --workflow=pages.yml` and `gh run watch <run-id> --exit-status`. A listed-path push to `main` also deploys. The Pages workflow needs the repository's `DATABASE_URL` secret. Do not use `daily.yml` as a publishing shortcut.
+
+### Verified, and what is not
+
+The README records the latest page checks as 3,791 numbers and 3,838 rows and figures checked, with zero unexplained in each build. Its values agree with the figures in the 20 November progress block. The supplied task brief says the published counts were re-checked against the database today, but no database query or build was run for this handoff because shell access was denied. Treat those as repo-recorded values, not a fresh verification by this session.
+
+The accessibility wording needs care. The new 20 November navigation bar and index strip have not had an axe audit; the build-time contrast check and manual structure check are not an audit. But “axe was never run” would be false: `FROZEN.md` records an earlier zero-violation run on the then-current pages. That earlier result does not establish that today's redesign passes.
+
+### Open defects, worst first
+
+1. **The materialised price index includes suspect prices.** `schema/004_materialized.sql` averages `price_history` without the ₦20 floor used by the price checks. The brief reports one of 428 index rows with a minimum below ₦20, the lowest being ₦10.99; `PROGRESS.md` already warns against presenting the index as a market average. The README does not explain the floor. Filter the index or label it clearly before calling it an average.
+2. **Greenbook traffic falls back to plain HTTP.** The repo records an expired certificate and a per-host fallback in `scrapers/common.py`; the public pages do not disclose the downgrade. The probe recorded in `PROGRESS.md` is dated 7 November. Re-probe before stating it is still current, and publish the limitation if it remains true.
+3. **Page labels mix counts.** The dashboard's “288 medicines priced” counts distinct medicine names; the README's 335 is products with a stored price. The front page's 298 active and 46 never read are listing counts, placed beside 10,967 registrations. Explain the different units or change the labels.
+4. **The latest page changes have no accessibility audit.** The new bar and strip remain unaudited. An older audit exists, as noted above; it is not evidence for the new design.
+5. **Screenshot captions are not all independently checked.** The brief records that seven of the README's ten screenshots were not checked against their captions by anyone other than the person who took them; two were byte-identical until one was retaken.
+6. **`daily.yml` still has a dormant `publish` job.** It is harmless while collection is disabled. Remove it the next time that workflow is changed, so only `pages.yml` publishes.
+7. **Some patch-script names are misleading.** The brief says `T1120-c-fix3.py` prints a report instead of patching, and `T1120-c-fix4.py` applied nothing. Read them before relying on either.
+
+### Traps
+
+- Never edit `site/*.html`; the builders replace these generated files.
+- Never run or re-enable `daily.yml`; it scrapes the closed vintage.
+- If a new audited number is added to the landing-page build, update the literal `ABOUT["audit_numbers"]`; otherwise the build refuses to publish.
+- Keep one writer per source file. On 20 November, T1120-e restored an older `scripts/build_site.py` while T1120-b/T1120-c changes were uncommitted, undoing the navigation fixes.
+- Check browser pages with a cache-busting query such as `?v=...`; a stale page caused a false alarm today.
+- Serve `site/` over HTTP, not `file://`, for anything involving downloads.
+
+### Where the evidence is
+
+`README.md` is the public account, counts, limitations and screenshot captions. `FROZEN.md` records the collection stop, archive and earlier checks. The 20 November block below records today's page work and review findings. `.github/workflows/pages.yml` and `daily.yml` show the publishing and collection paths; `schema/004_materialized.sql` and the two page builders show how the figures are made. `docs/published-vintage.json` identifies the archive. The ₦10.99 index row was re-queried by the secretary on 21 November and stands: 428 index rows, 1 with a minimum below ₦20.
+
 ## 20 November 2026 — the navigation, the README, and one self-inflicted revert
 
 **Read this block before touching `scripts/build_site.py`.** It was briefly overwritten today and the loss was
