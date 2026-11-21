@@ -1781,7 +1781,7 @@ ABOUT: dict[str, Any] = {
     "regs": 10967,
     "with_status": 1856,
     "coverage": "16.9",
-    "index_rows": 428,
+    "index_rows": 427,
     "changes": 3,
     # Records of the build itself, not re-derivable from the database.
     "seed_products": 1074,

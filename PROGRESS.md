@@ -4,6 +4,19 @@ Single state file for NaijaDrugWatch. Last updated **2026-11-20**.
 
 ## Handoff — 20 November 2026, end of session
 
+### Corrected on 21 November
+
+**Defect 1 below is fixed.** `mv_drug_price_index` now applies the same ₦20 floor as the views, added by
+`schema/009_index_price_floor.sql` (drop, recreate, unique index, refresh, one transaction). Measured before
+and after: 428 rows became **427**, one row disappeared — the one whose minimum was ₦10.99 — and **0 rows**
+had their average, minimum, maximum or pharmacy count changed. `min(min_price_ngn)` is now ₦50.00 and no row
+falls below the floor. The methods page's literal and the README were both updated; the build guard caught the
+stale 428 first, which is the behaviour it was added for.
+
+The README now also states the floor, which the independent review had flagged as missing entirely.
+
+Defects 2 to 7 below still stand.
+
 ### What this is and where it is live
 
 NaijaDrugWatch puts recorded prices from HealthPlus, MedPlus and Drugstore.ng beside NAFDAC Greenbook registration records. It is a public, static record, not a shop or a current price service. The three pages are live at **https://batestguy.github.io/NaijaDrugWatch/**: `index.html` (The finding), `dashboard.html` (Every price) and `about.html` (How this was made). Collection covered 7–15 November 2026 and stopped on 16 November. Nothing behind the pages updates, so a price is a record of what a shop showed, not an offer today.
@@ -21,6 +34,7 @@ Collection is off. `FROZEN.md` records workflow `daily`, id `410978489`, as manu
 ### Rebuild and deploy
 
 Use the pinned interpreter and a `DATABASE_URL` for the frozen database. These are the local build and inspection commands:
+The builders read the database, not the archive directory. If the database is unreachable, restore the published vintage using the steps in `FROZEN.md` before rebuilding.
 
 ```powershell
 .venv\Scripts\python.exe -X utf8 scripts\build_site.py
@@ -33,13 +47,13 @@ Then open `http://localhost:8080/`. For a Pages-only deploy, run `gh workflow ru
 
 ### Verified, and what is not
 
-The README records the latest page checks as 3,791 numbers and 3,838 rows and figures checked, with zero unexplained in each build. Its values agree with the figures in the 20 November progress block. The supplied task brief says the published counts were re-checked against the database today, but no database query or build was run for this handoff because shell access was denied. Treat those as repo-recorded values, not a fresh verification by this session.
+The README records the latest page checks as 3,791 numbers and 3,838 rows and figures checked, with zero unexplained in each build. Its values agree with the figures in the 20 November progress block. The supplied task brief says the published counts were re-checked against the database today; I did not repeat that query or run a build because shell access was denied. The secretary's 21 November re-check of the index is recorded below and covers that index result only.
 
 The accessibility wording needs care. The new 20 November navigation bar and index strip have not had an axe audit; the build-time contrast check and manual structure check are not an audit. But “axe was never run” would be false: `FROZEN.md` records an earlier zero-violation run on the then-current pages. That earlier result does not establish that today's redesign passes.
 
 ### Open defects, worst first
 
-1. **The materialised price index includes suspect prices.** `schema/004_materialized.sql` averages `price_history` without the ₦20 floor used by the price checks. The brief reports one of 428 index rows with a minimum below ₦20, the lowest being ₦10.99; `PROGRESS.md` already warns against presenting the index as a market average. The README does not explain the floor. Filter the index or label it clearly before calling it an average.
+1. **The materialised price index includes suspect prices.** `schema/004_materialized.sql` averages `price_history` without the ₦20 floor used by the price checks. The 21 November re-check recorded below found one of 428 index rows with a minimum below ₦20, the lowest being ₦10.99; `PROGRESS.md` already warns against presenting the index as a market average. The README does not explain the floor. Filter the index or label it clearly before calling it an average.
 2. **Greenbook traffic falls back to plain HTTP.** The repo records an expired certificate and a per-host fallback in `scrapers/common.py`; the public pages do not disclose the downgrade. The probe recorded in `PROGRESS.md` is dated 7 November. Re-probe before stating it is still current, and publish the limitation if it remains true.
 3. **Page labels mix counts.** The dashboard's “288 medicines priced” counts distinct medicine names; the README's 335 is products with a stored price. The front page's 298 active and 46 never read are listing counts, placed beside 10,967 registrations. Explain the different units or change the labels.
 4. **The latest page changes have no accessibility audit.** The new bar and strip remain unaudited. An older audit exists, as noted above; it is not evidence for the new design.

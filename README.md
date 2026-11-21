@@ -38,10 +38,12 @@ The scope is narrow, and belongs before the figures: three online pharmacies, tw
 | Registrations with a scraped status | 1,856 (16.9%) | Status coverage is partial |
 | Listings on a registration not marked Active | 154 across 86 products | Stored status only; not a product-safety finding |
 | Rows in the cheapest-per-state view | 261 | Only 44 are genuine two-pharmacy comparisons |
-| Rows in the materialised price index | 428 | A derived view of the collected records |
+| Rows in the materialised price index | 427 | Average price per medicine, day and state, with the same sub-₦20 floor as the views (see below) |
 | Products with a price from seven days earlier to compare | 3 | None of the three changed (0.00%). The view pairs listings; a pair is not a movement |
 
 Read `is_comparison` before calling a row a comparison. It is true only when separate pharmacies quote the same product in the same state. Other rows are single-source prices.
+
+Prices below **₦20** are excluded from every view that ranks on price, and from the price index. The measured distribution puts a small cluster at ₦1–₦11 and then nothing at all until ₦50, so those rows read as placeholder or sentinel prices rather than real ones. They are kept in the stored table and flagged, never deleted; the views and the index simply do not rank them.
 
 Of the 154 listings attached to a registration not marked Active, the stored status is a reason to check the record, not a verdict about the medicine. That 154 is a fraction of a fraction and not an estimate for the register: most registrations have no scraped status, and unknown stays unknown. The price index summarises the collected records, not the market.
 
