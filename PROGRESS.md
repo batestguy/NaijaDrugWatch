@@ -17,6 +17,23 @@ The README now also states the floor, which the independent review had flagged a
 
 Defects 2 to 7 below still stand.
 
+### Next task, agreed 21 November: a recorded walkthrough
+
+The owner wants a short video of the site, added to the repository afterwards. Nothing is recorded yet.
+Two constraints decide the shape, and both come from this repo's own rules:
+
+- **A video must not go into git as a file.** The house rule is that nothing over 5 MB lives in the repo;
+  a minute of 1440p is comfortably over it. The pattern already used elsewhere is a **GitHub release asset**
+  linked from the README, which keeps the clone small and the link permanent. Git LFS is the alternative and
+  is worse here: it charges the reader for bandwidth on every clone.
+- **The pages are frozen and static**, so the recording cannot show live prices. It should say so on screen
+  or the README must, or a viewer will read 15 November 2026 as today.
+
+What it should show, in order: the finding and the 154, the price page's figures and funnel, the search
+(`amox` answering with one medicine and its shop quotes, out-of-stock listings visible but not counted), the
+2,800-row table, and the methods page. The GIF already on the front page does part of this at 880 px if a
+full recording proves too heavy.
+
 ### What this is and where it is live
 
 NaijaDrugWatch puts recorded prices from HealthPlus, MedPlus and Drugstore.ng beside NAFDAC Greenbook registration records. It is a public, static record, not a shop or a current price service. The three pages are live at **https://batestguy.github.io/NaijaDrugWatch/**: `index.html` (The finding), `dashboard.html` (Every price) and `about.html` (How this was made). Collection covered 7–15 November 2026 and stopped on 16 November. Nothing behind the pages updates, so a price is a record of what a shop showed, not an offer today.
