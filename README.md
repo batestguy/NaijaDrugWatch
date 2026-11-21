@@ -24,7 +24,11 @@ NAFDAC is Nigeria's National Agency for Food and Drug Administration and Control
 
 [**naijadrugwatch-demo.mp4**](docs/media/naijadrugwatch-demo.mp4) — silent, 1440 × 900, 2.0 MB. It opens on the collection dates, then: the finding and the 154, the funnel, the licence section, one medicine typed into the search and its shop quotes with out-of-stock listings visible but not counted, the 2,800-row table, and the methods page.
 
-The dates are in the video on purpose. It was recorded against the published pages, so what it shows is what the site shows — a record of 7 to 15 November 2026, not today's prices.
+## The full walkthrough, 2 minutes 22
+
+[**naijadrugwatch-walkthrough.mp4**](docs/media/naijadrugwatch-walkthrough.mp4) — 1440 × 900, 30 fps, 4.5 MB, with a lower-third caption naming each view as it goes: the finding, the data, the six figures, the funnel, the licence, the nine nights, the search, the table, and the twenty stages. Scored with **"Loser" by Tame Impala**, which remains the artist's and the label's; the track is used for this demonstration and is not licensed for redistribution.
+
+The dates are in both videos on purpose. They were recorded against the published pages, so what they show is what the site shows — a record of 7 to 15 November 2026, not today's prices.
 
 ## What the data says
 

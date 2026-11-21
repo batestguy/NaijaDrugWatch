@@ -62,3 +62,6 @@ Thumbs.db
 .agent/T1120-c-about-good.html
 .agent/recover/build_site.*.py
 .agent/*.js
+
+# Source audio for the scored walkthrough. Not tracked: it is a commercial recording, used for the demo only.
+Tame_Impala*.mp3

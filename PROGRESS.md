@@ -50,6 +50,26 @@ write error raised by the tools. Nothing was lost: every commit was already push
 from dangling blobs, and the frames and the video were intact when the drive returned. Treat a sudden
 "working directory does not exist" as a volume problem, not a repo problem.
 
+### The scored walkthrough, 21 November
+
+`docs/media/naijadrugwatch-walkthrough.mp4` — 2 minutes 22, 1440 × 900, 30 fps, **4.5 MB**, AAC stereo.
+Built in the style of the owner's Power BI elections demo: a screen walkthrough with a lower-third caption
+that names the current view, rather than a silent scroll. Captions run: the finding → the data → the six
+figures → the funnel → the licence → the nine nights → the search (`amox`) → the table → the twenty stages,
+then a closing card carrying the dates and the URL.
+
+**The audio is a commercial recording.** "Loser" by Tame Impala, supplied by the owner and mixed here with a
+1.5-second fade in and a 4.5-second fade out at 2:18. **The source track is gitignored** (`Tame_Impala*.mp3`);
+only the mixed video is committed, and the README states the rights position rather than implying a licence.
+If the repo is ever challenged, the scored cut is the file to replace; the silent 55-second cut is already in
+the repo and needs nothing.
+
+Frames were captured from the published site at 12 fps with per-frame durations encoded in the filenames,
+then assembled by the concat demuxer at 30 fps — so holds cost one frame each and only the moves carry frames.
+440 stills became 350 stills plus timed holds. The licence caption was re-shot once: the first version quoted
+the register-wide 1,856 of 10,967 while the section on screen shows the licence behind the 559 matched prices,
+which is the unit-mixing defect the review flagged, appearing again in a caption.
+
 ### What this is and where it is live
 
 NaijaDrugWatch puts recorded prices from HealthPlus, MedPlus and Drugstore.ng beside NAFDAC Greenbook registration records. It is a public, static record, not a shop or a current price service. The three pages are live at **https://batestguy.github.io/NaijaDrugWatch/**: `index.html` (The finding), `dashboard.html` (Every price) and `about.html` (How this was made). Collection covered 7–15 November 2026 and stopped on 16 November. Nothing behind the pages updates, so a price is a record of what a shop showed, not an offer today.
