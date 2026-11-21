@@ -17,22 +17,38 @@ The README now also states the floor, which the independent review had flagged a
 
 Defects 2 to 7 below still stand.
 
-### Next task, agreed 21 November: a recorded walkthrough
+### The recording, agreed and done 21 November
 
-The owner wants a short video of the site, added to the repository afterwards. Nothing is recorded yet.
-Two constraints decide the shape, and both come from this repo's own rules:
+The owner asked for a short video of the site, added to the repository, because this repo is a showcase of the
+work. Done in the section below this one. Two constraints shaped it: a file over 5 MB does not belong in git,
+and a frozen page must not look live.
 
-- **A video must not go into git as a file.** The house rule is that nothing over 5 MB lives in the repo;
-  a minute of 1440p is comfortably over it. The pattern already used elsewhere is a **GitHub release asset**
-  linked from the README, which keeps the clone small and the link permanent. Git LFS is the alternative and
-  is worse here: it charges the reader for bandwidth on every clone.
-- **The pages are frozen and static**, so the recording cannot show live prices. It should say so on screen
-  or the README must, or a viewer will read 15 November 2026 as today.
+### The recording, done 21 November
 
-What it should show, in order: the finding and the 154, the price page's figures and funnel, the search
-(`amox` answering with one medicine and its shop quotes, out-of-stock listings visible but not counted), the
-2,800-row table, and the methods page. The GIF already on the front page does part of this at 880 px if a
-full recording proves too heavy.
+`docs/media/naijadrugwatch-demo.mp4` — 55 seconds, 1440 × 900, **2.05 MB**, silent, H.264, no audio track.
+It opens on a card carrying the collection range (7–15 November 2026, stopped 16 November), then walks the
+finding, the funnel, the licence section, a search for `amox` resolving to Amoxicillin with its four shop
+quotes (one in stock, three shown but not counted), the 2,800-row table, and the methods page, and closes on
+a card with the URL and the same dates.
+
+**It did not need the rule bypassed.** The target was under 5 MB all along, so it is committed like any other
+file rather than parked in a release. If it is ever re-cut longer, the 5 MB rule still applies and a release
+asset is the fallback.
+
+Recorded from the **published site**, not a local build, so the frames cannot show a page a visitor would not
+see. Frames were captured at 8 fps and encoded with x264 at CRF 28; 440 frames, no interpolation. The pages
+were not edited to make the recording: the two cards are injected into the live DOM at capture time and
+nothing was written back.
+
+### The Pages re-run trap, and a drive that blinked
+
+Two things cost time and are worth knowing. The push-triggered deploy failed once with "no artifacts named
+github-pages" although the artifact existed, and an in-place re-run then failed with two of them, because
+build and deploy are one job; a fresh dispatch deployed in 30 seconds. And the `D:` volume carrying this
+repository dropped out mid-capture for about a minute — `Test-Path D:\` returned false, then true — with no
+write error raised by the tools. Nothing was lost: every commit was already pushed, `git fsck` is clean apart
+from dangling blobs, and the frames and the video were intact when the drive returned. Treat a sudden
+"working directory does not exist" as a volume problem, not a repo problem.
 
 ### What this is and where it is live
 

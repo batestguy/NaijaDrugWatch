@@ -20,6 +20,12 @@ NAFDAC is Nigeria's National Agency for Food and Drug Administration and Control
 
 *The Ask section shows a medicine search, its shop quotes and a warning that pack size matters.*
 
+## A walkthrough, 55 seconds
+
+[**naijadrugwatch-demo.mp4**](docs/media/naijadrugwatch-demo.mp4) — silent, 1440 × 900, 2.0 MB. It opens on the collection dates, then: the finding and the 154, the funnel, the licence section, one medicine typed into the search and its shop quotes with out-of-stock listings visible but not counted, the 2,800-row table, and the methods page.
+
+The dates are in the video on purpose. It was recorded against the published pages, so what it shows is what the site shows — a record of 7 to 15 November 2026, not today's prices.
+
 ## What the data says
 
 The figures below describe the frozen vintage only. “Latest per URL” means the most recent stored price row for each source page in the archive. It does not mean the page still shows that price. A listing appears as matched only when the matching process assigns it to a catalogue product.
